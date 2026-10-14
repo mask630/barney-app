@@ -1,0 +1,8 @@
+{
+  "version": "1.0.1-demo",
+  "build": 19,
+  "date": "2026-10-14",
+  "name": "Barney Co-Pilot",
+  "channel": "demo",
+  "pwaCache": "barney-pwa-v2"
+}
