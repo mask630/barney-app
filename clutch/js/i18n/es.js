@@ -1,0 +1,122 @@
+// Textos de la interfaz en español. Para otro idioma, copia este archivo con las mismas claves.
+
+export default {
+  lang: 'es',
+  appName: 'Clutch',
+  tagline: 'Nunca falles en el momento importante',
+  tabs: { hoy: 'Hoy', ella: 'Ella', apuntar: 'Apuntar', escribele: 'Escríbele', yo: 'Yo' },
+  stages: { amiga: 'Amiga', objetivo: 'Objetivo', rollo: 'Rollo', citas: 'Citas', pareja: 'Pareja', matrimonio: 'Matrimonio' },
+  stageHint: {
+    amiga: 'Cercano, sin tonteo.',
+    objetivo: 'Ligero y con chispa.',
+    rollo: 'Ligero y con chispa.',
+    citas: 'Ilusión y planes.',
+    pareja: 'Cariño y constancia.',
+    matrimonio: 'Cariño y constancia.'
+  },
+  welcome: {
+    title: 'Tu mejor amigo para no fallar',
+    body: 'Clutch te recuerda lo que importa de ella y te ayuda a decirlo bien. Tus datos se quedan en este móvil.',
+    cta: 'Crear su ficha'
+  },
+  profile: {
+    name: 'Su nombre',
+    birth: 'Fecha de nacimiento',
+    stage: 'Etapa',
+    since: 'Desde cuándo',
+    sinceHint: 'Fecha de la primera cita, de cuando empezasteis o de la boda',
+    adultOnly: 'Solo se pueden crear perfiles de personas adultas (18 años o más).',
+    errors: {
+      'menor-de-edad': 'Solo se admiten perfiles de personas de 18 años o más.',
+      'fecha-invalida': 'Escribe una fecha de nacimiento válida.',
+      'nombre-vacio': 'Escribe su nombre.',
+      'etapa-invalida': 'Elige una etapa.'
+    },
+    save: 'Guardar',
+    upgrade: 'Cambiar de etapa',
+    upgradeNote: 'Al cambiar de etapa se conserva todo lo que ya sabes de ella.'
+  },
+  today: {
+    play: 'La jugada de hoy',
+    gestures: 'Gestos para hoy',
+    dates: 'Próximas fechas',
+    noDates: 'Aún no hay fechas. Apunta un cumpleaños o un plan y aparecerá aquí.',
+    unlock: 'Para desbloquear más',
+    care: 'Cuidado de hoy',
+    sosRow: '¿La has liado? Ve a SOS',
+    emptyHook: 'Hoy no hay ningún dato especial. Tienes mensajes sencillos en Escríbele.',
+    days: (n) => (n === 0 ? 'hoy' : n === 1 ? 'mañana' : `en ${n} días`)
+  },
+  write: {
+    title: 'Escríbele',
+    realData: 'Dato real',
+    basics: 'Mensajes sencillos',
+    copy: 'Copiar',
+    copied: 'Copiado',
+    whatsapp: 'WhatsApp',
+    proRewrite: 'Reescribir con tu estilo',
+    pro: 'PRO'
+  },
+  capture: {
+    title: 'Apuntar',
+    placeholder: 'Escribe lo que has visto o escuchado. Ej.: su anillo es una talla 14',
+    camera: 'Hacer foto',
+    gallery: 'Galería',
+    classify: 'Clasificar',
+    sendTo: 'Va a',
+    confirm: 'Guardar aquí',
+    toInbox: 'Mandar a la Bandeja',
+    inbox: 'Bandeja',
+    inboxEmpty: 'La bandeja está vacía.',
+    classifyLater: 'Clasificar',
+    discard: 'Descartar',
+    saved: 'Guardado en',
+    photoNote: 'La foto se guarda en este móvil. Elige dónde va.'
+  },
+  sos: {
+    title: 'SOS',
+    breathe: 'Respira conmigo',
+    inhale: 'Inspira',
+    hold: 'Sostén',
+    exhale: 'Espira',
+    start: 'Empezar',
+    stop: 'Parar',
+    situations: '¿Qué ha pasado?',
+    steps: 'Antes de escribir',
+    script: 'Mensaje para copiar',
+    proChat: 'Hablar con la IA',
+    pro: 'PRO'
+  },
+  me: {
+    title: 'Yo',
+    plan: 'Modo simple',
+    planBody: 'Un perfil, gestos diarios, Apuntar, ganchos y SOS con guiones. En la beta tienes también las funciones PRO para probarlas.',
+    discretion: 'Discreción',
+    discreetNotifs: 'Avisos discretos',
+    discreetNotifsHint: 'Se verán así: «Agenda · 1 evento hoy»',
+    pin: 'PIN de Clutch',
+    pinHint: 'Aparte del bloqueo de huella o cara de tu móvil',
+    lockLeave: 'Bloqueo al salir',
+    lockLeaveHint: 'Tras 60 segundos en segundo plano',
+    where: 'Dónde estás',
+    country: 'País',
+    city: 'Ciudad',
+    useGps: 'Usar GPS',
+    companion: 'Tu acompañante',
+    companionHint: 'Ponle el nombre que quieras. Tono neutro y positivo.',
+    data: 'Tus datos',
+    export: 'Copia de seguridad',
+    exportHint: 'Se muestra el texto para que lo copies y lo guardes.',
+    import: 'Restaurar o importar',
+    importHint: 'Pega una copia de Clutch o de Barney v1.',
+    theme: 'Aspecto',
+    themeAuto: 'Automático',
+    themeDark: 'Oscuro',
+    themeLight: 'Claro',
+    beta: 'Beta',
+    feedback: 'Enviar comentario',
+    version: 'Clutch beta 0.1'
+  },
+  lock: { title: 'Introduce tu PIN', wrong: 'PIN incorrecto', unlock: 'Entrar' },
+  dest: { gustos: 'Gustos', evitar: 'Evitar', tallas: 'Tallas', regalos: 'Regalos', eventos: 'Eventos', recordar: 'Recordar', bandeja: 'Bandeja' }
+};
