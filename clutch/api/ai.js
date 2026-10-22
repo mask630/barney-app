@@ -99,7 +99,9 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'metodo' });
   const codes = (process.env.CLUTCH_CODES || '').split(',').map((s) => s.trim()).filter(Boolean);
   const code = String(req.headers['x-clutch-code'] || '');
-  if (!process.env.ANTHROPIC_API_KEY || !codes.length) return res.status(503).json({ error: 'sin-configurar' });
+  // trim: al pegarla desde PowerShell la clave puede llegar con un salto de línea final.
+  const apiKey = (process.env.ANTHROPIC_API_KEY || '').trim();
+  if (!apiKey || !codes.length) return res.status(503).json({ error: 'sin-configurar' });
   if (!codes.includes(code)) return res.status(401).json({ error: 'codigo' });
   if (limited(code)) return res.status(429).json({ error: 'limite' });
 
@@ -111,7 +113,7 @@ export default async function handler(req, res) {
   try {
     r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify(built.payload)
     });
   } catch {

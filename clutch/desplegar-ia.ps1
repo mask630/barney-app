@@ -1,4 +1,4 @@
-# Despliega la IA de Clutch en Vercel. Dos pasos son tuyos: iniciar sesión en el navegador y pegar tu clave de Anthropic.
+﻿# Despliega la IA de Clutch en Vercel. Dos pasos son tuyos: iniciar sesión en el navegador y pegar tu clave de Anthropic.
 # La clave se pide oculta, se envía directamente a Vercel y no se guarda en ningún archivo.
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
@@ -34,7 +34,8 @@ $codigo = -join ((48..57) + (97..122) | Get-Random -Count 12 | ForEach-Object { 
 
 function Poner-Variable($nombre, $valor) {
   try { vercel env rm $nombre production --yes 2>$null | Out-Null } catch {}
-  $valor | vercel env add $nombre production | Out-Null
+  # --value en vez de tubería: PowerShell añade un salto de línea al pasar texto por tubería.
+  vercel env add $nombre production --value $valor --yes --force | Out-Null
 }
 Poner-Variable 'ANTHROPIC_API_KEY' $clave
 Poner-Variable 'CLUTCH_CODES' $codigo
@@ -46,7 +47,9 @@ Write-Host "`n4/4 Desplegando..." -ForegroundColor Cyan
 $ErrorActionPreference = 'Continue'
 $salida = vercel deploy --prod --yes 2>&1 | ForEach-Object { "$_" } | Out-String
 Write-Host $salida
-$m = [regex]::Match($salida, 'https://[a-z0-9-]+\.vercel\.app')
+# La dirección "Aliased" es la pública; la primera que aparece es la del despliegue concreto, que Vercel protege.
+$m = [regex]::Match($salida, 'Aliased:\s*(https://[a-z0-9-]+\.vercel\.app)')
+if ($m.Success) { $m = $m.Groups[1] } else { $m = [regex]::Match($salida, 'https://[a-z0-9-]+\.vercel\.app') }
 if (-not $m.Success) { Write-Host 'No encontré la dirección en la salida. Cópiala del texto de arriba y añade /api/ai al final.' -ForegroundColor Yellow }
 $direccion = if ($m.Success) { "$($m.Value)/api/ai" } else { '(mira arriba)/api/ai' }
 
