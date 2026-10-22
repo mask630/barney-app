@@ -4,6 +4,7 @@ import { parseISO, daysBetween } from '../core/dates.js';
 import { STAGES_WITH_MILESTONES, STAGE_GROUP } from '../core/stages.js';
 import { stageRank } from '../core/store.js';
 import { compose } from './voice.js';
+import { mothersDay } from '../data/worldDays.js';
 
 const GESTURES = {
   amiga: [
@@ -62,7 +63,7 @@ export function genericMessages(profile, band, group) {
 }
 
 // Fechas próximas para la pantalla Hoy. Solo con datos reales del perfil.
-export function upcoming(profile, todayISO, horizonDays = 200) {
+export function upcoming(profile, todayISO, horizonDays = 200, country = null) {
   const out = [];
   const today = parseISO(todayISO);
   const y = today.getUTCFullYear();
@@ -81,6 +82,15 @@ export function upcoming(profile, todayISO, horizonDays = 200) {
   if (profile.birth) push('Su cumpleaños', +profile.birth.slice(5, 7), +profile.birth.slice(8, 10), 'birthday');
   if (profile.since && STAGES_WITH_MILESTONES.includes(profile.stage)) {
     push('Vuestro aniversario', +profile.since.slice(5, 7), +profile.since.slice(8, 10), 'anniversary');
+  }
+  if (country) {
+    for (const yy of [y, y + 1]) {
+      const m = mothersDay(yy, country);
+      if (!m) continue;
+      const iso = `${yy}-${String(m.month).padStart(2, '0')}-${String(m.day).padStart(2, '0')}`;
+      const ahead = daysBetween(todayISO, iso);
+      if (ahead >= 0 && ahead <= horizonDays) { out.push({ label: 'Día de la Madre (la tuya y la suya)', kind: 'mothers', daysAhead: ahead, iso }); break; }
+    }
   }
   for (const e of profile.events) push(e.text, e.month, e.day, 'event', e.yearly || !e.year, e.year);
   return out.sort((a, b) => a.daysAhead - b.daysAhead);

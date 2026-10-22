@@ -17,7 +17,13 @@ export function emptyState() {
       pinSalt: null,
       lockOnLeave: false,
       discreetNotifs: true,
-      theme: 'auto'
+      theme: 'auto',
+      pro: true, // beta: PRO activado para probar
+      companionStyle: 'gymbro',
+      style: null,
+      aiUrl: '',
+      testerCode: '',
+      plans: null
     },
     profiles: [],
     activeId: null,
@@ -167,4 +173,41 @@ export async function hashPin(pin, salt, subtle = globalThis.crypto?.subtle) {
   const buf = new TextEncoder().encode(`${salt}:${pin}`);
   const out = new Uint8Array(await subtle.digest('SHA-256', buf));
   return Array.from(out, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+// --- Copia cifrada (AES-GCM, clave derivada de una contraseña con PBKDF2). Todo en el dispositivo. ---
+
+const b64 = (u8) => btoa(String.fromCharCode(...u8));
+const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+
+async function deriveKey(pass, salt, subtle, iterations) {
+  const base = await subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+  return subtle.deriveKey({ name: 'PBKDF2', salt, iterations, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+
+export async function encryptBackup(text, pass, subtle = globalThis.crypto?.subtle, iterations = 250000) {
+  if (!subtle) return { ok: false, reason: 'sin-crypto' };
+  if (!pass || pass.length < 6) return { ok: false, reason: 'contrasena-corta' };
+  const salt = globalThis.crypto.getRandomValues(new Uint8Array(16));
+  const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(pass, salt, subtle, iterations);
+  const data = new Uint8Array(await subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(text)));
+  return { ok: true, text: JSON.stringify({ clutchEnc: 1, it: iterations, salt: b64(salt), iv: b64(iv), data: b64(data) }) };
+}
+
+export function isEncryptedBackup(text) {
+  try { return JSON.parse(text)?.clutchEnc === 1; } catch { return false; }
+}
+
+export async function decryptBackup(text, pass, subtle = globalThis.crypto?.subtle) {
+  if (!subtle) return { ok: false, reason: 'sin-crypto' };
+  try {
+    const o = JSON.parse(text);
+    if (o.clutchEnc !== 1) return { ok: false, reason: 'formato-desconocido' };
+    const key = await deriveKey(pass, unb64(o.salt), subtle, o.it);
+    const plain = await subtle.decrypt({ name: 'AES-GCM', iv: unb64(o.iv) }, key, unb64(o.data));
+    return { ok: true, text: new TextDecoder().decode(plain) };
+  } catch {
+    return { ok: false, reason: 'contrasena-incorrecta' };
+  }
 }

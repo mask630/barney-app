@@ -10,7 +10,19 @@ const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => { if (m.type() === 'error' && !/fonts\.g|ERR_|Failed to load resource/.test(m.text())) errors.push(m.text()); });
+await page.addInitScript(() => {
+  if (!localStorage.getItem('clutch_v2')) localStorage.setItem('barney_v9', JSON.stringify({ city: 'Málaga', girls: [
+    { id: 1, name: 'Marta', stage: 'dating', bday: '1995-06-01', last: '2026-10-01', cycle: 28, cycleEnabled: false, favs: { Café: 'Cortado' }, sizes: { Calzado: '38' }, wish: [], events: [], dates: [] }] }));
+});
 await page.goto(url);
+await page.waitForSelector('text=Encontré tus datos de Barney');
+await page.click('text=Traer mis datos de Barney');
+await page.waitForSelector('h1:has-text("Marta")');
+await page.click('.nav button:has-text("Ella")');
+await page.click('button:has-text("Editar")');
+await page.click('text=Eliminar perfil');
+await page.click('text=¿Seguro?');
+await page.waitForSelector('text=Crear su ficha');
 const txt = () => page.locator('#app').innerText();
 const shot = (n) => page.screenshot({ path: `/tmp/claude-0/-home-claude/81aedb1f-9ad7-5fb0-af9c-647a397c196d/scratchpad/shot-${n}.png` });
 

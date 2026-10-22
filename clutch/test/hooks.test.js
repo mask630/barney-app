@@ -48,7 +48,7 @@ test('Día Mundial de la Pasta el 25-oct, con y sin gustos', () => {
 });
 
 test('los días mundiales sin verificar nunca se devuelven', () => {
-  assert.ok(WORLD_DAYS.some((d) => !d.verified));
+  assert.ok(WORLD_DAYS.every((d) => d.verified && d.sources.length));
   assert.ok(verifiedWorldDays().every((d) => d.verified && d.sources.length));
   const r = generateHooks({ ...base, tastes: ['chocolate'] }, '2026-07-07');
   assert.equal(r.hooks.some((h) => h.kind === 'worldday'), false);
@@ -123,4 +123,38 @@ test('voz: sin tokens sin sustituir, amiga sin coqueteo, distinta por edad', () 
 
 test('voz: sin nombre usa saludo genérico', () => {
   assert.equal(compose({ text: 'hoy es sábado.', name: '', band: '35-49', group: 'amiga' }), 'Hola, hoy es sábado.');
+});
+
+import { worldDaysOn, mothersDay, UNVERIFIED } from '../js/data/worldDays.js';
+
+test('días mundiales verificados: fechas y país', () => {
+  const on = (d, c) => worldDaysOn(d, c).map((x) => x.id);
+  assert.deepEqual(on('2026-07-30'), ['friendship']);
+  assert.deepEqual(on('2026-10-01'), ['coffee']);
+  assert.deepEqual(on('2026-05-21'), ['tea']);
+  assert.deepEqual(on('2026-08-08'), ['cat']);
+  assert.deepEqual(on('2026-02-14', 'España'), ['valentine']);
+  assert.deepEqual(on('2026-02-14', 'Colombia'), []);
+  assert.deepEqual(on('2026-09-19', 'Colombia'), ['amor-amistad']); // tercer sábado de septiembre de 2026
+  assert.deepEqual(on('2026-09-19', 'España'), []);
+});
+
+test('Día de la Madre por país', () => {
+  assert.deepEqual(mothersDay(2026, 'España'), { month: 5, day: 3 });
+  assert.deepEqual(mothersDay(2026, 'México'), { month: 5, day: 10 });
+  assert.deepEqual(mothersDay(2026, 'Argentina'), { month: 10, day: 18 });
+  assert.deepEqual(mothersDay(2026, 'Chile'), { month: 5, day: 10 });
+  assert.equal(mothersDay(2026, 'Japón'), null);
+});
+
+test('los dudosos (chocolate, beso, pizza) nunca salen', () => {
+  assert.ok(UNVERIFIED.length >= 3);
+  for (const d of ['2026-07-07', '2026-07-06', '2026-02-09', '2026-06-21']) assert.equal(worldDaysOn(d, 'España').length === 0 || d === '2026-06-21' && worldDaysOn(d, 'España').every((x) => x.id === 'yoga'), true);
+});
+
+test('los que suponen un gusto solo salen si ella lo tiene (con o sin tilde)', () => {
+  const p = { name: 'Ana', birth: '1990-01-01', stage: 'pareja' };
+  assert.equal(generateHooks({ ...p, tastes: [] }, '2026-10-01').hooks.some((h) => h.id === 'world-coffee'), false);
+  assert.equal(generateHooks({ ...p, tastes: ['Café'] }, '2026-10-01').hooks.some((h) => h.id === 'world-coffee'), true);
+  assert.equal(generateHooks({ ...p, tastes: ['cafe'] }, '2026-10-01').hooks.some((h) => h.id === 'world-coffee'), true);
 });

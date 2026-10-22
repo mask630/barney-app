@@ -4,7 +4,7 @@
 import { parseISO, daysBetween, addDays } from '../core/dates.js';
 import { checkAdult, STAGES_WITH_MILESTONES, isValidStage } from '../core/stages.js';
 import { moonSign, moonPhase, sunSignFromBirth, sunTimes, seasonStartingOn, moonLongitude, signName } from '../core/astro.js';
-import { verifiedWorldDays } from '../data/worldDays.js';
+import { worldDaysOn } from '../data/worldDays.js';
 import { compose, groupOf } from './voice.js';
 
 const MILESTONE_DAYS = [50, 100, 150, 200, 250, 300, 400, 500, 600, 700, 800, 900, 1000, 1500, 2000, 2500, 3000, 5000, 7500, 10000];
@@ -21,8 +21,9 @@ function fmtTime(date, tz) {
   return new Intl.DateTimeFormat('es', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false }).format(date);
 }
 
+// Minúsculas y sin tildes, para que "Café" y "cafe" coincidan.
 function norm(s) {
-  return String(s).trim().toLowerCase();
+  return String(s).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
 // La Luna se mueve ~13° al día: solo afirmamos "hoy está en X" si el signo no cambia en todo el día.
@@ -154,12 +155,10 @@ export function generateHooks(profile, todayISO) {
     }
   }
 
-  // 3. Días mundiales verificados
-  const todayMD = todayISO.slice(5);
-  for (const wd of verifiedWorldDays()) {
-    const md = `${String(wd.month).padStart(2, '0')}-${String(wd.day).padStart(2, '0')}`;
-    if (md !== todayMD) continue;
+  // 3. Días mundiales verificados (por país; los que suponen un gusto solo salen si ella lo tiene)
+  for (const wd of worldDaysOn(todayISO, profile.country || null)) {
     const match = wd.tags.some((t) => tastes.includes(norm(t)));
+    if (wd.needsTaste && !match) continue;
     add(
       {
         id: `world-${wd.id}`, kind: 'worldday', priority: match ? 75 : 40,
