@@ -1,4 +1,6 @@
 // Planes cerca: lugares reales de OpenStreetMap (Overpass). Solo se envían las coordenadas de la ciudad elegida.
+
+import { SERVER, serverHeaders } from './features.js';
 // No son eventos de agendas locales: esos requieren acuerdo con la fuente (pendiente).
 
 export const PLAN_KINDS = {
@@ -60,16 +62,18 @@ export function parsePlans(json, { lat, lon, group, max = 8 }) {
   return out.map((p) => ({ ...p, label: PLAN_KINDS[p.kind].label, text: `${PLAN_KINDS[p.kind].idea} ${p.name}`, km: Math.round(p.km * 10) / 10 }));
 }
 
-export async function fetchPlans({ lat, lon, group, fetchFn = globalThis.fetch, timeoutMs = 12000 }) {
+// Va por nuestro servidor (prueba varios espejos de Overpass y guarda el resultado), no directo a OpenStreetMap.
+export async function fetchPlans({ lat, lon, group, settings, fetchFn = globalThis.fetch, timeoutMs = 30000 }) {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), timeoutMs);
   try {
-    const res = await fetchFn('https://overpass-api.de/api/interpreter', {
+    const res = await fetchFn(`${SERVER}/api/plans`, {
       method: 'POST',
-      body: 'data=' + encodeURIComponent(buildQuery(lat, lon)),
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: JSON.stringify({ lat, lon }),
+      headers: serverHeaders(settings),
       signal: ctl.signal
     });
+    if (res.status === 401 || res.status === 403) return { ok: false, reason: 'acceso' };
     if (!res.ok) return { ok: false, reason: 'servicio' };
     return { ok: true, plans: parsePlans(await res.json(), { lat, lon, group }) };
   } catch {

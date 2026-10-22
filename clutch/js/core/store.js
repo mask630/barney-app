@@ -18,11 +18,12 @@ export function emptyState() {
       lockOnLeave: false,
       discreetNotifs: true,
       theme: 'auto',
-      pro: true, // beta: PRO activado para probar
       companionStyle: 'gymbro',
       style: null,
-      aiUrl: '',
       testerCode: '',
+      features: [], // funciones abiertas para este tester (las manda el servidor)
+      group: null,
+      configAt: null,
       plans: null
     },
     profiles: [],

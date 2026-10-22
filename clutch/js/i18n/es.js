@@ -55,7 +55,7 @@ export default {
     copied: 'Copiado',
     whatsapp: 'WhatsApp',
     proRewrite: 'Reescribir con tu estilo',
-    pro: 'PRO'
+    pro: 'Pronto'
   },
   capture: {
     title: 'Apuntar',
@@ -85,12 +85,12 @@ export default {
     steps: 'Antes de escribir',
     script: 'Mensaje para copiar',
     proChat: 'Hablar con la IA',
-    pro: 'PRO'
+    pro: 'Pronto'
   },
   me: {
     title: 'Yo',
     plan: 'Modo simple',
-    planBody: 'Un perfil, gestos diarios, Apuntar, ganchos y SOS con guiones. En la beta tienes también las funciones PRO para probarlas.',
+    planBody: 'Un perfil, gestos diarios, Apuntar, ganchos y SOS con guiones. Durante la beta iremos abriendo funciones nuevas poco a poco.',
     discretion: 'Discreción',
     discreetNotifs: 'Avisos discretos',
     discreetNotifsHint: 'Se verán así: «Agenda · 1 evento hoy»',

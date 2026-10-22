@@ -9,7 +9,14 @@ const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 const calls = [];
-await page.route('https://mock.test/api/ai', async (route) => {
+const ALL = ['ai_rewrite', 'my_style', 'companions_pro', 'sos_chat', 'photo_ai', 'plans', 'encrypted_backup'];
+let granted = ALL;
+const json = (route, out, status = 200) => route.fulfill({ status, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(out) });
+await page.route('https://clutch-ia.vercel.app/api/config', (route) => {
+  const code = route.request().headers()['x-clutch-code'];
+  json(route, code === 'tester1' ? { status: 'active', group: 'admin', features: granted } : { status: 'anon', group: null, features: [] });
+});
+await page.route('https://clutch-ia.vercel.app/api/ai', async (route) => {
   const body = JSON.parse(route.request().postData());
   calls.push({ body, code: route.request().headers()['x-clutch-code'] });
   const out = body.task === 'rewrite' ? { text: 'oye {n}, ya son 100 días juntos' }
@@ -17,7 +24,7 @@ await page.route('https://mock.test/api/ai', async (route) => {
     : { dest: 'regalos', field: '', value: 'collar dorado', confidence: 'alta' };
   await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(out) });
 });
-await page.route('https://overpass-api.de/api/interpreter', async (route) => {
+await page.route('https://clutch-ia.vercel.app/api/plans', async (route) => {
   await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ elements: [
     { type: 'node', lat: 36.72, lon: -4.42, tags: { name: 'Mirador de Gibralfaro', tourism: 'viewpoint' } },
     { type: 'node', lat: 36.73, lon: -4.43, tags: { name: 'Parque de Málaga', leisure: 'park' } }] }) });
@@ -31,20 +38,18 @@ await page.click('button:has-text("Pareja")');
 await page.fill('#f-since', '2026-07-14');
 await page.click('text=Crear su ficha');
 
-// Yo: ciudad, acompañante PRO, estilo, IA
+// Yo: sin código todo lo extra sale como "Pronto"; con código se abre lo que diga el servidor
 await page.click('.nav button:has-text("Yo")');
+assert.match(await txt(), /Sin código/);
+assert.equal(await page.locator('text=Aprender mi estilo').count(), 0);
+await page.fill('#ai-code', 'tester1');
+await page.dispatchEvent('#ai-code', 'change');
+await page.waitForSelector('text=Acceso activo');
 await page.selectOption('#city-sel', 'Málaga');
 await page.click('.chip:has-text("Mentor tranquilo")');
 await page.fill('#style-in', 'jaja vale, nos vemos 😂\noye q tal el finde 😂\nva, luego te escribo jaja\nok 😂');
 await page.click('text=Aprender mi estilo');
 assert.match(await txt(), /Aprendido: mensajes cortos/);
-await page.fill('#ai-url', 'https://mock.test/api/ai');
-await page.fill('#ai-code', 'tester1');
-await page.dispatchEvent('#ai-code', 'change');
-await page.dispatchEvent('#ai-url', 'change');
-await page.click('.nav button:has-text("Ella")');
-await page.click('.nav button:has-text("Yo")');
-assert.match(await txt(), /Servidor configurado/);
 
 // Hoy: acompañante, planes
 await page.click('.nav button:has-text("Hoy")');
@@ -109,13 +114,20 @@ await page.click('button:has-text("Restaurar o importar")');
 await page.waitForSelector('text=copia restaurada');
 await page.waitForSelector('h1:has-text("Lucía")');
 
-// Modo gratis: lo PRO se bloquea
+// El servidor cierra funciones (grupo base): la app las muestra como "Pronto" sin romperse
+granted = [];
 await page.click('.nav button:has-text("Yo")');
-await page.click('button[role=switch][data-v=pro]');
-assert.match(await txt(), /Reconocer|PRO/);
+await page.fill('#ai-code', 'tester1');
+await page.click('text=Comprobar acceso');
+await page.waitForSelector('text=Acceso actualizado');
+assert.equal(await page.locator('text=Aprender mi estilo').count(), 0);
 await page.click('.nav button:has-text("Hoy")');
-assert.match(await txt(), /Planes cerca\s*\n?.*PRO|PRO/);
+assert.match(await txt(), /Planes cerca[\s\S]*Pronto/);
 assert.equal(await page.locator('text=Buscar planes').count(), 0);
+await page.click('text=Escríbele >> nth=0');
+assert.equal(await page.locator('text=Reescribir con IA').count(), 0);
+assert.equal(await page.locator('text=Con mi estilo').count(), 0);
+await page.click('button[aria-label=Volver]');
 assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false);
 assert.deepEqual(errors, [], errors.join('\n'));
 await browser.close();

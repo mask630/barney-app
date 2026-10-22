@@ -2,5 +2,8 @@
   "installCommand": "true",
   "buildCommand": "mkdir -p out && echo Clutch IA > out/index.html",
   "outputDirectory": "out",
-  "functions": { "api/ai.js": { "maxDuration": 30 } }
+  "functions": {
+    "api/ai.js": { "maxDuration": 30 },
+    "api/plans.js": { "maxDuration": 30 }
+  }
 }

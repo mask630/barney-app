@@ -54,16 +54,18 @@ test('planes: errores de red no rompen', async () => {
   assert.equal(r.ok, true);
 });
 
-test('IA cliente: sin servidor, códigos y errores', async () => {
+test('IA cliente: sin código, códigos y errores', async () => {
   assert.equal(aiConfigured({}), false);
-  assert.equal(aiConfigured({ aiUrl: 'http://x' }), false);
-  assert.equal(aiConfigured({ aiUrl: 'https://x.vercel.app/api/ai' }), true);
+  assert.equal(aiConfigured({ testerCode: '  ' }), false);
+  assert.equal(aiConfigured({ testerCode: 'abc' }), true);
   assert.equal((await aiRewrite({}, { message: 'hola', band: '25-34', group: 'flirt' })).reason, 'sin-servidor');
-  const s = { aiUrl: 'https://x.app/api/ai', testerCode: 'abc' };
-  let seen;
-  const ok = await aiRewrite(s, { message: 'hola {n}', band: '25-34', group: 'flirt', facts: ['f'] }, async (url, o) => { seen = o; return { ok: true, status: 200, json: async () => ({ text: 'ey {n}' }) }; });
+  const s = { testerCode: 'abc' };
+  let seen, seenUrl;
+  const ok = await aiRewrite(s, { message: 'hola {n}', band: '25-34', group: 'flirt', facts: ['f'] }, async (url, o) => { seenUrl = url; seen = o; return { ok: true, status: 200, json: async () => ({ text: 'ey {n}' }) }; });
   assert.equal(ok.text, 'ey {n}');
+  assert.equal(seenUrl, 'https://clutch-ia.vercel.app/api/ai');
   assert.equal(seen.headers['X-Clutch-Code'], 'abc');
+  assert.equal((await aiSos(s, { history: [], band: '25-34', group: 'pareja' }, async () => ({ ok: false, status: 403 }))).reason, 'funcion');
   assert.ok(!seen.body.includes('Lucía'));
   assert.equal((await aiSos(s, { history: [], band: '25-34', group: 'pareja' }, async () => ({ ok: false, status: 401 }))).reason, 'codigo');
   assert.equal((await aiSos(s, { history: [], band: '25-34', group: 'pareja' }, async () => ({ ok: false, status: 429 }))).reason, 'limite');
@@ -74,6 +76,8 @@ test('IA servidor: validación y defensa contra datos inventados', () => {
   assert.equal(buildRequest({ task: 'rewrite', band: 'x', group: 'flirt', message: 'a' }).error, 'parametros');
   assert.equal(buildRequest({ task: 'nada', band: '25-34', group: 'flirt' }).error, 'tarea');
   assert.equal(buildRequest({ task: 'photo', band: '25-34', group: 'flirt', photo: 'http://x' }).error, 'foto');
+  // la app manda la foto sin registro: debe aceptarse
+  assert.ok(buildRequest({ task: 'photo', band: '25-34', photo: 'data:image/jpeg;base64,AAAA' }).payload);
   const r = buildRequest({ task: 'rewrite', band: '25-34', group: 'pareja', message: 'hoy hace 100 días', facts: ['100 días'] });
   assert.ok(r.payload.system.includes('No inventes'));
   assert.ok(!JSON.stringify(r.payload).includes('Lucía'));

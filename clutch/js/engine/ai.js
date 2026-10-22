@@ -2,8 +2,11 @@
 // Privacidad: no se envía el nombre ni la fecha de nacimiento. Se envía el tramo de edad, el registro,
 // los datos reales que ya tiene la app y el texto que pides reescribir. El nombre va como {n}.
 
+import { SERVER, serverHeaders } from './features.js';
+
+// El servidor va integrado en la app; solo hace falta el código de tester.
 export function aiConfigured(settings) {
-  return /^https:\/\//.test(settings?.aiUrl || '');
+  return !!String(settings?.testerCode || '').trim();
 }
 
 async function call(settings, body, fetchFn = globalThis.fetch, timeoutMs = 25000) {
@@ -11,13 +14,14 @@ async function call(settings, body, fetchFn = globalThis.fetch, timeoutMs = 2500
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), timeoutMs);
   try {
-    const res = await fetchFn(settings.aiUrl, {
+    const res = await fetchFn(`${SERVER}/api/ai`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Clutch-Code': settings.testerCode || '' },
+      headers: serverHeaders(settings),
       body: JSON.stringify(body),
       signal: ctl.signal
     });
-    if (res.status === 401 || res.status === 403) return { ok: false, reason: 'codigo' };
+    if (res.status === 401) return { ok: false, reason: 'codigo' };
+    if (res.status === 403) return { ok: false, reason: 'funcion' };
     if (res.status === 429) return { ok: false, reason: 'limite' };
     if (!res.ok) return { ok: false, reason: 'servidor' };
     const json = await res.json();

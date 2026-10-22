@@ -12,6 +12,7 @@ import { COMPANIONS, COMPANION_IDS, isAvailable, companionLine } from './engine/
 import { analyzeStyle, applyStyle, describeStyle } from './engine/style.js';
 import { fetchPlans } from './engine/plans.js';
 import { aiConfigured, aiRewrite, aiSos, aiPhoto, fillName } from './engine/ai.js';
+import { FEATURES, has as hasFeature, fetchConfig } from './engine/features.js';
 
 const T = es;
 
@@ -43,9 +44,10 @@ ui.locked = !!S.settings.pinHash;
 // ---------- utilidades ----------
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => localISO();
-const isPro = () => !!S.settings.pro;
+const has = (f) => hasFeature(S.settings, f);
+const SOON = '<span class="badge pro">Pronto</span>';
 const bandOf = (p) => checkAdult(p.birth, today()).band;
-const AI_ERR = { 'sin-servidor': 'Falta configurar el servidor de IA (Yo > IA).', codigo: 'El código de tester no es válido.', limite: 'Has llegado al límite por hora. Prueba más tarde.', red: 'No se pudo conectar con el servidor.', servidor: 'El servidor de IA tuvo un problema.', descartado: 'La IA añadió datos que no estaban. Descartado por seguridad.' };
+const AI_ERR = { 'sin-servidor': 'Falta tu código de tester (Yo > Acceso beta).', codigo: 'El código de tester no es válido.', funcion: 'Esta función aún no está abierta para ti.', limite: 'Has llegado al límite por hora. Prueba más tarde.', red: 'No se pudo conectar con el servidor.', servidor: 'El servidor de IA tuvo un problema.', descartado: 'La IA añadió datos que no estaban. Descartado por seguridad.' };
 const $ = (sel, root = document) => root.querySelector(sel);
 const persist = () => {
   if (!Store.save(storage, S)) showToast('No se pudo guardar. Descarga una copia en Yo > Copia de seguridad.');
@@ -184,7 +186,7 @@ function viewLock() {
 }
 
 function plansCard(p) {
-  if (!isPro()) return `<div class="card row"><span class="grow"><b>Planes cerca</b><br><span class="small muted">Ideas reales de tu ciudad</span></span><span class="badge pro">PRO</span></div>`;
+  if (!has('plans')) return `<div class="card row"><span class="grow"><b>Planes cerca</b><br><span class="small muted">Ideas reales de tu ciudad</span></span>${SOON}</div>`;
   const c = S.settings.plans;
   const city = S.settings.city;
   const items = c && city && c.city === city.name && c.group === STAGE_GROUP[p.stage] ? c.items : null;
@@ -219,11 +221,11 @@ function viewHoy(p) {
       ${hero
         ? `<p class="big">${esc(hero.message)}</p>
            <p class="source"><b>${T.write.realData}</b> · ${esc(hero.source.label)}</p>
-           <p class="small muted"><b>${comp}</b>: ${esc(companionLine(S.settings.companionStyle, 'hook', today(), isPro()))}</p>
+           <p class="small muted"><b>${comp}</b>: ${esc(companionLine(S.settings.companionStyle, 'hook', today(), has('companions_pro')))}</p>
            <button class="btn primary block" data-act="goWrite">${T.tabs.escribele}</button>`
         : `<p class="big">${esc(gest[0])}</p>
            <p class="source">${T.today.emptyHook}</p>
-           <p class="small muted"><b>${comp}</b>: ${esc(companionLine(S.settings.companionStyle, 'nodata', today(), isPro()))}</p>
+           <p class="small muted"><b>${comp}</b>: ${esc(companionLine(S.settings.companionStyle, 'nodata', today(), has('companions_pro')))}</p>
            <button class="btn block" data-act="goWrite">${T.tabs.escribele}</button>`}
     </section>
 
@@ -260,8 +262,8 @@ function viewWrite(p) {
       <div class="row wrap">
         <button class="btn primary small" data-act="copy" data-text="${esc(shown)}">${T.write.copy}</button>
         <a class="btn small" href="https://wa.me/?text=${encodeURIComponent(shown)}" target="_blank" rel="noopener">${T.write.whatsapp}</a>
-        ${isPro() && traits ? `<button class="btn small" data-act="styleMsg" data-text="${esc(msg)}">Con mi estilo</button>` : ''}
-        ${isPro() && aiConfigured(S.settings) ? `<button class="btn small" data-act="aiMsg" data-text="${esc(msg)}" ${ui.busy === 'ai:' + msg ? 'disabled' : ''}>${ui.busy === 'ai:' + msg ? 'Escribiendo…' : 'Reescribir con IA'}</button>` : ''}
+        ${has('my_style') && traits ? `<button class="btn small" data-act="styleMsg" data-text="${esc(msg)}">Con mi estilo</button>` : ''}
+        ${has('ai_rewrite') && aiConfigured(S.settings) ? `<button class="btn small" data-act="aiMsg" data-text="${esc(msg)}" ${ui.busy === 'ai:' + msg ? 'disabled' : ''}>${ui.busy === 'ai:' + msg ? 'Escribiendo…' : 'Reescribir con IA'}</button>` : ''}
       </div></div>`;
   };
   return `<main class="screen">
@@ -269,8 +271,8 @@ function viewWrite(p) {
     ${hooks.length ? hooks.map((h) => card(h.message, h.source)).join('') : ''}
     <span class="label">${T.write.basics}</span>
     ${basics.map((m) => card(m, null)).join('')}
-    ${!isPro() ? `<div class="card row"><span class="grow">${T.write.proRewrite}</span><span class="badge pro">${T.write.pro}</span></div>`
-      : `<div class="card"><b>${T.write.proRewrite}</b><p class="small muted">${traits ? 'Usa «Con mi estilo» en cualquier mensaje.' : 'Añade unos mensajes tuyos en Yo > Tu estilo y los adapto a cómo escribes.'}${aiConfigured(S.settings) ? '' : ' La reescritura con IA necesita un servidor propio (Yo > IA).'}</p></div>`}
+    ${!has('my_style') && !has('ai_rewrite') ? `<div class="card row"><span class="grow">${T.write.proRewrite}</span><span class="badge pro">${T.write.pro}</span></div>`
+      : `<div class="card"><b>${T.write.proRewrite}</b><p class="small muted">${!has('my_style') ? '' : traits ? 'Usa «Con mi estilo» en cualquier mensaje.' : 'Añade unos mensajes tuyos en Yo > Tu estilo y los adapto a cómo escribes.'}${has('ai_rewrite') ? ' Toca «Reescribir con IA» para otra versión.' : ''}</p></div>`}
   </main>`;
 }
 
@@ -315,7 +317,7 @@ function viewCapture(p) {
     <h1>${T.capture.title}</h1>
     ${pend ? `<div class="card">
         ${photo ? `<img class="thumb" src="${photo}" alt="Foto a clasificar"><p class="small muted">${T.capture.photoNote}</p>
-          ${isPro() ? (aiConfigured(S.settings) ? `<button class="btn small" data-act="aiPhoto" ${ui.busy === 'photo' ? 'disabled' : ''}>${ui.busy === 'photo' ? 'Mirando…' : 'Reconocer con IA'}</button>` : '<p class="small muted">Reconocer con IA necesita un servidor propio (Yo > IA).</p>') : '<p class="small muted">Reconocer fotos con IA es PRO.</p>'}` : ''}
+          ${has('photo_ai') ? `<button class="btn small" data-act="aiPhoto" ${ui.busy === 'photo' ? 'disabled' : ''}>${ui.busy === 'photo' ? 'Mirando…' : 'Reconocer con IA'}</button>` : `<p class="small muted">Reconocer fotos con IA ${SOON}</p>`}` : ''}
         <span class="label" style="padding:0">${T.capture.sendTo}</span>
         <div class="chips">${allowed.map((d) => `<button class="chip" aria-pressed="${pend.c.dest === d}" data-act="pickDest" data-v="${d}">${T.dest[d]}</button>`).join('')}</div>
         ${pend.c.dest === 'tallas' ? `<div class="field"><label for="p-field">¿De qué prenda?</label><input id="p-field" class="input" data-bind="pending.c.field" value="${esc(pend.c.field || '')}" placeholder="anillo, calzado, camiseta…"></div>` : ''}
@@ -359,13 +361,11 @@ function viewSos(p) {
           <div class="row wrap"><button class="btn primary small" data-act="copy" data-text="${esc(s.scripts[group])}">${T.write.copy}</button>
           <a class="btn small" href="https://wa.me/?text=${encodeURIComponent(s.scripts[group])}" target="_blank" rel="noopener">${T.write.whatsapp}</a></div>` : ''}</div>`;
     }).join('')}</div>
-    ${!isPro() ? `<div class="card row"><span class="grow">${T.sos.proChat}</span><span class="badge pro">${T.sos.pro}</span></div>`
-      : aiConfigured(S.settings)
-        ? `<div class="card"><h3>${T.sos.proChat}</h3>
+    ${!has('sos_chat') ? `<div class="card row"><span class="grow">${T.sos.proChat}</span><span class="badge pro">${T.sos.pro}</span></div>`
+      : `<div class="card"><h3>${T.sos.proChat}</h3>
             ${ui.chat.map((m) => `<div class="msg" style="${m.role === 'user' ? 'background:var(--surface)' : ''}"><span class="small muted">${m.role === 'user' ? 'Tú' : 'Clutch'}</span><br>${esc(fillName(m.text, p.name))}</div>`).join('')}
             <textarea id="chat-in" class="textarea" data-bind="chatDraft" placeholder="Cuéntame qué ha pasado">${esc(ui.chatDraft)}</textarea>
-            <button class="btn primary block" data-act="aiChat" ${ui.busy === 'chat' ? 'disabled' : ''}>${ui.busy === 'chat' ? 'Pensando…' : 'Enviar'}</button></div>`
-        : `<div class="card"><h3>${T.sos.proChat}</h3><p class="muted">Para hablar con la IA hace falta conectar un servidor propio. Pasos en Yo > IA.</p></div>`}
+            <button class="btn primary block" data-act="aiChat" ${ui.busy === 'chat' ? 'disabled' : ''}>${ui.busy === 'chat' ? 'Pensando…' : 'Enviar'}</button></div>`}
   </main>`;
 }
 
@@ -389,13 +389,13 @@ function viewMe() {
 
     <div class="stack"><span class="label">${T.me.companion}</span><div class="card">
       <div class="field"><label for="comp">${T.me.companionHint}</label><input id="comp" class="input" data-bind="edit.companion" data-change="companion" value="${esc(s.companion)}" maxlength="24"></div>
-      <div class="chips">${COMPANION_IDS.map((id) => `<button class="chip" aria-pressed="${s.companionStyle === id}" data-act="companionStyle" data-v="${id}" ${isAvailable(id, isPro()) ? '' : 'aria-disabled="true" style="opacity:.55"'}>${esc(COMPANIONS[id].label)}${COMPANIONS[id].pro ? ' <span class="badge pro" style="padding:1px 5px">PRO</span>' : ''}</button>`).join('')}</div></div></div>
+      <div class="chips">${COMPANION_IDS.map((id) => `<button class="chip" aria-pressed="${s.companionStyle === id}" data-act="companionStyle" data-v="${id}" ${isAvailable(id, has('companions_pro')) ? '' : 'aria-disabled="true" style="opacity:.55"'}>${esc(COMPANIONS[id].label)}${isAvailable(id, has('companions_pro')) ? '' : ' <span class="badge pro" style="padding:1px 5px">Pronto</span>'}</button>`).join('')}</div></div></div>
 
     <div class="stack"><span class="label">Tu estilo</span><div class="card">
       <p class="small muted">Pega 3 o más mensajes que hayas escrito tú (uno por línea). Se analiza en este móvil y no se envía a ningún sitio.</p>
-      <textarea id="style-in" class="textarea" data-bind="styleDraft" ${isPro() ? '' : 'disabled'} placeholder="jaja vale, nos vemos luego&#10;oye q tal el finde">${esc(ui.styleDraft || (s.style?.samples || []).join('\n'))}</textarea>
+      <textarea id="style-in" class="textarea" data-bind="styleDraft" ${has('my_style') ? '' : 'disabled'} placeholder="jaja vale, nos vemos luego&#10;oye q tal el finde">${esc(ui.styleDraft || (s.style?.samples || []).join('\n'))}</textarea>
       ${s.style?.traits ? `<p class="small ok">Aprendido: ${esc(describeStyle(s.style.traits))}</p>` : ''}
-      ${isPro() ? '<button class="btn small" data-act="saveStyle">Aprender mi estilo</button>' : '<span class="badge pro" style="align-self:flex-start">PRO</span>'}</div></div>
+      ${has('my_style') ? '<button class="btn small" data-act="saveStyle">Aprender mi estilo</button>' : '<span class="badge pro" style="align-self:flex-start">Pronto</span>'}</div></div>
 
     <div class="stack"><span class="label">${T.me.theme}</span><div class="chips">
       ${[['auto', T.me.themeAuto], ['dark', T.me.themeDark], ['light', T.me.themeLight]].map(([k, l]) => `<button class="chip" aria-pressed="${s.theme === k}" data-act="theme" data-v="${k}">${l}</button>`).join('')}</div></div>
@@ -403,7 +403,7 @@ function viewMe() {
     <div class="stack"><span class="label">${T.me.data}</span><div class="card">
       <button class="btn block" data-act="exportData">${T.me.export}</button>
       <div class="field"><label for="pass-in">Contraseña para copia cifrada (mínimo 6 caracteres)</label><input id="pass-in" class="input" type="password" autocomplete="off" data-bind="pass.value" value="${esc(ui.pass.value)}"></div>
-      <button class="btn block" data-act="exportEnc" ${isPro() ? '' : 'disabled'}>Copia cifrada ${isPro() ? '' : '(PRO)'}</button>
+      <button class="btn block" data-act="exportEnc" ${has('encrypted_backup') ? '' : 'disabled'}>Copia cifrada ${has('encrypted_backup') ? '' : '(pronto)'}</button>
       ${ui.exp.text ? `<textarea id="exp-text" class="textarea" readonly>${esc(ui.exp.text)}</textarea><button class="btn small" data-act="copy" data-text="${esc(ui.exp.text)}">${T.write.copy}</button>` : `<p class="small muted">${T.me.exportHint}</p>`}
       <hr style="border:0;border-top:1px solid var(--line);width:100%">
       <p class="small muted">${T.me.importHint}</p>
@@ -413,14 +413,14 @@ function viewMe() {
       <button class="btn danger block" data-act="wipe">${ui.ask === 'wipe' ? '¿Seguro? Toca otra vez para borrar todo' : 'Borrar todos mis datos'}</button>
     </div></div>
 
-    <div class="stack"><span class="label">IA (opcional)</span><div class="card">
-      <p class="small muted">Para reescribir mensajes con IA, hablar en SOS y reconocer fotos hace falta un servidor propio con tu clave de IA (carpeta api/ del proyecto). La clave nunca se guarda en el móvil.</p>
-      <div class="field"><label for="ai-url">Dirección del servidor (https)</label><input id="ai-url" class="input" data-change="aiUrl" value="${esc(s.aiUrl || '')}" placeholder="https://tu-proyecto.vercel.app/api/ai" autocomplete="off"></div>
+    <div class="stack"><span class="label">Acceso beta</span><div class="card">
       <div class="field"><label for="ai-code">Código de tester</label><input id="ai-code" class="input" type="password" data-change="aiCode" value="${esc(s.testerCode || '')}" autocomplete="off"></div>
-      <p class="small ${aiConfigured(s) ? 'ok' : 'muted'}">${aiConfigured(s) ? 'Servidor configurado.' : 'Sin servidor: la app funciona igual, sin IA.'}</p></div></div>
+      <p class="small ${s.group ? 'ok' : 'muted'}">${s.group ? 'Acceso activo. Funciones abiertas para ti:' : aiConfigured(s) ? 'Código no reconocido todavía.' : 'Sin código: la app funciona igual, con lo básico.'}</p>
+      <div class="list">${Object.entries(FEATURES).map(([f, label]) => `<div class="item" style="min-height:36px;padding:4px 0"><span class="grow small">${esc(label)}</span>${has(f) ? '<span class="small ok">Activa</span>' : SOON}</div>`).join('')}</div>
+      <button class="btn small" data-act="refreshAccess" ${ui.busy === 'access' ? 'disabled' : ''}>${ui.busy === 'access' ? 'Comprobando…' : 'Comprobar acceso'}</button>
+      <p class="small muted">Las funciones nuevas se irán abriendo durante la beta. Lo que escribes de ella nunca sale del móvil.</p></div></div>
 
     <div class="stack"><span class="label">${T.me.beta}</span><div class="card">
-      <div class="row"><div class="grow"><b>Versión PRO de prueba</b><br><span class="small muted">Desactívala para ver cómo se ve la versión gratis.</span></div>${switchHtml(isPro(), 'toggleSetting', 'data-v="pro"')}</div>
       <div class="field"><label for="fb">${T.me.feedback}</label><textarea id="fb" class="textarea" data-bind="fb.text" placeholder="Qué falla, qué falta, qué te gustó…">${esc(ui.fb.text)}</textarea></div>
       <button class="btn small" data-act="copyFeedback">Copiar para enviar</button>
       <p class="small muted">${T.me.version}</p></div></div>
@@ -738,7 +738,7 @@ const ACTS = {
   },
   companionStyle(el) {
     const id = el.dataset.v;
-    if (!isAvailable(id, isPro())) { showToast('Ese acompañante es PRO'); return; }
+    if (!isAvailable(id, has('companions_pro'))) { showToast('Ese acompañante llegará pronto'); return; }
     S.settings.companionStyle = id; persist(); render();
   },
   saveStyle() {
@@ -778,8 +778,10 @@ const ACTS = {
     const r = await aiPhoto(S.settings, { photo: ui.pending.photo, band: bandOf(p) });
     ui.busy = null;
     if (r.ok && r.dest) {
-      const dest = ['regalos', 'recordar'].includes(r.dest) ? r.dest : 'recordar';
-      ui.pending.c = { dest, field: r.field || null, value: r.value || ui.pending.raw || '', confidence: r.confidence || 'baja' };
+      // Con foto solo se guarda en Regalos o Recordar; si la IA sugiere otro sitio, el campo va dentro del texto («anillo: talla 14»).
+      const fits = ['regalos', 'recordar'].includes(r.dest);
+      const value = r.value ? (!fits && r.field ? `${r.field}: ${r.value}` : r.value) : ui.pending.raw || '';
+      ui.pending.c = { dest: fits ? r.dest : 'recordar', field: fits ? r.field || null : null, value, confidence: r.confidence || 'baja' };
       showToast('Sugerencia lista. Revísala antes de guardar.');
     } else showToast(AI_ERR[r.reason] || 'No se pudo reconocer la foto');
     render();
@@ -789,7 +791,7 @@ const ACTS = {
     if (!loc) return;
     ui.busy = 'plans'; ui.plansMsg = ''; render();
     const group = STAGE_GROUP[p.stage];
-    const r = await fetchPlans({ lat: loc.lat, lon: loc.lon, group });
+    const r = await fetchPlans({ lat: loc.lat, lon: loc.lon, group, settings: S.settings });
     ui.busy = null;
     if (r.ok && r.plans.length) { S.settings.plans = { city: S.settings.city.name, group, items: r.plans, at: today() }; persist(); }
     else ui.plansMsg = r.ok ? 'No encontré planes cerca. Prueba con otra ciudad.' : 'No se pudo consultar ahora. Prueba más tarde o desde la app instalada.';
@@ -800,8 +802,27 @@ const ACTS = {
     if (!r.ok) { showToast(r.reason === 'contrasena-corta' ? 'Usa una contraseña de 6 caracteres o más' : 'Este navegador no permite cifrar'); return; }
     ui.exp.text = r.text; render();
   },
-  copyFeedback() { copyText(`Clutch beta 0.1\n${ui.fb.text}`); }
+  copyFeedback() { copyText(`Clutch beta 0.1\n${ui.fb.text}`); },
+  refreshAccess() { refreshAccess(true); }
 };
+
+// ---------- acceso beta: funciones abiertas para este tester ----------
+// Se consulta al arrancar y al volver a la app (como mucho una vez por hora); sin red se usa lo último guardado.
+async function refreshAccess(force = false) {
+  const s = S.settings;
+  if (!aiConfigured(s)) {
+    if (s.features.length || s.group) { s.features = []; s.group = null; s.configAt = null; persist(); render(); }
+    return;
+  }
+  if (ui.busy === 'access' || (!force && s.configAt && Date.now() - s.configAt < 3600e3)) return;
+  ui.busy = 'access'; if (force) render();
+  const r = await fetchConfig(s);
+  ui.busy = null;
+  if (!r.ok) { if (force) showToast('No se pudo comprobar el acceso. Sigues con lo último guardado.'); else render(); return; }
+  Object.assign(S.settings, { features: r.features, group: r.group, configAt: Date.now() });
+  persist(); render();
+  if (force) showToast(r.status === 'active' ? 'Acceso actualizado' : 'Código no reconocido');
+}
 
 const CHANGES = {
   async photo(el) {
@@ -821,8 +842,7 @@ const CHANGES = {
       persist(); render();
     }
   },
-  aiUrl(el) { S.settings.aiUrl = el.value.trim(); persist(); },
-  aiCode(el) { S.settings.testerCode = el.value.trim(); persist(); },
+  aiCode(el) { S.settings.testerCode = el.value.trim(); persist(); refreshAccess(true); },
   companion(el) { S.settings.companion = el.value.trim().slice(0, 24) || 'Gym Bro'; persist(); },
   cycleLast(el) { updateProfile((p) => ({ ...p, cycle: { ...p.cycle, lastStart: el.value || null } })); }
 };
@@ -868,6 +888,7 @@ document.addEventListener('change', (ev) => {
 let hiddenAt = 0;
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { hiddenAt = Date.now(); return; }
+  refreshAccess();
   if (S.settings.pinHash && S.settings.lockOnLeave && hiddenAt && Date.now() - hiddenAt > 60000) {
     ui.locked = true; ui.pinEntry = ''; render();
   }
@@ -884,4 +905,5 @@ if (!S.settings.country) {
 }
 if (globalThis.CLUTCH_SW && 'serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
 render();
+refreshAccess();
 export { render };
