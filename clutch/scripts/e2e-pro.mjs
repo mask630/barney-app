@@ -12,8 +12,15 @@ const calls = [];
 const ALL = ['ai_rewrite', 'my_style', 'companions_pro', 'sos_chat', 'photo_ai', 'plans', 'encrypted_backup'];
 let granted = ALL;
 const json = (route, out, status = 200) => route.fulfill({ status, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(out) });
+let newStatus = 'pending';
+const registrations = [];
+await page.route('https://clutch-ia.vercel.app/api/register', (route) => {
+  registrations.push(JSON.parse(route.request().postData()));
+  json(route, { code: 'nuevo1', status: 'pending' });
+});
 await page.route('https://clutch-ia.vercel.app/api/config', (route) => {
   const code = route.request().headers()['x-clutch-code'];
+  if (code === 'nuevo1') return json(route, newStatus === 'active' ? { status: 'active', group: 'base', features: [] } : { status: newStatus, group: null, features: [] });
   json(route, code === 'tester1' ? { status: 'active', group: 'admin', features: granted } : { status: 'anon', group: null, features: [] });
 });
 await page.route('https://clutch-ia.vercel.app/api/ai', async (route) => {
@@ -38,10 +45,27 @@ await page.click('button:has-text("Pareja")');
 await page.fill('#f-since', '2026-07-14');
 await page.click('text=Crear su ficha');
 
-// Yo: sin código todo lo extra sale como "Pronto"; con código se abre lo que diga el servidor
-await page.click('.nav button:has-text("Yo")');
-assert.match(await txt(), /Sin código/);
+// Hoy invita a apuntarse; el alta exige aceptar condiciones y queda pendiente hasta que el dueño apruebe
+assert.match(await txt(), /Únete a la beta/);
+await page.click('button:has-text("Únete a la beta")');
 assert.equal(await page.locator('text=Aprender mi estilo').count(), 0);
+await page.fill('#j-alias', 'Pepe');
+await page.fill('#j-email', 'pepe@mail.es');
+await page.click('text=Apuntarme');
+await page.waitForSelector('text=Tienes que aceptar las condiciones');
+await page.click('text=Leer condiciones y privacidad');
+await page.waitForSelector('text=Condiciones y privacidad');
+assert.match(await txt(), /Qué se queda en tu móvil/);
+await page.click('.sheet button:has-text("Cerrar")');
+await page.check('input[data-v=terms]');
+await page.click('text=Apuntarme');
+await page.waitForSelector('text=Solicitud enviada');
+assert.deepEqual(registrations[0], { alias: 'Pepe', email: 'pepe@mail.es', terms: true, metrics: false });
+newStatus = 'active';
+await page.click('text=Comprobar acceso');
+await page.waitForSelector('text=¡Ya estás dentro de la beta!');
+assert.match(await txt(), /Acceso activo/);
+assert.equal(await page.locator('text=Aprender mi estilo').count(), 0, 'grupo base: sin funciones extra');
 await page.fill('#ai-code', 'tester1');
 await page.dispatchEvent('#ai-code', 'change');
 await page.waitForSelector('text=Acceso activo');

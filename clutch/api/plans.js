@@ -2,7 +2,7 @@
 // Fuentes por orden: Photon (komoot), Nominatim y Overpass. Overpass suele estar saturado; las otras dos responden rápido.
 // El móvil solo envía las coordenadas de la ciudad elegida.
 
-import { cors, findTester, featuresFor } from './_lib/access.js';
+import { cors, findTester, featuresFor, isActive, readBody } from './_lib/access.js';
 import { getJson, setJson } from './_lib/db.js';
 import { PLAN_KINDS, buildQuery } from '../js/engine/plans.js';
 
@@ -70,10 +70,10 @@ export default async function handler(req, res) {
   } catch {
     return res.status(503).json({ error: 'db' });
   }
-  if (!tester) return res.status(401).json({ error: 'codigo' });
+  if (!isActive(tester)) return res.status(401).json({ error: 'codigo' });
   if (!(await featuresFor(tester)).includes('plans')) return res.status(403).json({ error: 'funcion' });
 
-  const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+  const body = readBody(req);
   const lat = Number(body.lat), lon = Number(body.lon);
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return res.status(400).json({ error: 'coordenadas' });
 

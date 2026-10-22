@@ -1,6 +1,6 @@
-// Funciones activas para el tester que llama. Sin código válido: ninguna función extra (la app funciona igual, en modo base).
+// Estado del tester que llama y funciones abiertas. Sin código válido: ninguna función extra (la app funciona igual, en modo base).
 
-import { cors, findTester, featuresFor } from './_lib/access.js';
+import { cors, findTester, featuresFor, touchSeen } from './_lib/access.js';
 
 export default async function handler(req, res) {
   cors(req, res, 'GET, OPTIONS');
@@ -14,5 +14,8 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'db' });
   }
   if (!tester) return res.status(200).json({ status: 'anon', group: null, features: [] });
+  await touchSeen(tester);
+  // A un bloqueado no se le dice el grupo; a uno pendiente, tampoco (aún no tiene).
+  if (tester.status !== 'active') return res.status(200).json({ status: tester.status, group: null, features: [] });
   return res.status(200).json({ status: 'active', group: tester.group, features: await featuresFor(tester) });
 }

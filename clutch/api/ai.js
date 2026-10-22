@@ -5,7 +5,7 @@
 //   CLUTCH_ORIGINS     (opcional)     orígenes permitidos separados por comas. Por defecto, cualquiera.
 //   CLUTCH_MODEL       (opcional)     modelo. Por defecto claude-haiku-5-5.
 
-import { cors, findTester, featuresFor } from './_lib/access.js';
+import { cors, findTester, featuresFor, isActive, aiQuotaOk, readBody } from './_lib/access.js';
 
 const MAX_MESSAGE = 600;
 const TASK_FEATURE = { rewrite: 'ai_rewrite', sos: 'sos_chat', photo: 'photo_ai' };
@@ -84,16 +84,6 @@ export function safeRewrite(input, facts, output) {
   return out;
 }
 
-const hits = new Map(); // límite sencillo por código: 60 peticiones por hora (por instancia)
-function limited(code) {
-  const now = Date.now();
-  const arr = (hits.get(code) || []).filter((t) => now - t < 3600e3);
-  if (arr.length >= 60) { hits.set(code, arr); return true; }
-  arr.push(now);
-  hits.set(code, arr);
-  return false;
-}
-
 export default async function handler(req, res) {
   cors(req, res);
   if (req.method === 'OPTIONS') return res.status(204).end();
@@ -107,11 +97,15 @@ export default async function handler(req, res) {
   } catch {
     return res.status(503).json({ error: 'db' });
   }
-  if (!tester) return res.status(401).json({ error: 'codigo' });
+  if (!isActive(tester)) return res.status(401).json({ error: 'codigo' });
 
-  const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+  const body = readBody(req);
   if (TASK_FEATURE[body.task] && !(await featuresFor(tester)).includes(TASK_FEATURE[body.task])) return res.status(403).json({ error: 'funcion' });
-  if (limited(tester.code)) return res.status(429).json({ error: 'limite' });
+  try {
+    if (!(await aiQuotaOk(tester))) return res.status(429).json({ error: 'limite' });
+  } catch {
+    return res.status(503).json({ error: 'db' });
+  }
   const built = buildRequest(body, process.env.CLUTCH_MODEL || 'claude-haiku-5-5');
   if (built.error) return res.status(400).json({ error: built.error });
 

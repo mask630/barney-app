@@ -117,6 +117,25 @@ export default {
     feedback: 'Enviar comentario',
     version: 'Clutch beta 0.1'
   },
+  join: {
+    title: 'Únete a la beta',
+    pitch: 'Apúntate para probar las funciones nuevas antes que nadie y ayudarnos a mejorar Clutch.',
+    alias: 'Cómo quieres que te llamemos',
+    email: 'Tu email (solo para avisarte de la beta)',
+    terms: 'Acepto las condiciones de la beta y la política de privacidad',
+    readLegal: 'Leer condiciones y privacidad',
+    metrics: 'Enviar estadísticas anónimas de uso (qué funciones uso; nunca textos ni datos de ella). Opcional.',
+    send: 'Apuntarme',
+    haveCode: '¿Ya tienes un código?',
+    pending: 'Solicitud enviada. En cuanto te aprobemos se abrirán las funciones nuevas; no tienes que hacer nada más.',
+    blocked: 'Tu acceso a la beta está desactivado. Si crees que es un error, escríbenos.',
+    errors: {
+      alias: 'Pon un nombre de 2 a 24 caracteres.', email: 'Revisa el email.', condiciones: 'Tienes que aceptar las condiciones.',
+      'ya-registrado': 'Ese email ya está apuntado. Si perdiste tu código, escríbenos y te lo reenviamos.',
+      completo: 'La beta está completa ahora mismo. Prueba más adelante.', cerrado: 'Las altas están cerradas ahora mismo. Prueba más adelante.',
+      limite: 'Demasiados intentos. Prueba dentro de un rato.', red: 'No se pudo conectar. Revisa tu conexión.', servidor: 'El servidor tuvo un problema. Prueba más tarde.'
+    }
+  },
   lock: { title: 'Introduce tu PIN', wrong: 'PIN incorrecto', unlock: 'Entrar' },
   dest: { gustos: 'Gustos', evitar: 'Evitar', tallas: 'Tallas', regalos: 'Regalos', eventos: 'Eventos', recordar: 'Recordar', bandeja: 'Bandeja' }
 };

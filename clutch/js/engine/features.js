@@ -20,6 +20,22 @@ export function serverHeaders(settings) {
   return { 'Content-Type': 'application/json', 'X-Clutch-Code': settings?.testerCode || '' };
 }
 
+// Alta en la beta. Devuelve { ok, code, status } o { ok:false, reason } (reason = código de error del servidor).
+export async function registerBeta({ alias, email, terms, metrics }, fetchFn = globalThis.fetch, timeoutMs = 12000) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    const res = await fetchFn(`${SERVER}/api/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ alias, email, terms: terms === true, metrics: metrics === true }), signal: ctl.signal });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, reason: j.error || 'servidor' };
+    return { ok: true, code: j.code, status: j.status };
+  } catch {
+    return { ok: false, reason: 'red' };
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 // Devuelve { ok, status, group, features } o { ok:false, reason }.
 export async function fetchConfig(settings, fetchFn = globalThis.fetch, timeoutMs = 8000) {
   const ctl = new AbortController();

@@ -30,5 +30,33 @@ export async function setJson(key, value) {
   await redis(['SET', key, JSON.stringify(value)]);
 }
 
+// Suma 1 y devuelve el total; la clave caduca a los `ttlSec` segundos de crearse (contadores por día u hora).
+export async function incr(key, ttlSec) {
+  if (!hasDb()) {
+    const n = (mem.get(key) || 0) + 1;
+    mem.set(key, n);
+    return n;
+  }
+  const n = await redis(['INCR', key]);
+  if (n === 1 && ttlSec) await redis(['EXPIRE', key, String(ttlSec)]);
+  return n;
+}
+
+export async function addToSet(key, member) {
+  if (!hasDb()) { const s = mem.get(key) || []; if (!s.includes(member)) s.push(member); mem.set(key, s); return; }
+  await redis(['SADD', key, member]);
+}
+
+export async function setMembers(key) {
+  if (!hasDb()) return [...(mem.get(key) || [])];
+  return (await redis(['SMEMBERS', key])) || [];
+}
+
+export async function getMany(keys) {
+  if (!keys.length) return [];
+  if (!hasDb()) return keys.map((k) => (mem.has(k) ? structuredClone(mem.get(k)) : null));
+  return ((await redis(['MGET', ...keys])) || []).map((v) => (v == null ? null : JSON.parse(v)));
+}
+
 // Solo para pruebas.
 export function _resetMemory() { mem.clear(); }

@@ -23,6 +23,8 @@ export function emptyState() {
       testerCode: '',
       features: [], // funciones abiertas para este tester (las manda el servidor)
       group: null,
+      betaStatus: null, // null (sin apuntar) · pending · active · blocked · anon (código no reconocido)
+      metrics: false, // estadísticas anónimas: solo si la persona las acepta
       configAt: null,
       plans: null
     },

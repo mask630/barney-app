@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Clutch · Panel beta</title>
+<style>
+  :root { --bg: #f6f5f2; --surface: #fff; --text: #1d1c1a; --muted: #6b6862; --line: #e4e1db; --accent: #2f5d50; --accent-text: #fff; --warn: #9a5b00; --bad: #a3312b; --ok: #2f6b3a; --chip: #efede8; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #141413; --surface: #1e1d1b; --text: #f0eee9; --muted: #a29f98; --line: #34322e; --accent: #7fb7a4; --accent-text: #10201b; --warn: #e2a24b; --bad: #ef8a83; --ok: #8fcf98; --chip: #2a2926; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 20px 16px 60px; display: grid; gap: 16px; }
+  h1 { font-size: 22px; margin: 0; } h2 { font-size: 16px; margin: 0 0 10px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .grow { flex: 1; min-width: 0; }
+  .muted { color: var(--muted); } .small { font-size: 13px; }
+  input, select, button { font: inherit; color: inherit; }
+  input[type=text], input[type=password], input[type=number], select { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-height: 40px; }
+  input[type=number] { width: 90px; }
+  button { border: 1px solid var(--line); background: var(--chip); border-radius: 8px; padding: 8px 12px; min-height: 40px; cursor: pointer; }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  button.bad { color: var(--bad); } button:disabled { opacity: .5; cursor: default; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+  .stat b { display: block; font-size: 24px; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tabs button[aria-pressed=true] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .tester { border-top: 1px solid var(--line); padding: 12px 0; display: grid; gap: 8px; }
+  .tester:first-child { border-top: 0; }
+  .badge { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 99px; background: var(--chip); }
+  .badge.pending { color: var(--warn); } .badge.active { color: var(--ok); } .badge.blocked { color: var(--bad); }
+  .matrix { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: center; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  .msg { min-height: 20px; } .msg.err { color: var(--bad); } .msg.ok { color: var(--ok); }
+  label.check { display: inline-flex; gap: 6px; align-items: center; min-height: 40px; }
+  code { background: var(--chip); padding: 2px 6px; border-radius: 6px; }
+</style>
+</head>
+<body>
+<main id="app"><p class="muted">Cargando…</p></main>
+<script>
+const FEATURE_LABEL = { ai_rewrite: 'Reescribir IA', my_style: 'Tu estilo', companions_pro: 'Acompañantes', sos_chat: 'SOS IA', photo_ai: 'Foto IA', plans: 'Planes', encrypted_backup: 'Copia cifrada' };
+const STATUS_LABEL = { pending: 'Pendiente', active: 'Activo', blocked: 'Bloqueado' };
+const ERRORS = { clave: 'Clave incorrecta.', db: 'La base de datos no responde (¿está conectada Upstash?).', grupo: 'Ese grupo no existe.', grupos: 'Nombre de grupo no válido (minúsculas, números y guiones).' };
+const app = document.getElementById('app');
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let key = '';
+try { key = sessionStorage.getItem('clutch-admin') || ''; } catch {}
+let data = null, tab = 'pending', msg = { text: '', kind: '' }, busy = false;
+
+async function api(method, body) {
+  const r = await fetch('/api/admin', { method, headers: { 'Content-Type': 'application/json', 'X-Admin-Key': key }, body: body ? JSON.stringify(body) : undefined });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(ERRORS[j.error] || `Error ${r.status}`);
+  return j;
+}
+async function load() {
+  try { data = await api('GET'); msg = { text: '', kind: '' }; }
+  catch (e) { if (e.message === ERRORS.clave) { key = ''; try { sessionStorage.removeItem('clutch-admin'); } catch {} } msg = { text: e.message, kind: 'err' }; data = null; }
+  render();
+}
+async function act(body, okText) {
+  busy = true; render();
+  try { await api('POST', body); data = await api('GET'); msg = { text: okText, kind: 'ok' }; }
+  catch (e) { msg = { text: e.message, kind: 'err' }; }
+  busy = false; render();
+}
+
+const daysAgo = (iso) => iso ? Math.round((Date.now() - Date.parse(iso + 'T12:00:00Z')) / 864e5) : null;
+const seen = (iso) => { const d = daysAgo(iso); return d == null ? '—' : d <= 0 ? 'hoy' : d === 1 ? 'ayer' : `hace ${d} días`; };
+
+function viewLogin() {
+  return `<h1>Clutch · Panel beta</h1>
+  <div class="card"><h2>Entrar</h2>
+    <p class="small muted">Usa tu código de dueño (el mismo de Clutch &gt; Yo &gt; Acceso beta).</p>
+    <form class="row" id="login"><input class="grow" type="password" id="key" autocomplete="current-password" placeholder="Clave" required><button class="primary">Entrar</button></form>
+    <p class="msg ${msg.kind}">${esc(msg.text)}</p></div>`;
+}
+
+function viewPanel() {
+  const t = data.testers, s = data.settings, groups = Object.keys(data.groups);
+  const count = (st) => t.filter((x) => x.status === st).length;
+  const week = t.filter((x) => x.status === 'active' && daysAgo(x.lastSeen) <= 7).length;
+  const shown = tab === 'all' ? t : t.filter((x) => x.status === tab);
+  return `<div class="row"><h1 class="grow">Clutch · Panel beta</h1><button id="reload">Actualizar</button><button id="logout">Salir</button></div>
+  <p class="msg ${msg.kind}" role="status">${esc(msg.text)}</p>
+  <div class="stats">
+    <div class="card stat"><b>${count('pending')}</b><span class="small muted">Pendientes</span></div>
+    <div class="card stat"><b>${count('active')}</b><span class="small muted">Activos</span></div>
+    <div class="card stat"><b>${week}</b><span class="small muted">Usaron la app esta semana</span></div>
+    <div class="card stat"><b>${t.length} / ${s.maxTesters}</b><span class="small muted">Plazas usadas</span></div>
+  </div>
+
+  <div class="card"><h2>Testers</h2>
+    <div class="tabs" role="group" aria-label="Filtrar">${[['pending', 'Pendientes'], ['active', 'Activos'], ['blocked', 'Bloqueados'], ['all', 'Todos']].map(([k, l]) => `<button data-tab="${k}" aria-pressed="${tab === k}">${l}</button>`).join('')}</div>
+    <div>${shown.length ? shown.map((x) => `<div class="tester">
+      <div class="row"><b class="grow">${esc(x.alias)}</b><span class="badge ${x.status}">${STATUS_LABEL[x.status] || esc(x.status)}</span></div>
+      <div class="small muted">${esc(x.email)} · alta ${esc(x.createdAt)} · último uso ${seen(x.lastSeen)} · métricas ${x.metrics ? 'sí' : 'no'}</div>
+      <div class="row">
+        <select data-group="${esc(x.code)}" aria-label="Grupo de ${esc(x.alias)}" ${busy ? 'disabled' : ''}>${groups.map((g) => `<option ${g === x.group ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select>
+        ${x.status !== 'active' ? `<button class="primary" data-status="active" data-code="${esc(x.code)}" ${busy ? 'disabled' : ''}>${x.status === 'pending' ? 'Aprobar' : 'Reactivar'}</button>` : ''}
+        ${x.status !== 'blocked' ? `<button class="bad" data-status="blocked" data-code="${esc(x.code)}" ${busy ? 'disabled' : ''}>Bloquear</button>` : ''}
+        <button data-copy="${esc(x.code)}">Copiar código</button>
+      </div></div>`).join('') : '<p class="muted">No hay nadie aquí.</p>'}</div></div>
+
+  <div class="card"><h2>Qué incluye cada grupo</h2>
+    <p class="small muted">Los nuevos entran en <code>base</code>. Cambia aquí qué se abre en cada fase de la beta.</p>
+    <div class="matrix"><table><thead><tr><th>Grupo</th>${data.features.map((f) => `<th>${esc(FEATURE_LABEL[f] || f)}</th>`).join('')}</tr></thead>
+    <tbody>${groups.map((g) => `<tr><td><b>${esc(g)}</b></td>${data.features.map((f) => `<td><input type="checkbox" aria-label="${esc(g)}: ${esc(FEATURE_LABEL[f] || f)}" data-g="${esc(g)}" data-f="${f}" ${data.groups[g].includes(f) ? 'checked' : ''}></td>`).join('')}</tr>`).join('')}</tbody></table></div>
+    <div class="row" style="margin-top:10px"><input type="text" id="newgroup" placeholder="nuevo grupo (p. ej. pro-3)"><button id="addgroup">Añadir grupo</button><span class="grow"></span><button class="primary" id="savegroups" ${busy ? 'disabled' : ''}>Guardar grupos</button></div></div>
+
+  <div class="card"><h2>Ajustes de la beta</h2>
+    <div class="row"><label class="check"><input type="checkbox" id="open" ${s.open ? 'checked' : ''}> Aceptar altas nuevas</label></div>
+    <div class="row"><label for="max">Plazas máximas</label><input type="number" id="max" min="0" max="10000" value="${s.maxTesters}">
+      <label for="aiday">IA por tester y día</label><input type="number" id="aiday" min="0" max="1000" value="${s.aiPerDay}">
+      <span class="grow"></span><button class="primary" id="savesettings" ${busy ? 'disabled' : ''}>Guardar ajustes</button></div></div>`;
+}
+
+function render() {
+  app.innerHTML = key && data ? viewPanel() : viewLogin();
+}
+
+app.addEventListener('submit', (e) => {
+  if (e.target.id !== 'login') return;
+  e.preventDefault();
+  key = document.getElementById('key').value.trim();
+  try { sessionStorage.setItem('clutch-admin', key); } catch {}
+  load();
+});
+app.addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  if (b.dataset.tab) { tab = b.dataset.tab; render(); }
+  else if (b.dataset.status) act({ action: 'tester', code: b.dataset.code, status: b.dataset.status }, b.dataset.status === 'active' ? 'Tester activado.' : 'Tester bloqueado.');
+  else if (b.dataset.copy) navigator.clipboard?.writeText(b.dataset.copy).then(() => { msg = { text: 'Código copiado.', kind: 'ok' }; render(); }, () => {});
+  else if (b.id === 'reload') load();
+  else if (b.id === 'logout') { key = ''; data = null; try { sessionStorage.removeItem('clutch-admin'); } catch {} render(); }
+  else if (b.id === 'addgroup') {
+    const name = document.getElementById('newgroup').value.trim().toLowerCase();
+    if (!/^[a-z0-9-]{2,20}$/.test(name)) { msg = { text: ERRORS.grupos, kind: 'err' }; render(); return; }
+    if (!data.groups[name]) data.groups[name] = [];
+    render();
+  } else if (b.id === 'savegroups') {
+    const g = {};
+    for (const name of Object.keys(data.groups)) g[name] = [...app.querySelectorAll(`input[data-g="${name}"]:checked`)].map((i) => i.dataset.f);
+    act({ action: 'groups', groups: g }, 'Grupos guardados. Los testers los verán al abrir la app.');
+  } else if (b.id === 'savesettings') {
+    act({ action: 'settings', settings: { open: document.getElementById('open').checked, maxTesters: +document.getElementById('max').value, aiPerDay: +document.getElementById('aiday').value } }, 'Ajustes guardados.');
+  }
+});
+app.addEventListener('change', (e) => {
+  const sel = e.target.closest('select[data-group]');
+  if (sel) act({ action: 'tester', code: sel.dataset.group, group: sel.value }, `Grupo cambiado a ${sel.value}.`);
+});
+
+if (key) load(); else render();
+</script>
+</body>
+</html>

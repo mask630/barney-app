@@ -32,8 +32,13 @@ Objetivo: tú decides desde un panel qué funciones ve cada tester; el tester no
 - Base de datos del servidor: Upstash Redis desde Vercel (gratis). 👤 2 clics en Vercel para añadirla (te guío).
 </details>
 
-## Fase 2 · Registro de beta testers (🤖 + 👤 aprobar) ← siguiente
+## Fase 2 · Registro de beta testers (🤖 + 👤 aprobar) ← en curso
 Decidido: se apuntan solos y tú los apruebas. Métricas anónimas con su permiso.
+- ✅ Alta en la app (Hoy invita; Yo > Beta), código automático, estado pendiente/activo/bloqueado.
+- ✅ Panel en https://clutch-ia.vercel.app/admin/ (entras con tu código de dueño): aprobar, bloquear, grupos, plazas, límite diario de IA.
+- ✅ Borrador de condiciones y privacidad en `js/i18n/legal.js`.
+- 👤 Conectar Upstash (`vercel integration add upstash/upstash-kv`).
+- 👤 Rellenar en `js/i18n/legal.js` el responsable y el email de contacto.
 - Pantalla de bienvenida: "Únete a la beta": alias + email + aceptar condiciones.
 - El servidor genera su código personal; la app lo guarda sola (adiós a CLUTCH_CODES a mano).
 - Panel `/admin` (protegido con tu contraseña): lista de testers, aprobar/bloquear, moverlos de grupo, límite de plazas.

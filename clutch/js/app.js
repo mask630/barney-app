@@ -12,7 +12,8 @@ import { COMPANIONS, COMPANION_IDS, isAvailable, companionLine } from './engine/
 import { analyzeStyle, applyStyle, describeStyle } from './engine/style.js';
 import { fetchPlans } from './engine/plans.js';
 import { aiConfigured, aiRewrite, aiSos, aiPhoto, fillName } from './engine/ai.js';
-import { FEATURES, has as hasFeature, fetchConfig } from './engine/features.js';
+import { FEATURES, has as hasFeature, fetchConfig, registerBeta } from './engine/features.js';
+import { LEGAL, UPDATED } from './i18n/legal.js';
 
 const T = es;
 
@@ -37,7 +38,8 @@ const ui = {
   form: { name: '', birth: '', stage: 'amiga', since: '', error: '' },
   edit: {}, draft: '', pending: null, imp: { text: '', msg: '' }, exp: { text: '' }, pin: { value: '', error: '' }, fb: { text: '' },
   open: null, breath: { on: false, phase: 'in' },
-  alt: {}, busy: null, chat: [], chatDraft: '', plansMsg: '', pass: { value: '' }, styleDraft: ''
+  alt: {}, busy: null, chat: [], chatDraft: '', plansMsg: '', pass: { value: '' }, styleDraft: '',
+  join: { alias: '', email: '', terms: false, metrics: false, error: '' }
 };
 ui.locked = !!S.settings.pinHash;
 
@@ -47,7 +49,7 @@ const today = () => localISO();
 const has = (f) => hasFeature(S.settings, f);
 const SOON = '<span class="badge pro">Pronto</span>';
 const bandOf = (p) => checkAdult(p.birth, today()).band;
-const AI_ERR = { 'sin-servidor': 'Falta tu código de tester (Yo > Acceso beta).', codigo: 'El código de tester no es válido.', funcion: 'Esta función aún no está abierta para ti.', limite: 'Has llegado al límite por hora. Prueba más tarde.', red: 'No se pudo conectar con el servidor.', servidor: 'El servidor de IA tuvo un problema.', descartado: 'La IA añadió datos que no estaban. Descartado por seguridad.' };
+const AI_ERR = { 'sin-servidor': 'Apúntate a la beta en Yo para usar la IA.', codigo: 'El código de tester no es válido.', funcion: 'Esta función aún no está abierta para ti.', limite: 'Has llegado al límite de IA de hoy. Mañana más.', red: 'No se pudo conectar con el servidor.', servidor: 'El servidor de IA tuvo un problema.', descartado: 'La IA añadió datos que no estaban. Descartado por seguridad.' };
 const $ = (sel, root = document) => root.querySelector(sel);
 const persist = () => {
   if (!Store.save(storage, S)) showToast('No se pudo guardar. Descarga una copia en Yo > Copia de seguridad.');
@@ -244,6 +246,8 @@ function viewHoy(p) {
 
     ${plansCard(p)}
 
+    ${!aiConfigured(S.settings) ? `<button class="card row" style="text-align:left;background:var(--surface)" data-act="goJoin"><span class="grow"><b>${T.join.title}</b><br><span class="small muted">Prueba antes que nadie las funciones nuevas.</span></span><span aria-hidden="true">›</span></button>` : ''}
+
     <button class="card row" style="text-align:left;background:var(--surface)" data-act="goSos"><span class="grow"><b>${T.today.sosRow}</b></span><span aria-hidden="true">›</span></button>
   </main>`;
 }
@@ -413,18 +417,43 @@ function viewMe() {
       <button class="btn danger block" data-act="wipe">${ui.ask === 'wipe' ? '¿Seguro? Toca otra vez para borrar todo' : 'Borrar todos mis datos'}</button>
     </div></div>
 
-    <div class="stack"><span class="label">Acceso beta</span><div class="card">
-      <div class="field"><label for="ai-code">Código de tester</label><input id="ai-code" class="input" type="password" data-change="aiCode" value="${esc(s.testerCode || '')}" autocomplete="off"></div>
-      <p class="small ${s.group ? 'ok' : 'muted'}">${s.group ? 'Acceso activo. Funciones abiertas para ti:' : aiConfigured(s) ? 'Código no reconocido todavía.' : 'Sin código: la app funciona igual, con lo básico.'}</p>
-      <div class="list">${Object.entries(FEATURES).map(([f, label]) => `<div class="item" style="min-height:36px;padding:4px 0"><span class="grow small">${esc(label)}</span>${has(f) ? '<span class="small ok">Activa</span>' : SOON}</div>`).join('')}</div>
-      <button class="btn small" data-act="refreshAccess" ${ui.busy === 'access' ? 'disabled' : ''}>${ui.busy === 'access' ? 'Comprobando…' : 'Comprobar acceso'}</button>
-      <p class="small muted">Las funciones nuevas se irán abriendo durante la beta. Lo que escribes de ella nunca sale del móvil.</p></div></div>
+    ${betaCard()}
 
     <div class="stack"><span class="label">${T.me.beta}</span><div class="card">
       <div class="field"><label for="fb">${T.me.feedback}</label><textarea id="fb" class="textarea" data-bind="fb.text" placeholder="Qué falla, qué falta, qué te gustó…">${esc(ui.fb.text)}</textarea></div>
       <button class="btn small" data-act="copyFeedback">Copiar para enviar</button>
       <p class="small muted">${T.me.version}</p></div></div>
   </main>`;
+}
+
+
+// ---------- beta: alta, estado y funciones abiertas ----------
+function joinForm() {
+  const j = ui.join;
+  return `<div class="card" id="join"><h3>${T.join.title}</h3><p class="small muted">${T.join.pitch}</p>
+    <div class="field"><label for="j-alias">${T.join.alias}</label><input id="j-alias" class="input" data-bind="join.alias" value="${esc(j.alias)}" maxlength="24" autocomplete="nickname"></div>
+    <div class="field"><label for="j-email">${T.join.email}</label><input id="j-email" class="input" type="email" data-bind="join.email" value="${esc(j.email)}" autocomplete="email" inputmode="email"></div>
+    <label class="row small" style="align-items:flex-start;gap:10px"><input type="checkbox" data-act="joinCheck" data-v="terms" ${j.terms ? 'checked' : ''} style="margin-top:3px"><span>${T.join.terms}<br><button class="chip" style="min-height:28px" data-act="legalSheet">${T.join.readLegal}</button></span></label>
+    <label class="row small" style="align-items:flex-start;gap:10px"><input type="checkbox" data-act="joinCheck" data-v="metrics" ${j.metrics ? 'checked' : ''} style="margin-top:3px"><span>${T.join.metrics}</span></label>
+    ${j.error ? `<p class="small error" role="alert">${esc(j.error)}</p>` : ''}
+    <button class="btn primary block" data-act="joinBeta" ${ui.busy === 'join' ? 'disabled' : ''}>${ui.busy === 'join' ? 'Enviando…' : T.join.send}</button></div>`;
+}
+
+function betaCard() {
+  const s = S.settings;
+  const st = aiConfigured(s) ? s.betaStatus : null;
+  const codeField = `<div class="field"><label for="ai-code">${st ? 'Tu código de tester' : T.join.haveCode}</label><input id="ai-code" class="input" type="password" data-change="aiCode" value="${esc(s.testerCode || '')}" autocomplete="off"></div>`;
+  const featureList = `<div class="list">${Object.entries(FEATURES).map(([f, label]) => `<div class="item" style="min-height:36px;padding:4px 0"><span class="grow small">${esc(label)}</span>${has(f) ? '<span class="small ok">Activa</span>' : SOON}</div>`).join('')}</div>`;
+  const check = `<button class="btn small" data-act="refreshAccess" ${ui.busy === 'access' ? 'disabled' : ''}>${ui.busy === 'access' ? 'Comprobando…' : 'Comprobar acceso'}</button>`;
+  let body;
+  if (!st) body = `${joinForm()}<div class="card">${codeField}<p class="small muted">Sin apuntarte la app funciona igual, con lo básico.</p></div>`;
+  else if (st === 'pending') body = `<div class="card"><p class="small">${T.join.pending}</p>${check}${codeField}</div>`;
+  else if (st === 'blocked') body = `<div class="card"><p class="small error">${T.join.blocked}</p>${codeField}</div>`;
+  else if (st === 'anon') body = `<div class="card"><p class="small error">Código no reconocido. Revísalo o apúntate de nuevo.</p>${codeField}${check}</div>${joinForm()}`;
+  else body = `<div class="card"><p class="small ok">Acceso activo. Funciones abiertas para ti:</p>${featureList}${check}
+    <div class="row"><div class="grow small"><b>Estadísticas anónimas</b><br><span class="muted">Qué funciones usas; nunca textos ni datos de ella.</span></div>${switchHtml(!!s.metrics, 'toggleSetting', 'data-v="metrics"')}</div>
+    ${codeField}<p class="small muted">Las funciones nuevas se irán abriendo durante la beta. Lo que escribes de ella nunca sale del móvil.</p></div>`;
+  return `<div class="stack"><span class="label">Beta</span>${body}</div>`;
 }
 
 // ---------- hojas modales ----------
@@ -457,6 +486,10 @@ function sheetHtml() {
     if (k === 'recordar') rows = p.remember.map((r) => ({ id: r.id, text: r.text, photo: r.photo }));
     body = `<h2>${T.dest[k]}</h2>${rows.length ? `<div class="card flat list">${rows.map((r) => `<div class="item"><div class="grow">${r.photo ? `<img class="thumb" style="max-height:120px;width:auto" src="${r.photo}" alt="">` : ''}${esc(r.text)}</div><button class="btn small ghost" data-act="delItem" data-kind="${k}" data-v="${esc(r.id)}" aria-label="Quitar">✕</button></div>`).join('')}</div>` : '<p class="muted">Aún no hay nada. Usa Apuntar para añadirlo.</p>'}
       <button class="btn ghost block" data-act="closeSheet">Cerrar</button>`;
+  } else if (sh.type === 'legal') {
+    body = `<h2>Condiciones y privacidad</h2><p class="small muted">Actualizado: ${UPDATED}</p>
+      ${LEGAL.map((sec) => `<h3>${esc(sec.h)}</h3>${sec.p.map((x) => `<p class="small">${esc(x)}</p>`).join('')}`).join('')}
+      <button class="btn primary block" data-act="closeSheet">Cerrar</button>`;
   } else if (sh.type === 'pin') {
     body = `<h2>${T.me.pin}</h2><div class="field"><label for="pin-new">Elige 4 números</label><input id="pin-new" class="input" type="password" inputmode="numeric" maxlength="4" autocomplete="off" data-bind="pin.value" value="${esc(ui.pin.value)}"></div>
       ${ui.pin.error ? `<p class="error">${esc(ui.pin.error)}</p>` : ''}<button class="btn primary block" data-act="savePin">${T.profile.save}</button><button class="btn ghost block" data-act="closeSheet">Cancelar</button>`;
@@ -803,7 +836,23 @@ const ACTS = {
     ui.exp.text = r.text; render();
   },
   copyFeedback() { copyText(`Clutch beta 0.1\n${ui.fb.text}`); },
-  refreshAccess() { refreshAccess(true); }
+  refreshAccess() { refreshAccess(true); },
+  goJoin() { ui.tab = 'yo'; ui.screen = null; render(); setTimeout(() => document.getElementById('join')?.scrollIntoView({ behavior: 'smooth' }), 0); },
+  legalSheet(el, ev) { ev?.preventDefault(); ui.sheet = { type: 'legal' }; render(); },
+  joinCheck(el) { ui.join[el.dataset.v] = el.checked; },
+  async joinBeta() {
+    const j = ui.join;
+    j.error = '';
+    if (!j.terms) { j.error = T.join.errors.condiciones; render(); return; }
+    ui.busy = 'join'; render();
+    const r = await registerBeta({ alias: j.alias.trim(), email: j.email.trim(), terms: j.terms, metrics: j.metrics });
+    ui.busy = null;
+    if (!r.ok) { j.error = T.join.errors[r.reason] || T.join.errors.servidor; render(); return; }
+    Object.assign(S.settings, { testerCode: r.code, betaStatus: r.status, metrics: j.metrics, features: [], group: null, configAt: Date.now() });
+    persist();
+    ui.join = { alias: '', email: '', terms: false, metrics: false, error: '' };
+    render(); showToast('¡Apuntado! Te avisaremos al aprobarte.');
+  }
 };
 
 // ---------- acceso beta: funciones abiertas para este tester ----------
@@ -811,7 +860,7 @@ const ACTS = {
 async function refreshAccess(force = false) {
   const s = S.settings;
   if (!aiConfigured(s)) {
-    if (s.features.length || s.group) { s.features = []; s.group = null; s.configAt = null; persist(); render(); }
+    if (s.features.length || s.group || s.betaStatus) { Object.assign(s, { features: [], group: null, betaStatus: null, configAt: null }); persist(); render(); }
     return;
   }
   if (ui.busy === 'access' || (!force && s.configAt && Date.now() - s.configAt < 3600e3)) return;
@@ -819,9 +868,11 @@ async function refreshAccess(force = false) {
   const r = await fetchConfig(s);
   ui.busy = null;
   if (!r.ok) { if (force) showToast('No se pudo comprobar el acceso. Sigues con lo último guardado.'); else render(); return; }
-  Object.assign(S.settings, { features: r.features, group: r.group, configAt: Date.now() });
+  const was = S.settings.betaStatus;
+  Object.assign(S.settings, { features: r.features, group: r.group, betaStatus: r.status, configAt: Date.now() });
   persist(); render();
-  if (force) showToast(r.status === 'active' ? 'Acceso actualizado' : 'Código no reconocido');
+  if (was === 'pending' && r.status === 'active') showToast('¡Ya estás dentro de la beta!');
+  else if (force) showToast({ active: 'Acceso actualizado', pending: 'Aún pendiente de aprobación', blocked: 'Acceso desactivado' }[r.status] || 'Código no reconocido');
 }
 
 const CHANGES = {
