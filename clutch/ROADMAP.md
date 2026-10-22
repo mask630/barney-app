@@ -45,11 +45,20 @@ Decidido: se apuntan solos y tú los apruebas. Métricas anónimas con su permis
 - Límites de uso de IA por tester (diario) para que nadie te gaste el saldo.
 - 👤 Textos legales mínimos (RGPD): privacidad y condiciones de la beta. 🤖 redacto el borrador, 👤 lo revisas.
 
-## Fase 3 · Saber qué se usa (🤖)
+## Fase 3 · Saber qué se usa ✅ (22-oct)
+- ✅ Estadísticas anónimas con permiso (desmarcado por defecto; se puede quitar en Yo): recuentos por día y función, sin enlazar a nadie.
+- ✅ Activos por día (solo aprobados, se borra a los 120 días) y retención a 1, 7 y 30 días en el panel.
+- ✅ "Enviar" opinión directo al panel (con alias si está apuntado); avisos de error automáticos con permiso.
+- ✅ Panel: gráficos, opiniones y errores (leer/borrar), "Reiniciar estadísticas" para empezar de cero al lanzar.
+- ✅ Probado en real (11/11) y limpiado.
+
+<details><summary>Plan original</summary>
+
 - Métricas anónimas y agregadas, solo si el tester acepta: "abrió Escríbele", "copió un mensaje", "usó SOS"… Nunca nombres, textos ni datos de ella.
 - Botón "Enviar opinión" que llega directo a tu panel (con versión y pantalla), en vez de copiar y pegar.
 - Panel: usuarios activos por día/semana, uso por función, retención (vuelve a los 1/7/30 días), opiniones.
 - Error automático: si la app falla, se envía un aviso técnico sin datos personales.
+</details>
 
 ## Fase 4 · Que todo funcione de verdad (🤖)
 - ⚠️ Planes cerca: pasar las búsquedas por nuestro servidor (con caché) y probar en Málaga, Madrid, etc.

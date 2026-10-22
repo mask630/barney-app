@@ -13,6 +13,9 @@ const ALL = ['ai_rewrite', 'my_style', 'companions_pro', 'sos_chat', 'photo_ai',
 let granted = ALL;
 const json = (route, out, status = 200) => route.fulfill({ status, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(out) });
 let newStatus = 'pending';
+const events = [], feedback = [];
+await page.route('https://clutch-ia.vercel.app/api/event', (route) => { events.push(JSON.parse(route.request().postData())); json(route, { ok: true }); });
+await page.route('https://clutch-ia.vercel.app/api/feedback', (route) => { feedback.push(JSON.parse(route.request().postData())); json(route, { ok: true }); });
 const registrations = [];
 await page.route('https://clutch-ia.vercel.app/api/register', (route) => {
   registrations.push(JSON.parse(route.request().postData()));
@@ -137,6 +140,36 @@ await page.fill('#pass-in', 'clave-secreta-1');
 await page.click('button:has-text("Restaurar o importar")');
 await page.waitForSelector('text=copia restaurada');
 await page.waitForSelector('h1:has-text("Lucía")');
+
+// Estadísticas: nada se envía sin permiso; con permiso, solo recuentos y sin datos de ella
+const hide = () => page.evaluate(() => { Object.defineProperty(document, 'hidden', { value: true, configurable: true }); document.dispatchEvent(new Event('visibilitychange')); Object.defineProperty(document, 'hidden', { value: false, configurable: true }); });
+await hide();
+await page.waitForTimeout(300);
+assert.equal(events.filter((e) => e.events).length, 0, 'sin permiso no se envía nada');
+await page.click('.nav button:has-text("Yo")');
+await page.click('button[role=switch][data-v=metrics]');
+await page.waitForTimeout(200);
+assert.deepEqual(events.at(-1), { consent: true });
+await page.click('.nav button:has-text("Hoy")');
+await page.click('text=Escríbele >> nth=0');
+await page.click('button:has-text("Copiar") >> nth=0');
+await page.click('button[aria-label=Volver]');
+await hide();
+await page.waitForFunction(() => true);
+await page.waitForTimeout(300);
+const batch = events.filter((e) => e.events).at(-1);
+assert.ok(batch, 'con permiso se envía');
+assert.equal(batch.events.write_open, 1);
+assert.equal(batch.events.copy, 1);
+assert.ok(batch.events.tab_hoy >= 1);
+assert.ok(!JSON.stringify(events).includes('Lucía'), 'nunca datos de ella');
+
+// Opinión: llega al servidor con la pantalla y la versión
+await page.click('.nav button:has-text("Yo")');
+await page.fill('#fb', 'Me gusta mucho la pantalla Hoy');
+await page.click('button[data-act=sendFeedback]');
+await page.waitForSelector('text=¡Gracias!');
+assert.deepEqual(feedback.at(-1), { kind: 'opinion', text: 'Me gusta mucho la pantalla Hoy', screen: 'yo', version: 'Clutch beta 0.1' });
 
 // El servidor cierra funciones (grupo base): la app las muestra como "Pronto" sin romperse
 granted = [];

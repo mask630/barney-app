@@ -2,7 +2,7 @@
 // Tester en la base de datos: tester:<código> = { code, alias, email, group, status, metrics, createdAt, lastSeen }
 // status: pending (espera tu aprobación) · active · blocked
 
-import { getJson, setJson, incr } from './db.js';
+import { getJson, setJson, incr, addToSet, expire } from './db.js';
 
 export const FEATURES = ['ai_rewrite', 'my_style', 'companions_pro', 'sos_chat', 'photo_ai', 'plans', 'encrypted_backup'];
 
@@ -43,10 +43,20 @@ export async function featuresFor(tester) {
   return (g[tester.group] || []).filter((f) => FEATURES.includes(f));
 }
 
-// Marca el último día de uso (para ver en el panel quién sigue activo). Una escritura al día como mucho.
+// Marca el día de uso: último día en la ficha y el código en seen:<día> (para activos diarios y retención; dura 120 días).
+// Una vez al día como mucho por tester. Es dato de gestión de la beta, no de las estadísticas opcionales.
+// lastSeen: último uso de cualquier tester · activeDay: último día contado como activo (solo aprobados).
 export async function touchSeen(tester, todayISO = new Date().toISOString().slice(0, 10)) {
-  if (!tester || tester.owner || tester.lastSeen === todayISO) return;
-  await setJson(`tester:${tester.code}`, { ...tester, lastSeen: todayISO }).catch(() => {});
+  if (!tester || tester.owner) return;
+  const countActive = tester.status === 'active' && tester.activeDay !== todayISO;
+  if (tester.lastSeen === todayISO && !countActive) return;
+  try {
+    await setJson(`tester:${tester.code}`, { ...tester, lastSeen: todayISO, ...(countActive && { activeDay: todayISO }) });
+    if (countActive) {
+      await addToSet(`seen:${todayISO}`, tester.code);
+      await expire(`seen:${todayISO}`, 120 * 86400);
+    }
+  } catch { /* no bloquea la app */ }
 }
 
 // Límite diario de IA por tester (el dueño no tiene límite).

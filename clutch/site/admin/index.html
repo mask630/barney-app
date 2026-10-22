@@ -6,11 +6,11 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Clutch · Panel beta</title>
 <style>
-  :root { --bg: #f6f5f2; --surface: #fff; --text: #1d1c1a; --muted: #6b6862; --line: #e4e1db; --accent: #2f5d50; --accent-text: #fff; --warn: #9a5b00; --bad: #a3312b; --ok: #2f6b3a; --chip: #efede8; }
-  @media (prefers-color-scheme: dark) { :root { --bg: #141413; --surface: #1e1d1b; --text: #f0eee9; --muted: #a29f98; --line: #34322e; --accent: #7fb7a4; --accent-text: #10201b; --warn: #e2a24b; --bad: #ef8a83; --ok: #8fcf98; --chip: #2a2926; } }
+  :root { --bg: #f6f5f2; --surface: #fff; --text: #1d1c1a; --muted: #6b6862; --line: #e4e1db; --accent: #2f5d50; --accent-text: #fff; --warn: #9a5b00; --bad: #a3312b; --ok: #2f6b3a; --chip: #efede8; --bar: #0e8a63; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #141413; --surface: #1e1d1b; --text: #f0eee9; --muted: #a29f98; --line: #34322e; --accent: #7fb7a4; --accent-text: #10201b; --warn: #e2a24b; --bad: #ef8a83; --ok: #8fcf98; --chip: #2a2926; --bar: #2fa679; } }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  main { max-width: 860px; margin: 0 auto; padding: 20px 16px 60px; display: grid; gap: 16px; }
+  main { max-width: 860px; margin: 0 auto; padding: 20px 16px 60px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
   h1 { font-size: 22px; margin: 0; } h2 { font-size: 16px; margin: 0 0 10px; }
   .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
   .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -37,6 +37,25 @@
   .msg { min-height: 20px; } .msg.err { color: var(--bad); } .msg.ok { color: var(--ok); }
   label.check { display: inline-flex; gap: 6px; align-items: center; min-height: 40px; }
   code { background: var(--chip); padding: 2px 6px; border-radius: 6px; }
+  /* gráficos: una serie, un color; valores siempre en texto */
+  .cols { display: grid; grid-template-columns: repeat(14, 1fr); gap: 2px; align-items: end; height: 120px; border-bottom: 1px solid var(--line); }
+  .col { position: relative; height: 100%; display: flex; align-items: flex-end; }
+  .col i { display: block; width: 100%; background: var(--bar); border-radius: 4px 4px 0 0; min-height: 2px; }
+  .col:hover i, .col:focus i { outline: 2px solid var(--text); outline-offset: 1px; }
+  .col .tip { display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); font-size: 12px; padding: 4px 8px; border-radius: 6px; white-space: nowrap; z-index: 2; }
+  .col:hover .tip, .col:focus .tip { display: block; }
+  .axis { display: grid; grid-template-columns: repeat(14, 1fr); gap: 2px; font-size: 11px; color: var(--muted); text-align: center; margin-top: 4px; }
+  .hbar { display: grid; grid-template-columns: minmax(110px, 30%) 1fr 44px; gap: 8px; align-items: center; font-size: 14px; min-height: 28px; }
+  .hbar span:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+  .hbar .track { height: 10px; }
+  .hbar .track i { display: block; height: 100%; background: var(--bar); border-radius: 0 4px 4px 0; min-width: 2px; }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .tile b { display: block; font-size: 26px; font-variant-numeric: tabular-nums; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 13px; margin-top: 8px; }
+  .fb { border-top: 1px solid var(--line); padding: 10px 0; display: grid; gap: 6px; }
+  .fb:first-child { border-top: 0; }
+  .fb.unread b::before { content: '● '; color: var(--warn); }
+  .fb pre { margin: 0; white-space: pre-wrap; font: inherit; }
 </style>
 </head>
 <body>
@@ -49,7 +68,41 @@ const app = document.getElementById('app');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let key = '';
 try { key = sessionStorage.getItem('clutch-admin') || ''; } catch {}
-let data = null, tab = 'pending', msg = { text: '', kind: '' }, busy = false, askDelete = null;
+let data = null, tab = 'pending', msg = { text: '', kind: '' }, busy = false, askDelete = null, fbTab = 'feedback';
+const EVENT_LABEL = { open: 'Abrir la app', tab_hoy: 'Pestaña Hoy', tab_ella: 'Pestaña Ella', tab_apuntar: 'Pestaña Apuntar', tab_yo: 'Pestaña Yo', write_open: 'Abrir Escríbele', copy: 'Copiar mensaje', whatsapp: 'Enviar por WhatsApp', style_apply: 'Con mi estilo', ai_rewrite: 'Reescribir con IA', sos_open: 'Abrir SOS', sos_script: 'Ver guion SOS', sos_chat: 'Chat SOS IA', breath: 'Respiración', capture_save: 'Guardar en Apuntar', photo_add: 'Añadir foto', photo_ai: 'Foto con IA', plans_search: 'Buscar planes', profile_create: 'Crear ficha', stage_change: 'Cambiar etapa', gesture_done: 'Gesto hecho', backup_export: 'Copia de seguridad', feedback_send: 'Enviar opinión' };
+const pct = (k, e) => (e ? Math.round((k / e) * 100) + ' %' : '—');
+const shortDay = (iso) => String(+iso.slice(8, 10));
+
+function viewStats() {
+  const st = data.stats, max = Math.max(1, ...st.daily.map((d) => d.active));
+  const usage = Object.entries(st.totals7).sort((a, b) => b[1] - a[1]);
+  const umax = Math.max(1, ...usage.map((u) => u[1]));
+  const r = st.retention;
+  return `<div class="card"><h2>Personas que abrieron la app (14 días)</h2>
+    <div class="cols" role="img" aria-label="Activos por día: ${st.daily.map((d) => `${d.date} ${d.active}`).join(', ')}">${st.daily.map((d) => `<div class="col" tabindex="0"><i style="height:${(d.active / max) * 100}%"></i><span class="tip">${esc(d.date)}: ${d.active}</span></div>`).join('')}</div>
+    <div class="axis" aria-hidden="true">${st.daily.map((d) => `<span>${shortDay(d.date)}</span>`).join('')}</div>
+    <p class="small muted">Hoy: ${st.daily.at(-1).active} · máximo: ${Math.max(...st.daily.map((d) => d.active))}. Cuenta testers aprobados, no a ti.</p>
+    <details><summary>Ver como tabla</summary><table><thead><tr><th>Día</th><th>Activos</th></tr></thead><tbody>${st.daily.map((d) => `<tr><td>${esc(d.date)}</td><td>${d.active}</td></tr>`).join('')}</tbody></table></details></div>
+
+  <div class="card"><h2>¿Siguen usándola?</h2>
+    <div class="tiles">${[['d1', '1 día después'], ['d7', '1 semana después'], ['d30', '1 mes después']].map(([k, l]) => `<div class="tile"><b>${pct(r[k].kept, r[k].eligible)}</b><span class="small muted">${l}<br>${r[k].kept} de ${r[k].eligible}</span></div>`).join('')}</div>
+    <p class="small muted">De los testers aprobados hace al menos ese tiempo, cuántos han vuelto a abrir la app desde entonces.</p></div>
+
+  <div class="card"><h2>Qué se usa (últimos 7 días)</h2>
+    <p class="small muted">${st.metricsOn} tester(s) comparten estadísticas anónimas. Solo cuenta a quienes lo aceptaron.</p>
+    ${usage.length ? usage.map(([k, n]) => `<div class="hbar" title="${esc(EVENT_LABEL[k] || k)}: ${n}"><span>${esc(EVENT_LABEL[k] || k)}</span><span class="track"><i style="width:${(n / umax) * 100}%"></i></span><span>${n}</span></div>`).join('') : '<p class="muted">Aún no hay datos.</p>'}</div>`;
+}
+
+function viewFeedback() {
+  const list = data[fbTab] || [];
+  const unread = (k) => (data[k] || []).filter((x) => !x.read).length;
+  return `<div class="card"><div class="row"><h2 class="grow">Opiniones y errores</h2>${fbTab === 'errors' && list.length ? `<button class="bad" data-fbclear="1" ${busy ? 'disabled' : ''}>Vaciar errores</button>` : ''}</div>
+    <div class="tabs">${[['feedback', `Opiniones (${unread('feedback')} sin leer)`], ['errors', `Errores (${unread('errors')})`]].map(([k, l]) => `<button data-fbtab="${k}" aria-pressed="${fbTab === k}">${l}</button>`).join('')}</div>
+    <div>${list.length ? list.map((x) => `<div class="fb ${x.read ? '' : 'unread'}">
+      <div class="row small"><b class="grow">${esc(x.alias || 'Anónimo')}</b><span class="muted">${esc(x.at.slice(0, 16).replace('T', ' '))} · ${esc(x.screen || '—')} · ${esc(x.version || '')}</span></div>
+      <pre>${esc(x.text)}</pre>
+      <div class="row">${x.read ? '' : `<button data-fbread="${esc(x.id)}" ${busy ? 'disabled' : ''}>Marcar leído</button>`}<button class="bad" data-fbdel="${esc(x.id)}" ${busy ? 'disabled' : ''}>Borrar</button>${x.code ? `<button data-copy="${esc(x.code)}">Copiar código</button>` : ''}</div></div>`).join('') : '<p class="muted">Nada por aquí.</p>'}</div></div>`;
+}
 
 async function api(method, body) {
   const r = await fetch('/api/admin', { method, headers: { 'Content-Type': 'application/json', 'X-Admin-Key': key }, body: body ? JSON.stringify(body) : undefined });
@@ -94,6 +147,9 @@ function viewPanel() {
     <div class="card stat"><b>${t.length} / ${s.maxTesters}</b><span class="small muted">Plazas usadas</span></div>
   </div>
 
+  ${viewStats()}
+  ${viewFeedback()}
+
   <div class="card"><h2>Testers</h2>
     <div class="tabs" role="group" aria-label="Filtrar">${[['pending', 'Pendientes'], ['active', 'Activos'], ['blocked', 'Bloqueados'], ['all', 'Todos']].map(([k, l]) => `<button data-tab="${k}" aria-pressed="${tab === k}">${l}</button>`).join('')}</div>
     <div>${shown.length ? shown.map((x) => `<div class="tester">
@@ -117,7 +173,9 @@ function viewPanel() {
     <div class="row"><label class="check"><input type="checkbox" id="open" ${s.open ? 'checked' : ''}> Aceptar altas nuevas</label></div>
     <div class="row"><label for="max">Plazas máximas</label><input type="number" id="max" min="0" max="10000" value="${s.maxTesters}">
       <label for="aiday">IA por tester y día</label><input type="number" id="aiday" min="0" max="1000" value="${s.aiPerDay}">
-      <span class="grow"></span><button class="primary" id="savesettings" ${busy ? 'disabled' : ''}>Guardar ajustes</button></div></div>`;
+      <span class="grow"></span><button class="primary" id="savesettings" ${busy ? 'disabled' : ''}>Guardar ajustes</button></div>
+    <div class="row" style="margin-top:10px"><span class="grow small muted">Borra los recuentos de uso y los días de actividad (útil justo antes de lanzar). No borra testers ni opiniones.</span>
+      <button class="bad" id="resetstats" ${busy ? 'disabled' : ''}>${askDelete === 'stats' ? '¿Seguro? Toca otra vez' : 'Reiniciar estadísticas'}</button></div></div>`;
 }
 
 function render() {
@@ -135,6 +193,10 @@ app.addEventListener('click', (e) => {
   const b = e.target.closest('button');
   if (!b) return;
   if (b.dataset.tab) { tab = b.dataset.tab; render(); }
+  else if (b.dataset.fbtab) { fbTab = b.dataset.fbtab; render(); }
+  else if (b.dataset.fbread) act({ action: fbTab, op: 'read', id: b.dataset.fbread }, 'Marcado como leído.');
+  else if (b.dataset.fbdel) act({ action: fbTab, op: 'delete', id: b.dataset.fbdel }, 'Borrado.');
+  else if (b.dataset.fbclear) act({ action: 'errors', op: 'clear' }, 'Errores vaciados.');
   else if (b.dataset.status) act({ action: 'tester', code: b.dataset.code, status: b.dataset.status }, b.dataset.status === 'active' ? 'Tester activado.' : 'Tester bloqueado.');
   else if (b.dataset.delete) {
     if (askDelete !== b.dataset.delete) { askDelete = b.dataset.delete; render(); return; }
@@ -142,6 +204,11 @@ app.addEventListener('click', (e) => {
     act({ action: 'delete', code: b.dataset.delete }, 'Tester borrado con todos sus datos.');
   }
   else if (b.dataset.copy) navigator.clipboard?.writeText(b.dataset.copy).then(() => { msg = { text: 'Código copiado.', kind: 'ok' }; render(); }, () => {});
+  else if (b.id === 'resetstats') {
+    if (askDelete !== 'stats') { askDelete = 'stats'; render(); return; }
+    askDelete = null;
+    act({ action: 'reset-stats' }, 'Estadísticas reiniciadas.');
+  }
   else if (b.id === 'reload') load();
   else if (b.id === 'logout') { key = ''; data = null; try { sessionStorage.removeItem('clutch-admin'); } catch {} render(); }
   else if (b.id === 'addgroup') {

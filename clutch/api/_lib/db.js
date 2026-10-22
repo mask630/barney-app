@@ -68,5 +68,44 @@ export async function getMany(keys) {
   return ((await redis(['MGET', ...keys])) || []).map((v) => (v == null ? null : JSON.parse(v)));
 }
 
+// --- contadores por día (hash), listas y caducidad ---
+
+export async function hincrby(key, field, by, ttlSec) {
+  if (!hasDb()) { const h = mem.get(key) || {}; h[field] = (h[field] || 0) + by; mem.set(key, h); return h[field]; }
+  const n = await redis(['HINCRBY', key, field, String(by)]);
+  if (ttlSec) await redis(['EXPIRE', key, String(ttlSec)]);
+  return n;
+}
+
+export async function hgetall(key) {
+  if (!hasDb()) return { ...(mem.get(key) || {}) };
+  const flat = (await redis(['HGETALL', key])) || [];
+  const out = {};
+  for (let i = 0; i < flat.length; i += 2) out[flat[i]] = Number(flat[i + 1]);
+  return out;
+}
+
+export async function expire(key, ttlSec) {
+  if (hasDb()) await redis(['EXPIRE', key, String(ttlSec)]);
+}
+
+// Añade al principio y recorta a `max` elementos.
+export async function pushCapped(key, value, max) {
+  if (!hasDb()) { mem.set(key, [structuredClone(value), ...(mem.get(key) || [])].slice(0, max)); return; }
+  await redis(['LPUSH', key, JSON.stringify(value)]);
+  await redis(['LTRIM', key, '0', String(max - 1)]);
+}
+
+export async function listAll(key) {
+  if (!hasDb()) return structuredClone(mem.get(key) || []);
+  return ((await redis(['LRANGE', key, '0', '-1'])) || []).map((v) => JSON.parse(v));
+}
+
+export async function setList(key, values) {
+  if (!hasDb()) { mem.set(key, structuredClone(values)); return; }
+  await redis(['DEL', key]);
+  if (values.length) await redis(['RPUSH', key, ...values.map((v) => JSON.stringify(v))]);
+}
+
 // Solo para pruebas.
 export function _resetMemory() { mem.clear(); }

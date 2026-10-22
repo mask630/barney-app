@@ -14,6 +14,7 @@ import { fetchPlans } from './engine/plans.js';
 import { aiConfigured, aiRewrite, aiSos, aiPhoto, fillName } from './engine/ai.js';
 import { FEATURES, has as hasFeature, fetchConfig, registerBeta } from './engine/features.js';
 import { LEGAL, UPDATED } from './i18n/legal.js';
+import { createMetrics, sendFeedback } from './engine/metrics.js';
 
 const T = es;
 
@@ -31,6 +32,14 @@ function safeStorage() {
 }
 const storage = safeStorage();
 let S = Store.load(storage);
+const metrics = createMetrics(storage);
+const track = (ev) => metrics.track(S.settings, ev);
+// Qué acción cuenta como qué uso (solo recuentos; ver engine/metrics.js).
+const ACT_EVENT = {
+  goWrite: 'write_open', copy: 'copy', goSos: 'sos_open', aiMsg: 'ai_rewrite', styleMsg: 'style_apply', aiChat: 'sos_chat',
+  savePending: 'capture_save', aiPhoto: 'photo_ai', findPlans: 'plans_search', createProfile: 'profile_create',
+  confirmStage: 'stage_change', toggleGesture: 'gesture_done', exportData: 'backup_export', exportEnc: 'backup_export', openSos: 'sos_script'
+};
 
 const ui = {
   tab: 'hoy', screen: null, sheet: null, ask: null, toast: null,
@@ -265,7 +274,7 @@ function viewWrite(p) {
       ${src ? `<p class="source"><b>${T.write.realData}</b> · ${esc(src.label)}${src.urls ? ` · ${src.urls.map((u) => `<a href="${esc(u)}" target="_blank" rel="noopener" style="color:inherit">fuente</a>`).join(' ')}` : ''}</p>` : ''}
       <div class="row wrap">
         <button class="btn primary small" data-act="copy" data-text="${esc(shown)}">${T.write.copy}</button>
-        <a class="btn small" href="https://wa.me/?text=${encodeURIComponent(shown)}" target="_blank" rel="noopener">${T.write.whatsapp}</a>
+        <a class="btn small" data-track="whatsapp" href="https://wa.me/?text=${encodeURIComponent(shown)}" target="_blank" rel="noopener">${T.write.whatsapp}</a>
         ${has('my_style') && traits ? `<button class="btn small" data-act="styleMsg" data-text="${esc(msg)}">Con mi estilo</button>` : ''}
         ${has('ai_rewrite') && aiConfigured(S.settings) ? `<button class="btn small" data-act="aiMsg" data-text="${esc(msg)}" ${ui.busy === 'ai:' + msg ? 'disabled' : ''}>${ui.busy === 'ai:' + msg ? 'Escribiendo…' : 'Reescribir con IA'}</button>` : ''}
       </div></div>`;
@@ -363,7 +372,7 @@ function viewSos(p) {
         ${open ? `<span class="label" style="padding:0">${T.sos.steps}</span><ol style="margin:0;padding-left:20px">${s.steps.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>
           <span class="label" style="padding:0">${T.sos.script}</span><div class="msg">${esc(s.scripts[group])}</div>
           <div class="row wrap"><button class="btn primary small" data-act="copy" data-text="${esc(s.scripts[group])}">${T.write.copy}</button>
-          <a class="btn small" href="https://wa.me/?text=${encodeURIComponent(s.scripts[group])}" target="_blank" rel="noopener">${T.write.whatsapp}</a></div>` : ''}</div>`;
+          <a class="btn small" data-track="whatsapp" href="https://wa.me/?text=${encodeURIComponent(s.scripts[group])}" target="_blank" rel="noopener">${T.write.whatsapp}</a></div>` : ''}</div>`;
     }).join('')}</div>
     ${!has('sos_chat') ? `<div class="card row"><span class="grow">${T.sos.proChat}</span><span class="badge pro">${T.sos.pro}</span></div>`
       : `<div class="card"><h3>${T.sos.proChat}</h3>
@@ -421,7 +430,8 @@ function viewMe() {
 
     <div class="stack"><span class="label">${T.me.beta}</span><div class="card">
       <div class="field"><label for="fb">${T.me.feedback}</label><textarea id="fb" class="textarea" data-bind="fb.text" placeholder="Qué falla, qué falta, qué te gustó…">${esc(ui.fb.text)}</textarea></div>
-      <button class="btn small" data-act="copyFeedback">Copiar para enviar</button>
+      <p class="small muted">${aiConfigured(S.settings) ? 'Se envía con tu alias para poder responderte.' : 'Se envía sin nombre.'} No pongas datos de ella.</p>
+      <button class="btn small" data-act="sendFeedback" ${ui.busy === 'fb' ? 'disabled' : ''}>${ui.busy === 'fb' ? 'Enviando…' : 'Enviar'}</button>
       <p class="small muted">${T.me.version}</p></div></div>
   </main>`;
 }
@@ -688,6 +698,7 @@ const ACTS = {
     const k = el.dataset.v;
     if (el.disabled) return;
     S.settings[k] = !S.settings[k];
+    if (k === 'metrics') metrics.consent(S.settings, S.settings.metrics);
     persist(); render();
   },
   togglePin() {
@@ -835,7 +846,16 @@ const ACTS = {
     if (!r.ok) { showToast(r.reason === 'contrasena-corta' ? 'Usa una contraseña de 6 caracteres o más' : 'Este navegador no permite cifrar'); return; }
     ui.exp.text = r.text; render();
   },
-  copyFeedback() { copyText(`Clutch beta 0.1\n${ui.fb.text}`); },
+  async sendFeedback() {
+    const text = ui.fb.text.trim();
+    if (text.length < 3) { showToast('Escribe tu comentario'); return; }
+    ui.busy = 'fb'; render();
+    const r = await sendFeedback(S.settings, { text, screen: ui.screen || ui.tab, version: T.me.version });
+    ui.busy = null;
+    if (r.ok) { ui.fb.text = ''; track('feedback_send'); showToast('¡Gracias! Lo leemos todo.'); }
+    else showToast(r.reason === 'limite' ? 'Has enviado muchos seguidos. Prueba en un rato.' : 'No se pudo enviar. Prueba más tarde.');
+    render();
+  },
   refreshAccess() { refreshAccess(true); },
   goJoin() { ui.tab = 'yo'; ui.screen = null; render(); setTimeout(() => document.getElementById('join')?.scrollIntoView({ behavior: 'smooth' }), 0); },
   legalSheet(el, ev) { ev?.preventDefault(); ui.sheet = { type: 'legal' }; render(); },
@@ -881,6 +901,7 @@ const CHANGES = {
     if (!f) return;
     try {
       const photo = await readPhoto(f);
+      track('photo_add');
       ui.pending = { c: { dest: 'bandeja', value: '', confidence: 'baja' }, raw: ui.draft.trim(), photo, dateISO: '' };
       render();
     } catch { showToast('No se pudo leer la foto'); }
@@ -921,10 +942,16 @@ function stopBreath() {
 
 // ---------- eventos ----------
 document.addEventListener('click', (ev) => {
+  const link = ev.target.closest('a[data-track]');
+  if (link) { track(link.dataset.track); return; }
   const el = ev.target.closest('[data-act]');
   if (!el || el.tagName === 'A') return;
   const fn = ACTS[el.dataset.act];
-  if (fn) fn(el, ev);
+  if (!fn) return;
+  if (el.dataset.act === 'tab') track(`tab_${el.dataset.v}`);
+  else if (el.dataset.act === 'toggleBreath' && !ui.breath.on) track('breath');
+  else if (ACT_EVENT[el.dataset.act]) track(ACT_EVENT[el.dataset.act]);
+  fn(el, ev);
 });
 document.addEventListener('input', (ev) => {
   const el = ev.target;
@@ -938,7 +965,7 @@ document.addEventListener('change', (ev) => {
 });
 let hiddenAt = 0;
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) { hiddenAt = Date.now(); return; }
+  if (document.hidden) { hiddenAt = Date.now(); metrics.flush(S.settings, { keepalive: true }); return; }
   refreshAccess();
   if (S.settings.pinHash && S.settings.lockOnLeave && hiddenAt && Date.now() - hiddenAt > 60000) {
     ui.locked = true; ui.pinEntry = ''; render();
@@ -956,5 +983,10 @@ if (!S.settings.country) {
 }
 if (globalThis.CLUTCH_SW && 'serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
 render();
-refreshAccess();
+refreshAccess().then(() => { track('open'); metrics.flush(S.settings); });
+setInterval(() => metrics.flush(S.settings), 60000);
+// Avisos de error técnicos (solo con permiso de estadísticas; sin datos personales).
+const reportError = (message, where) => metrics.error(S.settings, { message, where, screen: ui.screen || ui.tab, version: T.me.version });
+window.addEventListener('error', (e) => reportError(e.message, `${String(e.filename || '').split('/').pop()}:${e.lineno}:${e.colno}`));
+window.addEventListener('unhandledrejection', (e) => reportError(String(e.reason?.message || e.reason), String(e.reason?.stack || '').split('\n')[1]?.trim()));
 export { render };
