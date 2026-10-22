@@ -3,6 +3,7 @@
 export const SERVER = 'https://clutch-ia.vercel.app';
 
 export const FEATURES = {
+  multi_profile: 'Varias personas',
   ai_rewrite: 'Reescribir con IA',
   my_style: 'Mensajes con tu estilo',
   companions_pro: 'Más acompañantes',

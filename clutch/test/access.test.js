@@ -32,7 +32,7 @@ test('config: anónimo, base, pro-1, bloqueado y dueño', async () => {
   const get = (code) => call(configHandler, { method: 'GET', headers: { 'x-clutch-code': code } });
   assert.deepEqual((await get('')).body, { status: 'anon', group: null, features: [] });
   assert.deepEqual((await get('t-base')).body.features, []);
-  assert.deepEqual((await get('t-pro1')).body.features, ['ai_rewrite', 'my_style', 'companions_pro']);
+  assert.deepEqual((await get('t-pro1')).body.features, ['multi_profile', 'ai_rewrite', 'my_style', 'companions_pro']);
   assert.deepEqual((await get('t-off')).body, { status: 'blocked', group: null, features: [] });
   const owner = (await get('dueno')).body;
   assert.equal(owner.group, 'admin');

@@ -61,6 +61,12 @@ Decidido: se apuntan solos y tú los apruebas. Métricas anónimas con su permis
 </details>
 
 ## Fase 4 · Que todo funcione de verdad (🤖)
+- ✅ "Varias personas" (22-oct): sin esa función, un solo perfil; "+ Añadir" sale como "Pronto". Las fichas que ya existan nunca se borran.
+- Mensajes, gestos y planes que no se noten repetidos (idea de mask, 22-oct):
+  - Cada uno con su esfuerzo y su descanso mínimo: algo ligero ("me he despertado pensando en ti") ~cada 10 días; algo grande ("te llevo a tu restaurante favorito") mucho menos a menudo.
+  - Elección al azar entre los que ya han descansado, con variación en los plazos, para que ella nunca intuya un patrón ni que está programado.
+  - La app recuerda en el móvil qué copiaste o enviaste y cuándo, por persona.
+  - Hace falta un banco mucho mayor (hoy: 3 mensajes sencillos fijos por relación y 6-8 gestos). Barney v1 ya tenía descansos por gesto en BANCO_MENSAJES_Y_DECISIONES.md.
 - ⚠️ Planes cerca: pasar las búsquedas por nuestro servidor (con caché) y probar en Málaga, Madrid, etc.
 - Repaso completo en móvil simulado de cada función PRO con el servidor real (no simulado).
 - Prueba en iPhone (Safari > Añadir a pantalla de inicio) 👤 y Android.

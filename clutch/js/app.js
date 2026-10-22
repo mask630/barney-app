@@ -303,7 +303,7 @@ function viewElla(p) {
   ];
   return `<main class="screen">
     <div class="chips">${S.profiles.map((x) => `<button class="chip" aria-pressed="${x.id === p.id}" data-act="pickProfile" data-v="${x.id}">${esc(x.name)}</button>`).join('')}
-      <button class="chip" data-act="newProfileSheet">+ ${T.me.beta === 'Beta' ? 'Añadir' : ''}</button></div>
+      <button class="chip" data-act="newProfileSheet" ${canAddProfile() ? '' : 'style="opacity:.7"'}>+ Añadir${canAddProfile() ? '' : ' <span class="badge pro" style="padding:1px 5px">Pronto</span>'}</button></div>
     <div class="row"><h1 class="grow">${esc(p.name)}</h1><button class="btn small" data-act="editSheet">Editar</button></div>
 
     <div class="stack"><span class="label">${T.profile.stage}</span>
@@ -402,7 +402,7 @@ function viewMe() {
 
     <div class="stack"><span class="label">${T.me.companion}</span><div class="card">
       <div class="field"><label for="comp">${T.me.companionHint}</label><input id="comp" class="input" data-bind="edit.companion" data-change="companion" value="${esc(s.companion)}" maxlength="24"></div>
-      <div class="chips">${COMPANION_IDS.map((id) => `<button class="chip" aria-pressed="${s.companionStyle === id}" data-act="companionStyle" data-v="${id}" ${isAvailable(id, has('companions_pro')) ? '' : 'aria-disabled="true" style="opacity:.55"'}>${esc(COMPANIONS[id].label)}${isAvailable(id, has('companions_pro')) ? '' : ' <span class="badge pro" style="padding:1px 5px">Pronto</span>'}</button>`).join('')}</div></div></div>
+      <div class="chips">${COMPANION_IDS.map((id) => `<button class="chip" aria-pressed="${s.companionStyle === id}" data-act="companionStyle" data-v="${id}" ${isAvailable(id, has('companions_pro')) ? '' : 'style="opacity:.55"'}>${esc(COMPANIONS[id].label)}${isAvailable(id, has('companions_pro')) ? '' : ' <span class="badge pro" style="padding:1px 5px">Pronto</span>'}</button>`).join('')}</div></div></div>
 
     <div class="stack"><span class="label">Tu estilo</span><div class="card">
       <p class="small muted">Pega 3 o más mensajes que hayas escrito tú (uno por línea). Se analiza en este móvil y no se envía a ningún sitio.</p>
@@ -543,7 +543,11 @@ function render() {
 }
 
 // ---------- acciones ----------
+// Sin «Varias personas», un solo perfil. Las fichas que ya existan (importadas o de antes) nunca se borran.
+const canAddProfile = () => !S.profiles.length || has('multi_profile');
+
 function tryCreateProfile() {
+  if (!canAddProfile()) { showToast('Tener varias personas llegará pronto'); return; }
   const f = ui.form;
   const r = Store.newProfile({ name: f.name, birth: f.birth, stage: f.stage, since: STAGES_WITH_MILESTONES.includes(f.stage) ? f.since : null }, today());
   if (!r.ok) {
@@ -617,7 +621,10 @@ const ACTS = {
   goSos() { ui.screen = 'sos'; render(); },
   formStage(el) { ui.form.stage = el.dataset.v; render(); },
   createProfile() { tryCreateProfile(); },
-  newProfileSheet() { ui.form = { name: '', birth: '', stage: 'amiga', since: '', error: '' }; ui.sheet = { type: 'newProfile' }; render(); },
+  newProfileSheet() {
+    if (!canAddProfile()) { showToast('Tener varias personas llegará pronto'); return; }
+    ui.form = { name: '', birth: '', stage: 'amiga', since: '', error: '' }; ui.sheet = { type: 'newProfile' }; render();
+  },
   pickProfile(el) { S.activeId = el.dataset.v; persist(); render(); },
   stageSheet(el) { if (el.dataset.v !== prof().stage) { ui.edit = {}; ui.sheet = { type: 'stage', to: el.dataset.v }; render(); } },
   confirmStage() {

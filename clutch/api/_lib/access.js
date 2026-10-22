@@ -4,11 +4,12 @@
 
 import { getJson, setJson, incr, addToSet, expire } from './db.js';
 
-export const FEATURES = ['ai_rewrite', 'my_style', 'companions_pro', 'sos_chat', 'photo_ai', 'plans', 'encrypted_backup'];
+// multi_profile: más de una persona (pareja, rollo, amigas…). Sin ella, un solo perfil.
+export const FEATURES = ['multi_profile', 'ai_rewrite', 'my_style', 'companions_pro', 'sos_chat', 'photo_ai', 'plans', 'encrypted_backup'];
 
 export const DEFAULT_GROUPS = {
   base: [],
-  'pro-1': ['ai_rewrite', 'my_style', 'companions_pro'],
+  'pro-1': ['multi_profile', 'ai_rewrite', 'my_style', 'companions_pro'],
   'pro-2': FEATURES,
   admin: FEATURES
 };

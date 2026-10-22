@@ -68,7 +68,7 @@ test('panel: clave, aprobar, cambiar de grupo, bloquear y editar grupos', async 
   assert.deepEqual((await config(code)).body, { status: 'active', group: 'base', features: [] });
 
   await admin('POST', { action: 'tester', code, group: 'pro-1' });
-  assert.deepEqual((await config(code)).body.features, ['ai_rewrite', 'my_style', 'companions_pro']);
+  assert.deepEqual((await config(code)).body.features, ['multi_profile', 'ai_rewrite', 'my_style', 'companions_pro']);
   assert.equal((await admin('POST', { action: 'tester', code, group: 'inventado' })).code, 400);
   assert.equal((await admin('POST', { action: 'tester', code: 'nadie', status: 'active' })).code, 404);
 
