@@ -10,7 +10,7 @@ const mk = (o = {}) => newProfile({ name: 'Lucía', birth: '1997-05-14', stage: 
 test('gestos: tres distintos y estables en el día', () => {
   const p = mk();
   const a = dailyGestures(p, T);
-  assert.equal(new Set(a).size, 3);
+  assert.equal(new Set(a.map((g) => g.id)).size, 3);
   assert.deepEqual(a, dailyGestures(p, T));
 });
 
@@ -44,7 +44,9 @@ test('ciclo: desactivado, etapa baja y fases', () => {
 });
 
 test('mensajes genéricos y SOS completos para los tres registros', () => {
-  assert.equal(genericMessages(mk(), '25-34', 'pareja').length, 3);
+  const msgs = genericMessages(mk(), '25-34', 'pareja', T);
+  assert.equal(msgs.length, 3);
+  assert.ok(msgs.every((m) => m.id && m.text.startsWith('Lucía, ')));
   for (const s of SOS) for (const g of ['amiga', 'flirt', 'pareja']) assert.ok(s.scripts[g].length > 10);
   assert.equal(es.stages.citas, 'Citas');
 });

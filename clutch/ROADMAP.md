@@ -62,7 +62,8 @@ Decidido: se apuntan solos y tú los apruebas. Métricas anónimas con su permis
 
 ## Fase 4 · Que todo funcione de verdad (🤖)
 - ✅ "Varias personas" (22-oct): sin esa función, un solo perfil; "+ Añadir" sale como "Pronto". Las fichas que ya existan nunca se borran.
-- Mensajes, gestos y planes que no se noten repetidos (idea de mask, 22-oct):
+- ✅ Mensajes y gestos que no se notan repetidos (22-oct): `js/engine/rotation.js` + banco nuevo en `js/data/bank.js` (21-22 mensajes y 17-19 gestos por registro, sin datos inventados). Simulación de 6 meses: ligeros vuelven cada 8-63 días (media 18), grandes cada 29-77 (media ~47), intervalos siempre distintos, <0,2 % antes de tiempo. Pendiente: aplicar lo mismo a los planes cerca y seguir ampliando el banco.
+- Idea original (mask, 22-oct):
   - Cada uno con su esfuerzo y su descanso mínimo: algo ligero ("me he despertado pensando en ti") ~cada 10 días; algo grande ("te llevo a tu restaurante favorito") mucho menos a menudo.
   - Elección al azar entre los que ya han descansado, con variación en los plazos, para que ella nunca intuya un patrón ni que está programado.
   - La app recuerda en el móvil qué copiaste o enviaste y cuándo, por persona.

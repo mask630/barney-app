@@ -5,61 +5,21 @@ import { STAGES_WITH_MILESTONES, STAGE_GROUP } from '../core/stages.js';
 import { stageRank } from '../core/store.js';
 import { compose } from './voice.js';
 import { mothersDay } from '../data/worldDays.js';
+import { MESSAGES, GESTURES } from '../data/bank.js';
+import { pickRotating } from './rotation.js';
 
-const GESTURES = {
-  amiga: [
-    'Pregúntale cómo le fue ese plan del que te habló.',
-    'Mándale una canción que te recordó a una conversación vuestra.',
-    'Ofrécete a acompañarla a algo que tenga pendiente.',
-    'Comparte un meme o vídeo que sepas que le hará gracia.',
-    'Felicítala por algo que haya logrado, aunque sea pequeño.',
-    'Propón un café sin motivo, a la hora que a ella le venga bien.'
-  ],
-  flirt: [
-    'Hazle un cumplido concreto, no genérico: algo que hayas notado de verdad.',
-    'Propón un plan con fecha y hora, no un "a ver cuándo quedamos".',
-    'Recuerda algo que te contó y pregúntale cómo fue.',
-    'Mándale una foto de algo que te hizo pensar en lo que le gusta.',
-    'Deja que ella elija el sitio y ofrécete a reservar tú.',
-    'Termina la conversación en un momento bueno, sin alargarla.',
-    'Sé claro con lo que quieres. La claridad atrae más que el misterio.'
-  ],
-  pareja: [
-    'Haz tú algo de la casa que normalmente hace ella, sin avisar.',
-    'Prepara su bebida favorita sin que la pida.',
-    'Escríbele una nota corta con algo concreto que valoras de ella.',
-    'Pregúntale cómo está de verdad y escucha sin buscar solución.',
-    'Planifica un rato a solas sin móviles, aunque sean veinte minutos.',
-    'Reserva algo para el fin de semana y no se lo digas hasta el último momento.',
-    'Dale un abrazo largo al llegar a casa, antes de hablar del día.',
-    'Encárgate de una tarea que le pese esta semana.'
-  ]
-};
+// Gestos y mensajes sencillos salen del banco y rotan con descanso según su esfuerzo (engine/rotation.js).
 
-const GENERIC_MESSAGES = {
-  amiga: ['¿cómo llevas la semana?', 'me acordé de ti. ¿Qué tal todo?', 'ánimo con lo de hoy, seguro que sale bien.'],
-  flirt: ['¿qué tal tu día? Cuéntame lo mejor.', 'me ha pasado algo que te hará gracia, te lo cuento cuando quedemos.', '¿te apetece que quedemos esta semana?'],
-  pareja: ['¿cómo vas hoy? Cuéntame.', 'solo quería decirte que me alegra tenerte.', '¿qué te apetece cenar hoy? Yo me encargo.']
-};
-
-function hashStr(s) {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
-
-// Tres gestos distintos, estables durante todo el día para el mismo perfil.
+// Tres gestos para hoy, estables durante el día. Devuelve elementos del banco: { id, e, t }.
 export function dailyGestures(profile, todayISO, count = 3) {
-  const pool = GESTURES[STAGE_GROUP[profile.stage]];
-  const start = hashStr(`${profile.id}:${todayISO}`) % pool.length;
-  return Array.from({ length: Math.min(count, pool.length) }, (_, i) => pool[(start + i) % pool.length]);
+  return pickRotating(GESTURES[STAGE_GROUP[profile.stage]], profile, todayISO, count, 'g');
 }
 
-export function genericMessages(profile, band, group) {
-  return GENERIC_MESSAGES[group].map((text) => compose({ text, name: profile.name, band, group })).filter(Boolean);
+// Tres mensajes sencillos para hoy, ya con saludo y despedida. Devuelve { id, text }.
+export function genericMessages(profile, band, group, todayISO, count = 3) {
+  return pickRotating(MESSAGES[group], profile, todayISO, count, 'm')
+    .map((it) => ({ id: it.id, text: compose({ text: it.t, name: profile.name, band, group }) }))
+    .filter((m) => m.text);
 }
 
 // Fechas próximas para la pantalla Hoy. Solo con datos reales del perfil.

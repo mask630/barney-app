@@ -165,6 +165,11 @@ assert.deepEqual(events.at(-1), { consent: true });
 await page.click('.nav button:has-text("Hoy")');
 await page.click('text=Escríbele >> nth=0');
 await page.click('button:has-text("Copiar") >> nth=0');
+// copiar un mensaje sencillo lo deja descansando (se apunta en el móvil, por persona)
+const mid = await page.getAttribute('button[data-act=copy]:not([data-mid=""]) >> nth=0', 'data-mid');
+await page.click(`button[data-act=copy][data-mid="${mid}"]`);
+const used = await page.evaluate(() => JSON.parse(localStorage.getItem('clutch_v2')).profiles[0].used);
+assert.ok(used && /^\d{4}-\d{2}-\d{2}$/.test(used[mid]), 'mensaje apuntado como usado hoy');
 await page.click('button[aria-label=Volver]');
 await hide();
 await page.waitForFunction(() => true);
@@ -172,7 +177,7 @@ await page.waitForTimeout(300);
 const batch = events.filter((e) => e.events).at(-1);
 assert.ok(batch, 'con permiso se envía');
 assert.equal(batch.events.write_open, 1);
-assert.equal(batch.events.copy, 1);
+assert.equal(batch.events.copy, 2);
 assert.ok(batch.events.tab_hoy >= 1);
 assert.ok(!JSON.stringify(events).includes('Lucía'), 'nunca datos de ella');
 

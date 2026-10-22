@@ -15,6 +15,7 @@ import { aiConfigured, aiRewrite, aiSos, aiPhoto, fillName } from './engine/ai.j
 import { FEATURES, has as hasFeature, fetchConfig, registerBeta } from './engine/features.js';
 import { LEGAL, UPDATED } from './i18n/legal.js';
 import { createMetrics, sendFeedback } from './engine/metrics.js';
+import { markUsed, unmarkUsedToday } from './engine/rotation.js';
 
 const T = es;
 
@@ -234,7 +235,7 @@ function viewHoy(p) {
            <p class="source"><b>${T.write.realData}</b> · ${esc(hero.source.label)}</p>
            <p class="small muted"><b>${comp}</b>: ${esc(companionLine(S.settings.companionStyle, 'hook', today(), has('companions_pro')))}</p>
            <button class="btn primary block" data-act="goWrite">${T.tabs.escribele}</button>`
-        : `<p class="big">${esc(gest[0])}</p>
+        : `<p class="big">${esc(gest[0].t)}</p>
            <p class="source">${T.today.emptyHook}</p>
            <p class="small muted"><b>${comp}</b>: ${esc(companionLine(S.settings.companionStyle, 'nodata', today(), has('companions_pro')))}</p>
            <button class="btn block" data-act="goWrite">${T.tabs.escribele}</button>`}
@@ -243,7 +244,7 @@ function viewHoy(p) {
     ${care ? `<section class="card"><h3>${T.today.care}</h3><p>${esc(care.text)}</p></section>` : ''}
 
     <div class="stack"><span class="label">${T.today.gestures}</span>
-      <div class="card flat list">${gest.map((g, i) => `<button class="gesture" aria-pressed="${done.includes(i)}" data-act="toggleGesture" data-v="${i}"><span class="tick">${done.includes(i) ? '✓' : ''}</span><span>${esc(g)}</span></button>`).join('')}</div></div>
+      <div class="card flat list">${gest.map((g) => `<button class="gesture" aria-pressed="${done.includes(g.id)}" data-act="toggleGesture" data-v="${g.id}"><span class="tick">${done.includes(g.id) ? '✓' : ''}</span><span>${esc(g.t)}</span></button>`).join('')}</div></div>
 
     <div class="stack"><span class="label">${T.today.dates}</span>
       ${dates.length || reminders.length
@@ -264,17 +265,18 @@ function viewHoy(p) {
 function viewWrite(p) {
   const r = hookData(p);
   const hooks = r.hooks.filter((h) => h.message);
-  const basics = genericMessages(p, r.band, r.group);
+  const basics = genericMessages(p, r.band, r.group, today());
   const traits = S.settings.style?.traits;
-  const card = (msg, src) => {
+  // mid: id del banco (solo mensajes sencillos) para que descansen tras usarlos.
+  const card = (msg, src, mid = '') => {
     const shown = ui.alt[msg] || msg;
     return `<div class="card">
       <div class="msg">${esc(shown)}</div>
       ${ui.alt[msg] ? '<p class="small muted">Versión adaptada. <button class="chip" style="min-height:32px" data-act="revertMsg" data-text="' + esc(msg) + '">Ver original</button></p>' : ''}
       ${src ? `<p class="source"><b>${T.write.realData}</b> · ${esc(src.label)}${src.urls ? ` · ${src.urls.map((u) => `<a href="${esc(u)}" target="_blank" rel="noopener" style="color:inherit">fuente</a>`).join(' ')}` : ''}</p>` : ''}
       <div class="row wrap">
-        <button class="btn primary small" data-act="copy" data-text="${esc(shown)}">${T.write.copy}</button>
-        <a class="btn small" data-track="whatsapp" href="https://wa.me/?text=${encodeURIComponent(shown)}" target="_blank" rel="noopener">${T.write.whatsapp}</a>
+        <button class="btn primary small" data-act="copy" data-text="${esc(shown)}" data-mid="${mid}">${T.write.copy}</button>
+        <a class="btn small" data-track="whatsapp" data-mid="${mid}" href="https://wa.me/?text=${encodeURIComponent(shown)}" target="_blank" rel="noopener">${T.write.whatsapp}</a>
         ${has('my_style') && traits ? `<button class="btn small" data-act="styleMsg" data-text="${esc(msg)}">Con mi estilo</button>` : ''}
         ${has('ai_rewrite') && aiConfigured(S.settings) ? `<button class="btn small" data-act="aiMsg" data-text="${esc(msg)}" ${ui.busy === 'ai:' + msg ? 'disabled' : ''}>${ui.busy === 'ai:' + msg ? 'Escribiendo…' : 'Reescribir con IA'}</button>` : ''}
       </div></div>`;
@@ -283,7 +285,7 @@ function viewWrite(p) {
     <div class="row"><button class="btn small ghost" data-act="back" aria-label="Volver">‹</button><h1>${T.write.title}</h1></div>
     ${hooks.length ? hooks.map((h) => card(h.message, h.source)).join('') : ''}
     <span class="label">${T.write.basics}</span>
-    ${basics.map((m) => card(m, null)).join('')}
+    ${basics.map((m) => card(m.text, null, m.id)).join('')}
     ${!has('my_style') && !has('ai_rewrite') ? `<div class="card row"><span class="grow">${T.write.proRewrite}</span><span class="badge pro">${T.write.pro}</span></div>`
       : `<div class="card"><b>${T.write.proRewrite}</b><p class="small muted">${!has('my_style') ? '' : traits ? 'Usa «Con mi estilo» en cualquier mensaje.' : 'Añade unos mensajes tuyos en Yo > Tu estilo y los adapto a cómo escribes.'}${has('ai_rewrite') ? ' Toca «Reescribir con IA» para otra versión.' : ''}</p></div>`}
   </main>`;
@@ -543,6 +545,11 @@ function render() {
 }
 
 // ---------- acciones ----------
+// Mensaje del banco copiado o enviado: descansa unos días antes de volver a salir (engine/rotation.js).
+function recordUse(mid) {
+  if (mid && prof()?.used?.[mid] !== today()) updateProfile((p) => markUsed(p, mid, today()));
+}
+
 // Sin «Varias personas», un solo perfil. Las fichas que ya existan (importadas o de antes) nunca se borran.
 const canAddProfile = () => !S.profiles.length || has('multi_profile');
 
@@ -667,15 +674,17 @@ const ACTS = {
   },
   toggleCycle() { updateProfile((p) => ({ ...p, cycle: { ...p.cycle, enabled: !p.cycle.enabled } })); render(); },
   toggleGesture(el) {
-    const i = +el.dataset.v;
+    const id = el.dataset.v;
     updateProfile((p) => {
       const cur = new Set((p.done && p.done[today()]) || []);
-      cur.has(i) ? cur.delete(i) : cur.add(i);
-      return { ...p, done: { [today()]: [...cur] } };
+      const on = !cur.has(id);
+      on ? cur.add(id) : cur.delete(id);
+      const next = { ...p, done: { [today()]: [...cur] } };
+      return on ? markUsed(next, id, today()) : unmarkUsedToday(next, id, today());
     });
     render();
   },
-  copy(el) { copyText(el.dataset.text); },
+  copy(el) { copyText(el.dataset.text); recordUse(el.dataset.mid); },
   classify() {
     const text = ui.draft.trim();
     if (!text) { showToast('Escribe algo o haz una foto'); return; }
@@ -950,7 +959,7 @@ function stopBreath() {
 // ---------- eventos ----------
 document.addEventListener('click', (ev) => {
   const link = ev.target.closest('a[data-track]');
-  if (link) { track(link.dataset.track); return; }
+  if (link) { track(link.dataset.track); recordUse(link.dataset.mid); return; }
   const el = ev.target.closest('[data-act]');
   if (!el || el.tagName === 'A') return;
   const fn = ACTS[el.dataset.act];
