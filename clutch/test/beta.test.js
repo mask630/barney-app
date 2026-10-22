@@ -79,6 +79,13 @@ test('panel: clave, aprobar, cambiar de grupo, bloquear y editar grupos', async 
   await admin('POST', { action: 'tester', code, status: 'blocked' });
   assert.equal((await config(code)).body.status, 'blocked');
 
+  // borrar: desaparece del panel, el código deja de valer y el email puede volver a apuntarse
+  assert.equal((await admin('POST', { action: 'delete', code })).body.deleted, code);
+  assert.equal((await admin('GET')).body.testers.length, 0);
+  assert.equal((await config(code)).body.status, 'anon');
+  assert.equal((await register({ alias: 'Ana', email: 'ana@x.es', terms: true }, '2.2.2.2')).code, 200);
+  assert.equal((await admin('POST', { action: 'delete', code: 'nadie' })).code, 404);
+
   // con CLUTCH_ADMIN, el código del dueño ya no abre el panel
   process.env.CLUTCH_ADMIN = 'clave-panel';
   assert.equal((await admin('GET')).code, 401);

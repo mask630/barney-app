@@ -49,7 +49,7 @@ const app = document.getElementById('app');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let key = '';
 try { key = sessionStorage.getItem('clutch-admin') || ''; } catch {}
-let data = null, tab = 'pending', msg = { text: '', kind: '' }, busy = false;
+let data = null, tab = 'pending', msg = { text: '', kind: '' }, busy = false, askDelete = null;
 
 async function api(method, body) {
   const r = await fetch('/api/admin', { method, headers: { 'Content-Type': 'application/json', 'X-Admin-Key': key }, body: body ? JSON.stringify(body) : undefined });
@@ -104,6 +104,7 @@ function viewPanel() {
         ${x.status !== 'active' ? `<button class="primary" data-status="active" data-code="${esc(x.code)}" ${busy ? 'disabled' : ''}>${x.status === 'pending' ? 'Aprobar' : 'Reactivar'}</button>` : ''}
         ${x.status !== 'blocked' ? `<button class="bad" data-status="blocked" data-code="${esc(x.code)}" ${busy ? 'disabled' : ''}>Bloquear</button>` : ''}
         <button data-copy="${esc(x.code)}">Copiar código</button>
+        <button class="bad" data-delete="${esc(x.code)}" ${busy ? 'disabled' : ''}>${askDelete === x.code ? '¿Seguro? Toca otra vez' : 'Borrar'}</button>
       </div></div>`).join('') : '<p class="muted">No hay nadie aquí.</p>'}</div></div>
 
   <div class="card"><h2>Qué incluye cada grupo</h2>
@@ -135,6 +136,11 @@ app.addEventListener('click', (e) => {
   if (!b) return;
   if (b.dataset.tab) { tab = b.dataset.tab; render(); }
   else if (b.dataset.status) act({ action: 'tester', code: b.dataset.code, status: b.dataset.status }, b.dataset.status === 'active' ? 'Tester activado.' : 'Tester bloqueado.');
+  else if (b.dataset.delete) {
+    if (askDelete !== b.dataset.delete) { askDelete = b.dataset.delete; render(); return; }
+    askDelete = null;
+    act({ action: 'delete', code: b.dataset.delete }, 'Tester borrado con todos sus datos.');
+  }
   else if (b.dataset.copy) navigator.clipboard?.writeText(b.dataset.copy).then(() => { msg = { text: 'Código copiado.', kind: 'ok' }; render(); }, () => {});
   else if (b.id === 'reload') load();
   else if (b.id === 'logout') { key = ''; data = null; try { sessionStorage.removeItem('clutch-admin'); } catch {} render(); }

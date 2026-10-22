@@ -2,7 +2,7 @@
 // GET: testers, grupos y ajustes. POST { action: 'tester' | 'groups' | 'settings', ... }: cambios.
 
 import { isAdmin, groups, betaSettings, FEATURES, DEFAULT_SETTINGS, readBody } from './_lib/access.js';
-import { getJson, setJson, setMembers, getMany } from './_lib/db.js';
+import { getJson, setJson, setMembers, getMany, del, removeFromSet } from './_lib/db.js';
 
 const STATUSES = ['pending', 'active', 'blocked'];
 
@@ -32,6 +32,15 @@ export default async function handler(req, res) {
       if (next.status === 'active' && t.status !== 'active' && !t.approvedAt) next.approvedAt = new Date().toISOString().slice(0, 10);
       await setJson(`tester:${t.code}`, next);
       return res.status(200).json({ tester: next });
+    }
+
+    // Borrado completo (derecho de supresión): datos, email y plaza.
+    if (body.action === 'delete') {
+      const t = await getJson(`tester:${body.code}`);
+      if (!t) return res.status(404).json({ error: 'no-existe' });
+      await del(`tester:${t.code}`, `email:${t.email}`);
+      await removeFromSet('testers', t.code);
+      return res.status(200).json({ deleted: t.code });
     }
 
     if (body.action === 'groups') {

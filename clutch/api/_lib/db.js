@@ -47,6 +47,16 @@ export async function addToSet(key, member) {
   await redis(['SADD', key, member]);
 }
 
+export async function del(...keys) {
+  if (!hasDb()) { keys.forEach((k) => mem.delete(k)); return; }
+  await redis(['DEL', ...keys]);
+}
+
+export async function removeFromSet(key, member) {
+  if (!hasDb()) { mem.set(key, (mem.get(key) || []).filter((m) => m !== member)); return; }
+  await redis(['SREM', key, member]);
+}
+
 export async function setMembers(key) {
   if (!hasDb()) return [...(mem.get(key) || [])];
   return (await redis(['SMEMBERS', key])) || [];
