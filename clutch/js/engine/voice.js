@@ -30,7 +30,7 @@ export function compose({ text, name, band, group }) {
   const hasName = typeof name === 'string' && name.trim().length > 0;
   const opener = hasName ? OPENERS[band][group].replace('{n}', name.trim()) : NO_NAME_OPENER[band];
   const endsSoft = /[,…]\s$/.test(opener);
-  const body = endsSoft ? lcFirst(text) : text;
+  const body = endsSoft ? lcFirst(text) : text.charAt(0).toUpperCase() + text.slice(1);
   const msg = `${opener}${body}${CLOSERS[band][group]}`;
   return msg.replace(/\s{2,}/g, ' ').trim();
 }
