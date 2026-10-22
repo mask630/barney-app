@@ -127,3 +127,20 @@ test('opinión desde la app', async () => {
   assert.deepEqual(body, { kind: 'opinion', text: 'hola', screen: 'yo', version: 'v' });
   assert.deepEqual(await sendFeedback({}, { text: 'x' }, async () => ({ ok: false, json: async () => ({ error: 'limite' }) })), { ok: false, reason: 'limite' });
 });
+
+test('panel: estado de la clave de IA (sin gastar saldo) y caducidad', async () => {
+  const { aiKeyStatus } = await import('../api/admin.js');
+  process.env.ANTHROPIC_API_KEY = 'sk-test';
+  process.env.CLUTCH_KEY_EXPIRES = '2026-11-21';
+  let url;
+  assert.deepEqual(await aiKeyStatus(async (u) => { url = u; return { ok: true }; }), { ok: true, reason: null, expires: '2026-11-21' });
+  assert.ok(url.includes('/v1/models'), 'consulta gratuita, no un mensaje');
+  assert.equal((await aiKeyStatus(async () => ({ ok: false, status: 401 }))).reason, 'clave');
+  assert.equal((await aiKeyStatus(async () => ({ ok: false, status: 529 }))).reason, 'servicio');
+  assert.equal((await aiKeyStatus(async () => { throw new Error('x'); })).reason, 'red');
+  process.env.CLUTCH_KEY_EXPIRES = 'pronto';
+  assert.equal((await aiKeyStatus(async () => ({ ok: true }))).expires, null);
+  delete process.env.ANTHROPIC_API_KEY;
+  assert.equal((await aiKeyStatus()).reason, 'sin-clave');
+  delete process.env.CLUTCH_KEY_EXPIRES;
+});

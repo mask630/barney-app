@@ -10,12 +10,13 @@ import { classify, applyToProfile, DESTINATIONS } from './engine/capture.js';
 import { CITIES, countryFromTimezone, detectTimezone, nearestCity } from './core/geo.js';
 import { COMPANIONS, COMPANION_IDS, isAvailable, companionLine } from './engine/companions.js';
 import { analyzeStyle, applyStyle, describeStyle } from './engine/style.js';
-import { fetchPlans } from './engine/plans.js';
+import { fetchPlans, plansForToday, planMessage } from './engine/plans.js';
 import { aiConfigured, aiRewrite, aiSos, aiPhoto, fillName } from './engine/ai.js';
 import { FEATURES, has as hasFeature, fetchConfig, registerBeta } from './engine/features.js';
 import { LEGAL, UPDATED } from './i18n/legal.js';
 import { createMetrics, sendFeedback } from './engine/metrics.js';
 import { markUsed, unmarkUsedToday } from './engine/rotation.js';
+import { buildICS } from './engine/calendar.js';
 
 const T = es;
 
@@ -204,7 +205,12 @@ function plansCard(p) {
   const items = c && city && c.city === city.name && c.group === STAGE_GROUP[p.stage] ? c.items : null;
   return `<div class="stack"><span class="label">Planes cerca</span><div class="card">
     ${!location() ? '<p class="muted">Elige tu ciudad en Yo para ver planes cerca de ti.</p>'
-      : items && items.length ? `<div class="list">${items.map((i) => `<div class="item" style="padding:8px 0;min-height:44px"><div class="grow"><b>${esc(i.text)}</b><br><span class="small muted">${esc(i.label)} · ${i.km} km</span></div></div>`).join('')}</div>`
+      : items && items.length ? `<div class="list">${plansForToday(items, p, today()).map((i) => {
+        const msg = planMessage(i, { name: p.name, band: bandOf(p), group: STAGE_GROUP[p.stage] });
+        return `<div class="item" style="padding:8px 0;min-height:44px;flex-wrap:wrap"><div class="grow"><b>${esc(i.text)}</b><br><span class="small muted">${esc(i.label)} · ${i.km} km</span></div>
+          <button class="btn small" data-act="copy" data-text="${esc(msg)}" data-mid="${esc(i.id)}">Proponer</button>
+          <a class="btn small" data-track="whatsapp" data-mid="${esc(i.id)}" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">${T.write.whatsapp}</a></div>`;
+      }).join('')}</div><p class="small muted">Los que propongas descansan unas semanas para que no se repitan.</p>`
       : '<p class="muted">Lugares reales de tu ciudad (OpenStreetMap) para proponerle un plan.</p>'}
     ${ui.plansMsg ? `<p class="small error">${esc(ui.plansMsg)}</p>` : ''}
     ${location() ? `<button class="btn small" data-act="findPlans" ${ui.busy === 'plans' ? 'disabled' : ''}>${ui.busy === 'plans' ? 'Buscando…' : items ? 'Actualizar' : 'Buscar planes'}</button>
@@ -391,10 +397,15 @@ function viewMe() {
     <div class="card"><div class="row"><b class="grow">${T.me.plan}</b><span class="badge">${T.me.beta}</span></div><p class="small muted">${T.me.planBody}</p></div>
 
     <div class="stack"><span class="label">${T.me.discretion}</span><div class="card flat list">
-      <div class="item"><div class="grow"><b>${T.me.discreetNotifs}</b><br><span class="small muted">${T.me.discreetNotifsHint}</span></div>${switchHtml(s.discreetNotifs, 'toggleSetting', 'data-v="discreetNotifs"')}</div>
       <div class="item"><div class="grow"><b>${T.me.pin}</b><br><span class="small muted">${T.me.pinHint}</span></div>${switchHtml(!!s.pinHash, 'togglePin')}</div>
       <div class="item"><div class="grow"><b>${T.me.lockLeave}</b><br><span class="small muted">${T.me.lockLeaveHint}</span></div>${switchHtml(s.lockOnLeave, 'toggleSetting', `data-v="lockOnLeave" ${s.pinHash ? '' : 'disabled'}`)}</div>
     </div></div>
+
+    <div class="stack"><span class="label">Avisos</span><div class="card">
+      <p class="small muted">Clutch aún no envía notificaciones (llegarán más adelante). Para que te avise tu móvil, añade sus fechas a tu calendario: te avisará el día antes y el mismo día a las 9:00.</p>
+      <div class="row"><div class="grow"><b>${T.me.discreetNotifs}</b><br><span class="small muted">${T.me.discreetNotifsHint}</span></div>${switchHtml(s.discreetNotifs, 'toggleSetting', 'data-v="discreetNotifs"')}</div>
+      <button class="btn block" data-act="exportCalendar">Añadir fechas a mi calendario</button>
+      <p class="small muted">Si cambias o añades fechas, vuelve a pulsarlo.</p></div></div>
 
     <div class="stack"><span class="label">${T.me.where}</span><div class="card flat list">
       <div class="item"><div class="grow"><b>${T.me.country}: ${esc(s.country || '—')}</b><br><span class="small muted">Se detecta por la zona horaria.</span></div></div>
@@ -876,6 +887,17 @@ const ACTS = {
     render();
   },
   refreshAccess() { refreshAccess(true); },
+  // Archivo .ics con las fechas de todas las fichas; al abrirlo el móvil ofrece añadirlas al calendario.
+  exportCalendar() {
+    const { text, count } = buildICS(S.profiles, today(), { discreet: S.settings.discreetNotifs });
+    if (!count) { showToast('Aún no hay fechas que añadir'); return; }
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/calendar;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = 'agenda.ics';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+    showToast(`${count} fecha(s) listas: ábrelas para añadirlas a tu calendario`);
+  },
   goJoin() { ui.tab = 'yo'; ui.screen = null; render(); setTimeout(() => document.getElementById('join')?.scrollIntoView({ behavior: 'smooth' }), 0); },
   legalSheet(el, ev) { ev?.preventDefault(); ui.sheet = { type: 'legal' }; render(); },
   joinCheck(el) { ui.join[el.dataset.v] = el.checked; },

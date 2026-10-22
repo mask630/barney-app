@@ -30,7 +30,16 @@ Write-Host "`n3/4 Configuración segura" -ForegroundColor Cyan
 $seguro = Read-Host 'Pega tu clave de la API de Anthropic (no se verá al escribir)' -AsSecureString
 $clave = [System.Net.NetworkCredential]::new('', $seguro).Password
 if ([string]::IsNullOrWhiteSpace($clave)) { Write-Host 'No se introdujo ninguna clave.' -ForegroundColor Red; exit 1 }
-$codigo = -join ((48..57) + (97..122) | Get-Random -Count 12 | ForEach-Object { [char]$_ })
+$caduca = Read-Host 'Fecha de caducidad de la clave (AAAA-MM-DD, la ves en la consola; Enter para saltar)'
+
+# El código de dueño se conserva al renovar la clave: si cambiara, perderías el acceso al panel y a la IA en tu móvil.
+$ErrorActionPreference = 'Continue'
+$hayCodigo = (vercel env ls production 2>&1 | Out-String) -match 'CLUTCH_CODES'
+$ErrorActionPreference = 'Stop'
+$codigo = $null
+if (-not $hayCodigo -or (Read-Host 'Ya tienes código de dueño. Pulsa Enter para mantenerlo o escribe "nuevo" para crear otro') -eq 'nuevo') {
+  $codigo = -join ((48..57) + (97..122) | Get-Random -Count 12 | ForEach-Object { [char]$_ })
+}
 
 function Poner-Variable($nombre, $valor) {
   try { vercel env rm $nombre production --yes 2>$null | Out-Null } catch {}
@@ -38,8 +47,9 @@ function Poner-Variable($nombre, $valor) {
   vercel env add $nombre production --value $valor --yes --force | Out-Null
 }
 Poner-Variable 'ANTHROPIC_API_KEY' $clave
-Poner-Variable 'CLUTCH_CODES' $codigo
+if ($codigo) { Poner-Variable 'CLUTCH_CODES' $codigo }
 Poner-Variable 'CLUTCH_ORIGINS' 'https://mask630.github.io'
+if ($caduca -match '^\d{4}-\d{2}-\d{2}$') { Poner-Variable 'CLUTCH_KEY_EXPIRES' $caduca }
 $clave = $null
 
 Write-Host "`n4/4 Desplegando..." -ForegroundColor Cyan
@@ -53,10 +63,14 @@ if ($m.Success) { $m = $m.Groups[1] } else { $m = [regex]::Match($salida, 'https
 if (-not $m.Success) { Write-Host 'No encontré la dirección en la salida. Cópiala del texto de arriba y añade /api/ai al final.' -ForegroundColor Yellow }
 $direccion = if ($m.Success) { "$($m.Value)/api/ai" } else { '(mira arriba)/api/ai' }
 
-$resumen = "Servidor: $direccion`nCódigo de tester: $codigo"
-Set-Clipboard -Value $resumen
 Write-Host "`n=== LISTO ===" -ForegroundColor Green
-Write-Host $resumen -ForegroundColor Green
-Write-Host "(Copiado al portapapeles). Pégalo en Clutch > Yo > IA (opcional)." -ForegroundColor Green
+Write-Host "Servidor: $direccion" -ForegroundColor Green
+if ($codigo) {
+  Set-Clipboard -Value $codigo
+  Write-Host "Tu NUEVO código de dueño: $codigo (copiado al portapapeles). Ponlo en Clutch > Yo > Beta y úsalo para entrar al panel." -ForegroundColor Green
+} else {
+  Write-Host 'Tu código de dueño no cambia: sigue usando el de siempre.' -ForegroundColor Green
+}
+Write-Host "Panel: https://clutch-ia.vercel.app/admin/ (allí verás si la clave funciona y cuándo caduca)." -ForegroundColor Green
 Write-Host "Consejo: en console.anthropic.com pon un límite de gasto mensual a esta clave." -ForegroundColor Yellow
 Read-Host "`nPulsa Enter para cerrar"

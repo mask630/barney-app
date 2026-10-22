@@ -23,8 +23,14 @@ Dueño: mask. Habla español. Pide respaldos antes de tocar cosas, interfaz simp
 - Discreción: nombre "Agenda", icono neutro, PIN, avisos neutros.
 - La IA nunca recibe el nombre de ella (va como `{n}`) y se descarta cualquier número que invente.
 
+## Servidor (actualizado 22-oct-2026)
+- Vercel, proyecto `clutch-ia`: https://clutch-ia.vercel.app. IA, funciones por tester, alta de testers, estadísticas, opiniones y planes cerca (`api/`). Base de datos Upstash conectada.
+- Panel del dueño: https://clutch-ia.vercel.app/admin/ (entra con el código de dueño, `CLUTCH_CODES`).
+- La clave de Anthropic caduca (la actual, el 2026-11-21): crear otra y ejecutar `desplegar-ia.ps1`; conserva el código de dueño. El panel avisa 14 días antes.
+- Hoja de ruta y estado detallado: `ROADMAP.md`.
+
 ## Pendiente
-1. **Desplegar la IA** (reescribir, SOS, foto): ejecutar `desplegar-ia.ps1` (Vercel). El usuario debe iniciar sesión y pegar su clave de Anthropic él mismo; no pedírsela por chat. Luego pegar URL y código en Clutch > Yo > IA.
+1. ~~Desplegar la IA~~ Hecho. La app ya trae el servidor integrado: el tester solo pone su código (o se apunta en Yo > Beta).
 2. Pasar la nueva app al dominio definitivo y comprobar instalación en iPhone (Safari > Añadir a pantalla de inicio).
 3. Más días mundiales y santos por país (solo con fuente verificada).
 4. Planes locales de agendas (p. ej. Malagueando): requiere acuerdo/API; hoy solo hay lugares de OpenStreetMap (no probado contra el servicio real).

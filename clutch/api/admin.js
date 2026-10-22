@@ -12,6 +12,19 @@ export async function listTesters() {
   return all.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 }
 
+// Estado de la clave de IA: consulta la lista de modelos (no gasta saldo). Caducidad: CLUTCH_KEY_EXPIRES (AAAA-MM-DD), opcional.
+export async function aiKeyStatus(fetchFn = globalThis.fetch) {
+  const key = (process.env.ANTHROPIC_API_KEY || '').trim();
+  const expires = /^\d{4}-\d{2}-\d{2}$/.test(process.env.CLUTCH_KEY_EXPIRES || '') ? process.env.CLUTCH_KEY_EXPIRES : null;
+  if (!key) return { ok: false, reason: 'sin-clave', expires };
+  try {
+    const r = await fetchFn('https://api.anthropic.com/v1/models?limit=1', { headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01' }, signal: AbortSignal.timeout(5000) });
+    return { ok: r.ok, reason: r.ok ? null : r.status === 401 || r.status === 403 ? 'clave' : 'servicio', expires };
+  } catch {
+    return { ok: false, reason: 'red', expires };
+  }
+}
+
 const dayISO = (d) => d.toISOString().slice(0, 10);
 const addDays = (iso, n) => dayISO(new Date(Date.parse(iso + 'T12:00:00Z') + n * 864e5));
 
@@ -39,7 +52,7 @@ export default async function handler(req, res) {
       const testers = await listTesters();
       return res.status(200).json({
         testers, groups: await groups(), settings: await betaSettings(), features: FEATURES,
-        stats: await stats(testers), feedback: await listAll('feedback'), errors: await listAll('errors')
+        stats: await stats(testers), feedback: await listAll('feedback'), errors: await listAll('errors'), aiKey: await aiKeyStatus()
       });
     }
     if (req.method !== 'POST') return res.status(405).json({ error: 'metodo' });

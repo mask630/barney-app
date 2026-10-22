@@ -181,8 +181,14 @@ assert.equal(batch.events.copy, 2);
 assert.ok(batch.events.tab_hoy >= 1);
 assert.ok(!JSON.stringify(events).includes('Lucía'), 'nunca datos de ella');
 
-// Opinión: llega al servidor con la pantalla y la versión
+// Avisos: el calendario se descarga con títulos discretos (sin nombres) por defecto
 await page.click('.nav button:has-text("Yo")');
+const [dl] = await Promise.all([page.waitForEvent('download'), page.click('text=Añadir fechas a mi calendario')]);
+assert.equal(dl.suggestedFilename(), 'agenda.ics');
+const ics = await (await import('node:fs/promises')).readFile(await dl.path(), 'utf8');
+assert.ok(ics.includes('BEGIN:VCALENDAR') && ics.includes('Agenda · evento') && !ics.includes('Lucía'));
+
+// Opinión: llega al servidor con la pantalla y la versión
 await page.fill('#fb', 'Me gusta mucho la pantalla Hoy');
 await page.click('button[data-act=sendFeedback]');
 await page.waitForSelector('text=¡Gracias!');

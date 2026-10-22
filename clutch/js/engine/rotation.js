@@ -10,7 +10,9 @@ export const REST_DAYS = {
   // mensajes
   ligero: 10, medio: 18, alto: 35,
   // gestos
-  micro: 5, cuidado: 9, cita: 14, regalo: 25
+  micro: 5, cuidado: 9, cita: 14, regalo: 25,
+  // planes cerca: un sitio ya propuesto no vuelve a salir en unas semanas
+  plan: 21
 };
 
 // Como mucho uno de estos por día: los planes y regalos pesan más si no se amontonan.

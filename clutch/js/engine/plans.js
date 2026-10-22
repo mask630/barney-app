@@ -1,13 +1,15 @@
 // Planes cerca: lugares reales de OpenStreetMap (Overpass). Solo se envían las coordenadas de la ciudad elegida.
 
 import { SERVER, serverHeaders } from './features.js';
+import { pickRotating } from './rotation.js';
+import { compose } from './voice.js';
 // No son eventos de agendas locales: esos requieren acuerdo con la fuente (pendiente).
 
 export const PLAN_KINDS = {
   viewpoint: { label: 'Mirador', filter: '["tourism"="viewpoint"]', groups: ['flirt', 'pareja'], idea: 'Ver el atardecer desde' },
   park: { label: 'Parque', filter: '["leisure"="park"]', groups: ['amiga', 'flirt', 'pareja'], idea: 'Pasear por' },
   ice_cream: { label: 'Heladería', filter: '["amenity"="ice_cream"]', groups: ['amiga', 'flirt', 'pareja'], idea: 'Tomar un helado en' },
-  cinema: { label: 'Cine', filter: '["amenity"="cinema"]', groups: ['amiga', 'flirt', 'pareja'], idea: 'Ir al cine:' },
+  cinema: { label: 'Cine', filter: '["amenity"="cinema"]', groups: ['amiga', 'flirt', 'pareja'], idea: 'Ver una peli en' },
   museum: { label: 'Museo', filter: '["tourism"="museum"]', groups: ['amiga', 'flirt', 'pareja'], idea: 'Visitar el' },
   cafe: { label: 'Café', filter: '["amenity"="cafe"]', groups: ['amiga', 'flirt'], idea: 'Tomar un café en' }
 };
@@ -81,4 +83,17 @@ export async function fetchPlans({ lat, lon, group, settings, fetchFn = globalTh
   } finally {
     clearTimeout(timer);
   }
+}
+
+// Hasta `max` planes para hoy entre los que han descansado (un sitio propuesto no vuelve en ~3 semanas, con variación).
+export const planId = (item) => `plan:${item.kind}:${item.name.toLowerCase()}`;
+export function plansForToday(items, profile, todayISO, max = 4) {
+  const pool = (items || []).map((it) => ({ ...it, id: planId(it), e: 'plan' }));
+  return pickRotating(pool, profile, todayISO, max, 'plans', 1);
+}
+
+// Mensaje para proponérselo: «Lucía, ¿te apetece ver el atardecer desde el Mirador…?»
+export function planMessage(item, { name, band, group }) {
+  const t = item.text.charAt(0).toLowerCase() + item.text.slice(1);
+  return compose({ text: `¿te apetece ${t}?`, name, band, group });
 }

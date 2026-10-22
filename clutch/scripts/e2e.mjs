@@ -82,7 +82,7 @@ await shot('sos');
 await page.click('button[aria-label=Volver]');
 // Yo + PIN
 await page.click('.nav button:has-text("Yo")');
-await page.click('button[role=switch] >> nth=1');
+await page.click('button[role=switch][data-act=togglePin]');
 await page.fill('#pin-new', '1234');
 await page.click('button:has-text("Guardar")');
 await page.waitForTimeout(300);

@@ -34,7 +34,7 @@
   table { border-collapse: collapse; width: 100%; font-size: 14px; }
   th, td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: center; white-space: nowrap; }
   th:first-child, td:first-child { text-align: left; }
-  .msg { min-height: 20px; } .msg.err { color: var(--bad); } .msg.ok { color: var(--ok); }
+  .msg { min-height: 20px; } .msg:empty { display: none; } .msg.err { color: var(--bad); } .msg.ok { color: var(--ok); }
   label.check { display: inline-flex; gap: 6px; align-items: center; min-height: 40px; }
   code { background: var(--chip); padding: 2px 6px; border-radius: 6px; }
   /* gráficos: una serie, un color; valores siempre en texto */
@@ -72,6 +72,19 @@ let data = null, tab = 'pending', msg = { text: '', kind: '' }, busy = false, as
 const EVENT_LABEL = { open: 'Abrir la app', tab_hoy: 'Pestaña Hoy', tab_ella: 'Pestaña Ella', tab_apuntar: 'Pestaña Apuntar', tab_yo: 'Pestaña Yo', write_open: 'Abrir Escríbele', copy: 'Copiar mensaje', whatsapp: 'Enviar por WhatsApp', style_apply: 'Con mi estilo', ai_rewrite: 'Reescribir con IA', sos_open: 'Abrir SOS', sos_script: 'Ver guion SOS', sos_chat: 'Chat SOS IA', breath: 'Respiración', capture_save: 'Guardar en Apuntar', photo_add: 'Añadir foto', photo_ai: 'Foto con IA', plans_search: 'Buscar planes', profile_create: 'Crear ficha', stage_change: 'Cambiar etapa', gesture_done: 'Gesto hecho', backup_export: 'Copia de seguridad', feedback_send: 'Enviar opinión' };
 const pct = (k, e) => (e ? Math.round((k / e) * 100) + ' %' : '—');
 const shortDay = (iso) => String(+iso.slice(8, 10));
+
+// Aviso de la clave de IA: si no funciona, o si caduca en menos de 14 días.
+function keyBanner() {
+  const k = data.aiKey;
+  if (!k) return '';
+  const fix = 'Crea una clave nueva en la consola de Anthropic y ejecuta <code>desplegar-ia.ps1</code>.';
+  if (!k.ok && k.reason !== 'red') return `<div class="card" style="border-color:var(--bad)"><b style="color:var(--bad)">La IA no funciona</b><p class="small">${k.reason === 'clave' ? 'La clave está caducada o revocada.' : k.reason === 'sin-clave' ? 'No hay clave configurada.' : 'Anthropic no responde bien ahora mismo.'} ${k.reason === 'servicio' ? 'Vuelve a mirar en un rato.' : fix}</p></div>`;
+  if (k.expires) {
+    const left = Math.round((Date.parse(k.expires + 'T00:00:00Z') - Date.now()) / 864e5);
+    if (left <= 14) return `<div class="card" style="border-color:var(--warn)"><b style="color:var(--warn)">La clave de IA caduca ${left <= 0 ? 'hoy' : `en ${left} día(s)`} (${esc(k.expires)})</b><p class="small">${fix}</p></div>`;
+  }
+  return '';
+}
 
 function viewStats() {
   const st = data.stats, max = Math.max(1, ...st.daily.map((d) => d.active));
@@ -140,6 +153,7 @@ function viewPanel() {
   const shown = tab === 'all' ? t : t.filter((x) => x.status === tab);
   return `<div class="row"><h1 class="grow">Clutch · Panel beta</h1><button id="reload">Actualizar</button><button id="logout">Salir</button></div>
   <p class="msg ${msg.kind}" role="status">${esc(msg.text)}</p>
+  ${keyBanner()}
   <div class="stats">
     <div class="card stat"><b>${count('pending')}</b><span class="small muted">Pendientes</span></div>
     <div class="card stat"><b>${count('active')}</b><span class="small muted">Activos</span></div>

@@ -68,6 +68,11 @@ Decidido: se apuntan solos y tú los apruebas. Métricas anónimas con su permis
 - ✅ La IA de reescribir y el SOS conocen la etapa: en Objetivo suaviza lo intenso y nunca usa técnicas de manipulación.
 - ✅ Días mundiales: de 13 a 37, de la lista oficial de la ONU (bosques, bici, océanos, juego, Luna, patata/tortilla solo en España…) + Año Nuevo Chino 2027-2035. Pasta con mejor fuente (ANSA).
 - Pendiente de contenido: días de la madre/padre y santos por país; versiones extra para los días mundiales (salen una vez al año, menos urgente).
+- ✅ Planes cerca: hasta 4 al día con botón «Proponer» (mensaje listo) y WhatsApp; lo propuesto descansa ~3 semanas.
+- ✅ Avisos: el interruptor «Avisos discretos» no hacía nada (no hay push). Ahora: «Añadir fechas a mi calendario» (.ics con cumpleaños, aniversario, hitos y eventos; aviso el día antes y el mismo día a las 9:00) y «Títulos discretos» (sin nombres). Falta probar la descarga en iPhone.
+- ✅ Panel: avisa si la clave de IA no funciona (consulta gratuita a Anthropic) o si caduca en ≤14 días (CLUTCH_KEY_EXPIRES = 2026-11-21).
+- ✅ desplegar-ia.ps1 ya no cambia el código de dueño al renovar la clave (antes te habría dejado sin acceso) y pide la fecha de caducidad.
+- 👤 Pendiente: probar en iPhone y Android reales cuando se publique (instalar, calendario, copiar/WhatsApp).
 - Idea original (mask, 22-oct):
   - Cada uno con su esfuerzo y su descanso mínimo: algo ligero ("me he despertado pensando en ti") ~cada 10 días; algo grande ("te llevo a tu restaurante favorito") mucho menos a menudo.
   - Elección al azar entre los que ya han descansado, con variación en los plazos, para que ella nunca intuya un patrón ni que está programado.
