@@ -9,11 +9,22 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
   Read-Host 'Pulsa Enter para salir'; exit 1
 }
 
-Write-Host "`n1/4 Inicia sesión en Vercel (se abrirá el navegador)..." -ForegroundColor Cyan
-npx --yes vercel@latest login
+# Usa el Vercel instalado si existe; si no, el de npx.
+function vercel {
+  $exe = if (Get-Command vercel.cmd -ErrorAction SilentlyContinue) { @('vercel.cmd') } else { @('npx', '--yes', 'vercel@latest') }
+  $cmd, $resto = $exe
+  if ($MyInvocation.ExpectingInput) { $input | & $cmd @resto @args } else { & $cmd @resto @args }
+}
+
+Write-Host "`n1/4 Sesión en Vercel..." -ForegroundColor Cyan
+$ErrorActionPreference = 'Continue'
+vercel whoami 2>$null | Out-Null
+if ($LASTEXITCODE -ne 0) { Write-Host 'Inicia sesión (se abrirá el navegador)...'; vercel login }
+else { Write-Host 'Ya tienes la sesión iniciada.' }
+$ErrorActionPreference = 'Stop'
 
 Write-Host "`n2/4 Enlazando el proyecto '$proyecto'..." -ForegroundColor Cyan
-npx --yes vercel@latest link --yes --project $proyecto
+vercel link --yes --project $proyecto
 
 Write-Host "`n3/4 Configuración segura" -ForegroundColor Cyan
 $seguro = Read-Host 'Pega tu clave de la API de Anthropic (no se verá al escribir)' -AsSecureString
@@ -22,8 +33,8 @@ if ([string]::IsNullOrWhiteSpace($clave)) { Write-Host 'No se introdujo ninguna 
 $codigo = -join ((48..57) + (97..122) | Get-Random -Count 12 | ForEach-Object { [char]$_ })
 
 function Poner-Variable($nombre, $valor) {
-  try { npx --yes vercel@latest env rm $nombre production --yes 2>$null | Out-Null } catch {}
-  $valor | npx --yes vercel@latest env add $nombre production | Out-Null
+  try { vercel env rm $nombre production --yes 2>$null | Out-Null } catch {}
+  $valor | vercel env add $nombre production | Out-Null
 }
 Poner-Variable 'ANTHROPIC_API_KEY' $clave
 Poner-Variable 'CLUTCH_CODES' $codigo
@@ -31,7 +42,9 @@ Poner-Variable 'CLUTCH_ORIGINS' 'https://mask630.github.io'
 $clave = $null
 
 Write-Host "`n4/4 Desplegando..." -ForegroundColor Cyan
-$salida = npx --yes vercel@latest deploy --prod --yes 2>&1 | Out-String
+# Vercel escribe el progreso por stderr; con 'Stop' PowerShell 5.1 lo trataría como error.
+$ErrorActionPreference = 'Continue'
+$salida = vercel deploy --prod --yes 2>&1 | ForEach-Object { "$_" } | Out-String
 Write-Host $salida
 $m = [regex]::Match($salida, 'https://[a-z0-9-]+\.vercel\.app')
 if (-not $m.Success) { Write-Host 'No encontré la dirección en la salida. Cópiala del texto de arriba y añade /api/ai al final.' -ForegroundColor Yellow }

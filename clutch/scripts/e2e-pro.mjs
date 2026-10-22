@@ -3,7 +3,7 @@ import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
 
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox'] });
+const browser = await chromium.launch({ ...(process.platform === 'win32' ? { channel: 'msedge' } : { executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' }), args: ['--no-sandbox'] });
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
 const page = await ctx.newPage();
 const errors = [];
@@ -79,7 +79,7 @@ await page.click('button[aria-label=Volver]');
 
 // Apuntar: foto + IA
 await page.click('.nav button:has-text("Apuntar")');
-await page.setInputFiles('input[type=file] >> nth=1', '/tmp/test-photo.jpg');
+await page.setInputFiles('input[type=file] >> nth=1', resolve('public/icon-192.png'));
 await page.waitForSelector('img.thumb');
 await page.click('text=Reconocer con IA');
 await page.waitForSelector('#p-val');

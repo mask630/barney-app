@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --test test/*.test.js)",
+      "PowerShell(node --test test/*.test.js)",
+      "Bash(node scripts/build.mjs)",
+      "PowerShell(node scripts/build.mjs)",
+      "Bash(node scripts/e2e.mjs)",
+      "PowerShell(node scripts/e2e.mjs)",
+      "Bash(node scripts/e2e-pro.mjs)",
+      "PowerShell(node scripts/e2e-pro.mjs)",
+      "Bash(git fetch origin)",
+      "PowerShell(git fetch origin)",
+      "Bash(vercel whoami)",
+      "PowerShell(vercel whoami)",
+      "Bash(vercel project ls)",
+      "PowerShell(vercel project ls)",
+      "mcp__terminal__list_terminal_tabs",
+      "mcp__terminal__read_terminal"
+    ]
+  }
+}
