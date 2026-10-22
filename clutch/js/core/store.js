@@ -136,7 +136,7 @@ export function importBackup(text) {
 // --- Migración desde Barney v1 (clave barney_v9) ---
 
 const V1_STAGE = { crush: 'objetivo', casual: 'rollo', dating: 'citas', partner: 'pareja' };
-const V1_DEMO_NAMES = new Set(['Claudia']); // el seed de demostración de v1 no se importa como datos reales
+const V1_DEMO_NAMES = new Set(['Lucía', 'Vanesa', 'Claudia']); // los tres perfiles de ejemplo que trae Barney v1
 
 export function migrateFromBarney(v1, todayISO = new Date().toISOString().slice(0, 10)) {
   const state = emptyState();
@@ -162,7 +162,7 @@ export function migrateFromBarney(v1, todayISO = new Date().toISOString().slice(
   }
   state.activeId = state.profiles[0]?.id || null;
   if (v1.city) state.settings.city = { name: v1.city, lat: null, lon: null, tz: null };
-  const demoOnly = state.profiles.length > 0 && state.profiles.every((p) => V1_DEMO_NAMES.has(p.name));
+  const demoOnly = state.profiles.length === 3 && state.profiles.every((p) => V1_DEMO_NAMES.has(p.name));
   return { ok: true, state, source: 'barney-v1', skipped, demoOnly };
 }
 
