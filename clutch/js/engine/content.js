@@ -10,14 +10,17 @@ import { pickRotating } from './rotation.js';
 
 // Gestos y mensajes sencillos salen del banco y rotan con descanso según su esfuerzo (engine/rotation.js).
 
+// Un elemento con `st` solo sale en esas etapas (p. ej. lo intenso no sale en Objetivo).
+const forStage = (pool, stage) => pool.filter((it) => !it.st || it.st.includes(stage));
+
 // Tres gestos para hoy, estables durante el día. Devuelve elementos del banco: { id, e, t }.
 export function dailyGestures(profile, todayISO, count = 3) {
-  return pickRotating(GESTURES[STAGE_GROUP[profile.stage]], profile, todayISO, count, 'g');
+  return pickRotating(forStage(GESTURES[STAGE_GROUP[profile.stage]], profile.stage), profile, todayISO, count, 'g');
 }
 
 // Tres mensajes sencillos para hoy, ya con saludo y despedida. Devuelve { id, text }.
 export function genericMessages(profile, band, group, todayISO, count = 3) {
-  return pickRotating(MESSAGES[group], profile, todayISO, count, 'm')
+  return pickRotating(forStage(MESSAGES[group], profile.stage), profile, todayISO, count, 'm')
     .map((it) => ({ id: it.id, text: compose({ text: it.t, name: profile.name, band, group }) }))
     .filter((m) => m.text);
 }
