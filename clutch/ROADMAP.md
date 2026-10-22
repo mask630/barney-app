@@ -64,10 +64,10 @@ Decidido: se apuntan solos y tú los apruebas. Métricas anónimas con su permis
 - ✅ "Varias personas" (22-oct): sin esa función, un solo perfil; "+ Añadir" sale como "Pronto". Las fichas que ya existan nunca se borran.
 - ✅ Mensajes y gestos que no se notan repetidos (22-oct): `js/engine/rotation.js` + banco nuevo en `js/data/bank.js` (21-22 mensajes y 17-19 gestos por registro, sin datos inventados). Simulación de 6 meses: ligeros vuelven cada 8-63 días (media 18), grandes cada 29-77 (media ~47), intervalos siempre distintos, <0,2 % antes de tiempo. Pendiente: aplicar lo mismo a los planes cerca y seguir ampliando el banco.
 - ✅ Objetivo con mensajes propios, más sutiles (inspirados en lo honesto de la comunidad de seducción: curiosidad, humor, intención clara sin presión; nada de negs ni celos). Lo intenso ("he soñado contigo", "me he despertado pensando en ti") solo desde Rollo. Gestos con nota escrita (nevera, bolso, espejo). Banco: 27-32 mensajes y 19-27 gestos por etapa.
-- Pendiente de contenido:
-  - Variantes y descanso para los mensajes con datos (luna llena, estaciones, atardecer…): hoy repiten el mismo texto.
-  - Más días mundiales comprobados con fuente + Año Nuevo Chino (calculable).
-  - La IA de reescribir aún no distingue Objetivo de Rollo/Citas (usa el registro flirt).
+- ✅ Mensajes con datos con varias versiones (luna, estaciones, cumpleaños, hitos, aniversario): sale la que más tiempo lleva sin usarse; el atardecer descansa ~10 días tras usarlo.
+- ✅ La IA de reescribir y el SOS conocen la etapa: en Objetivo suaviza lo intenso y nunca usa técnicas de manipulación.
+- ✅ Días mundiales: de 13 a 37, de la lista oficial de la ONU (bosques, bici, océanos, juego, Luna, patata/tortilla solo en España…) + Año Nuevo Chino 2027-2035. Pasta con mejor fuente (ANSA).
+- Pendiente de contenido: días de la madre/padre y santos por país; versiones extra para los días mundiales (salen una vez al año, menos urgente).
 - Idea original (mask, 22-oct):
   - Cada uno con su esfuerzo y su descanso mínimo: algo ligero ("me he despertado pensando en ti") ~cada 10 días; algo grande ("te llevo a tu restaurante favorito") mucho menos a menudo.
   - Elección al azar entre los que ya han descansado, con variación en los plazos, para que ella nunca intuya un patrón ni que está programado.

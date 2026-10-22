@@ -10,6 +10,15 @@ const nth = (year, month, weekday, n) => {
 
 const V = '2026-10-22';
 const W = (page) => `https://en.wikipedia.org/wiki/${page}`;
+const UN = 'https://www.un.org/en/observances/list-days-weeks'; // lista oficial de días internacionales de la ONU
+const V2 = '2026-10-22';
+
+// Año Nuevo Chino (luna nueva entre el 21 de enero y el 20 de febrero). Fechas coincidentes en dos fuentes.
+const LUNAR_NEW_YEAR = { 2027: [2, 6], 2028: [1, 26], 2029: [2, 13], 2030: [2, 3], 2031: [1, 23], 2032: [2, 11], 2033: [1, 31], 2034: [2, 19], 2035: [2, 8] };
+
+const day = (id, month, dayN, es, tags, needsTaste, ideas, extra = {}) => ({
+  id, fixed: { month, day: dayN }, name: { es }, tags, needsTaste, ideas, verified: true, verifiedAt: V2, sources: [UN], ...extra
+});
 
 export const WORLD_DAYS = [
   {
@@ -20,7 +29,7 @@ export const WORLD_DAYS = [
       flirt: 'hoy es el Día Mundial de la Pasta. Yo cocino, tú eliges la salsa. ¿Trato?',
       pareja: 'hoy es el Día Mundial de la Pasta. Cena en casa: yo cocino y tú eliges la salsa.'
     },
-    verified: true, verifiedAt: V, sources: ['https://www.skyminder.com/', 'https://days.fead.co/']
+    verified: true, verifiedAt: V, sources: ['https://www.ansa.it/english/news/lifestyle/food_wine/2016/10/25/world-pasta-day-celebrates-italy-symbol_0df19843-2317-47f0-afaf-ce50f271735a.html']
   },
   {
     id: 'friendship', fixed: { month: 7, day: 30 }, name: { es: 'Día Internacional de la Amistad' },
@@ -145,6 +154,136 @@ export const WORLD_DAYS = [
   }
 ];
 
+// Ampliación 22-oct-2026: días de la lista oficial de la ONU que dan pie a un plan o a un mensaje cercano.
+// Los solemnes (víctimas, enfermedades, conflictos) no se usan para esto.
+WORLD_DAYS.push(
+  day('forests', 3, 21, 'Día Internacional de los Bosques', ['naturaleza', 'senderismo', 'montaña', 'campo', 'monte'], true, {
+    amiga: 'hoy es el Día Internacional de los Bosques. ¿Ruta por el monte un finde de estos?',
+    flirt: 'hoy es el Día Internacional de los Bosques. ¿Te apetece una ruta por el monte un día de estos?',
+    pareja: 'hoy es el Día Internacional de los Bosques. Este finde, ruta por el monte los dos.'
+  }),
+  day('sport', 4, 6, 'Día Internacional del Deporte para el Desarrollo y la Paz', ['deporte', 'correr', 'running', 'gimnasio', 'gym', 'pádel', 'padel'], true, {
+    amiga: 'hoy es el Día Internacional del Deporte. ¿Entrenamos juntos un día de estos?',
+    flirt: 'hoy es el Día Internacional del Deporte. Te reto a algo: tú eliges el deporte.',
+    pareja: 'hoy es el Día Internacional del Deporte. ¿Salimos a movernos un rato juntos esta tarde?'
+  }),
+  day('wellness', 4, 15, 'Día Internacional del Bienestar', ['spa', 'relax', 'bienestar'], false, {
+    amiga: 'hoy es el Día Internacional del Bienestar. Hoy toca cuidarse un poco, que te lo mereces.',
+    flirt: 'hoy es el Día Internacional del Bienestar. Propón algo tranquilo que te apetezca y me apunto.',
+    pareja: 'hoy es el Día Internacional del Bienestar. Esta noche, plan relax: yo me encargo de todo.'
+  }),
+  day('families', 5, 15, 'Día Internacional de las Familias', [], false, {
+    amiga: 'hoy es el Día Internacional de las Familias. ¿Cómo está la tuya?',
+    flirt: 'hoy es el Día Internacional de las Familias. ¿Cómo está la tuya? Me gusta que me cuentes.',
+    pareja: 'hoy es el Día Internacional de las Familias. Gracias por ser la mía.'
+  }),
+  day('bees', 5, 20, 'Día Mundial de las Abejas', ['miel', 'naturaleza'], true, {
+    amiga: 'hoy es el Día Mundial de las Abejas. Te debo un tarro de miel de la buena.',
+    flirt: 'hoy es el Día Mundial de las Abejas. Excusa perfecta para invitarte a algo dulce.',
+    pareja: 'hoy es el Día Mundial de las Abejas. Mañana, desayuno con miel: invito yo.'
+  }),
+  day('football', 5, 25, 'Día Mundial del Fútbol', ['fútbol', 'futbol'], true, {
+    amiga: 'hoy es el Día Mundial del Fútbol. ¿Vemos el próximo partido juntos?',
+    flirt: 'hoy es el Día Mundial del Fútbol. ¿Vemos un partido juntos? El que pierda la apuesta invita.',
+    pareja: 'hoy es el Día Mundial del Fútbol. El próximo partido lo vemos juntos y yo pongo la cena.'
+  }),
+  day('potato', 5, 30, 'Día Internacional de la Patata', [], false, {
+    amiga: 'hoy es el Día Internacional de la Patata. Esto merece una tortilla compartida.',
+    flirt: 'hoy es el Día Internacional de la Patata. Debate serio: tortilla con o sin cebolla. Lo resolvemos cenando.',
+    pareja: 'hoy es el Día Internacional de la Patata. Esta noche hago tortilla; tú decides si con cebolla.'
+  }, { onlyCountries: ['España'] }),
+  day('bicycle', 6, 3, 'Día Mundial de la Bicicleta', ['bici', 'bicicleta', 'ciclismo'], true, {
+    amiga: 'hoy es el Día Mundial de la Bicicleta. ¿Una ruta en bici un día de estos?',
+    flirt: 'hoy es el Día Mundial de la Bicicleta. ¿Te apetece una vuelta en bici juntos?',
+    pareja: 'hoy es el Día Mundial de la Bicicleta. Este finde, paseo en bici los dos.'
+  }),
+  day('environment', 6, 5, 'Día Mundial del Medio Ambiente', ['naturaleza', 'ecología', 'ecologia', 'campo'], true, {
+    amiga: 'hoy es el Día Mundial del Medio Ambiente. ¿Un plan al aire libre esta semana?',
+    flirt: 'hoy es el Día Mundial del Medio Ambiente. ¿Un plan al aire libre? Tú eliges el sitio.',
+    pareja: 'hoy es el Día Mundial del Medio Ambiente. Plan al aire libre este finde, sin móviles.'
+  }),
+  day('oceans', 6, 8, 'Día Mundial de los Océanos', ['playa', 'mar', 'surf', 'buceo', 'nadar'], true, {
+    amiga: 'hoy es el Día Mundial de los Océanos. ¿Nos escapamos a la playa un día?',
+    flirt: 'hoy es el Día Mundial de los Océanos. Me apetece ver el mar contigo. ¿Te animas un día de estos?',
+    pareja: 'hoy es el Día Mundial de los Océanos. Este finde nos escapamos a ver el mar.'
+  }),
+  day('play', 6, 11, 'Día Internacional del Juego', ['juegos', 'juegos de mesa'], false, {
+    amiga: 'hoy es el Día Internacional del Juego. ¿Partida a algo un día de estos? Prepárate para perder.',
+    flirt: 'hoy es el Día Internacional del Juego. Te reto a una partida a lo que elijas. El que pierda invita.',
+    pareja: 'hoy es el Día Internacional del Juego. Esta noche, juego de mesa y sin móviles.'
+  }),
+  day('gastronomy', 6, 18, 'Día de la Gastronomía Sostenible', ['cocinar', 'cocina', 'comida'], true, {
+    amiga: 'hoy es el Día de la Gastronomía Sostenible. ¿Cocinamos algo juntos un día?',
+    flirt: 'hoy es el Día de la Gastronomía Sostenible. ¿Te apetece que cocinemos algo juntos?',
+    pareja: 'hoy es el Día de la Gastronomía Sostenible. Esta noche cocinamos juntos algo nuevo.'
+  }),
+  day('horse', 7, 11, 'Día Mundial del Caballo', ['caballos', 'caballo', 'equitación', 'equitacion', 'hípica', 'hipica'], true, {
+    amiga: 'hoy es el Día Mundial del Caballo. ¿Una ruta a caballo algún día?',
+    flirt: 'hoy es el Día Mundial del Caballo. ¿Te apetece una ruta a caballo un día de estos?',
+    pareja: 'hoy es el Día Mundial del Caballo. ¿Y si nos vamos de ruta a caballo un finde?'
+  }),
+  day('moon', 7, 20, 'Día Internacional de la Luna', [], false, {
+    amiga: 'hoy es el Día Internacional de la Luna. Esta noche, mira al cielo un momento.',
+    flirt: 'hoy es el Día Internacional de la Luna. Buena excusa para dar un paseo de noche. ¿Te apuntas?',
+    pareja: 'hoy es el Día Internacional de la Luna. Esta noche, paseo bajo la luna los dos.'
+  }),
+  day('chess', 7, 20, 'Día Mundial del Ajedrez', ['ajedrez'], true, {
+    amiga: 'hoy es el Día Mundial del Ajedrez. ¿Una partida un día de estos?',
+    flirt: 'hoy es el Día Mundial del Ajedrez. Te reto a una partida; el que pierda invita a algo.',
+    pareja: 'hoy es el Día Mundial del Ajedrez. Esta noche, partida. Prepárate.'
+  }),
+  day('tourism', 9, 27, 'Día Mundial del Turismo', ['viajar', 'viajes', 'turismo'], true, {
+    amiga: 'hoy es el Día Mundial del Turismo. ¿Cuál es el próximo viaje que tienes en mente?',
+    flirt: 'hoy es el Día Mundial del Turismo. Si pudieras viajar mañana a cualquier sitio, ¿adónde irías?',
+    pareja: 'hoy es el Día Mundial del Turismo. Empecemos a planear nuestro próximo viaje. ¿Adónde te apetece?'
+  }),
+  day('mental-health', 10, 10, 'Día Mundial de la Salud Mental', [], false, {
+    amiga: 'hoy es el Día Mundial de la Salud Mental. Solo quería preguntarte cómo estás de verdad.',
+    flirt: 'hoy es el Día Mundial de la Salud Mental. ¿Cómo estás tú de verdad? Me importa.',
+    pareja: 'hoy es el Día Mundial de la Salud Mental. ¿Cómo estás de verdad? Hoy te escucho sin prisa.'
+  }),
+  day('food', 10, 16, 'Día Mundial de la Alimentación', [], false, {
+    amiga: 'hoy es el Día Mundial de la Alimentación. ¿Comemos juntos esta semana?',
+    flirt: 'hoy es el Día Mundial de la Alimentación. ¿Una comida juntos esta semana? Tú eliges el sitio.',
+    pareja: 'hoy es el Día Mundial de la Alimentación. Esta noche cocino lo que te apetezca.'
+  }),
+  day('med-diet', 11, 16, 'Día Internacional de la Dieta Mediterránea', ['cocina', 'cocinar', 'comida', 'mediterránea', 'mediterranea'], true, {
+    amiga: 'hoy es el Día Internacional de la Dieta Mediterránea. ¿Cena mediterránea un día de estos?',
+    flirt: 'hoy es el Día Internacional de la Dieta Mediterránea. ¿Te invito a una cena mediterránea?',
+    pareja: 'hoy es el Día Internacional de la Dieta Mediterránea. Esta noche cocino yo algo mediterráneo.'
+  }),
+  day('tv', 11, 21, 'Día Mundial de la Televisión', ['series', 'películas', 'peliculas', 'cine', 'tele'], true, {
+    amiga: 'hoy es el Día Mundial de la Televisión. ¿Qué serie me recomiendas?',
+    flirt: 'hoy es el Día Mundial de la Televisión. ¿Qué serie me recomiendas? Si me engancha, te debo una.',
+    pareja: 'hoy es el Día Mundial de la Televisión. Esta noche, sofá y una serie a tu elección.'
+  }),
+  day('mountains', 12, 11, 'Día Internacional de las Montañas', ['montaña', 'montana', 'senderismo', 'nieve', 'esquí', 'esqui'], true, {
+    amiga: 'hoy es el Día Internacional de las Montañas. ¿Escapada a la montaña un finde?',
+    flirt: 'hoy es el Día Internacional de las Montañas. ¿Te apetece una escapada a la montaña?',
+    pareja: 'hoy es el Día Internacional de las Montañas. Escapada a la montaña pronto: tú eliges cuándo.'
+  }),
+  day('meditation', 12, 21, 'Día Mundial de la Meditación', ['meditación', 'meditacion', 'yoga', 'mindfulness'], true, {
+    amiga: 'hoy es el Día Mundial de la Meditación. Hoy toca un rato de calma.',
+    flirt: 'hoy es el Día Mundial de la Meditación. Respira hondo y desconecta un rato, que te lo mereces.',
+    pareja: 'hoy es el Día Mundial de la Meditación. Esta noche, un rato de calma los dos.'
+  }),
+  day('basketball', 12, 21, 'Día Mundial del Baloncesto', ['baloncesto', 'basket', 'nba'], true, {
+    amiga: 'hoy es el Día Mundial del Baloncesto. ¿Vemos un partido un día de estos?',
+    flirt: 'hoy es el Día Mundial del Baloncesto. ¿Un partido juntos? El que pierda la apuesta invita.',
+    pareja: 'hoy es el Día Mundial del Baloncesto. El próximo partido lo vemos juntos.'
+  }),
+  {
+    id: 'lunar-new-year', rule: (y) => (LUNAR_NEW_YEAR[y] ? { month: LUNAR_NEW_YEAR[y][0], day: LUNAR_NEW_YEAR[y][1] } : null),
+    name: { es: 'Año Nuevo Chino' }, tags: [], needsTaste: false,
+    ideas: {
+      amiga: 'hoy empieza el Año Nuevo Chino. Que el nuevo año te traiga suerte.',
+      flirt: 'hoy es el Año Nuevo Chino. Buena excusa para cenar comida china, ¿no?',
+      pareja: 'hoy empieza el Año Nuevo Chino. Lo celebramos con una cena especial.'
+    },
+    verified: true, verifiedAt: V2, sources: ['https://www.topmarks.co.uk/chinese-new-year/when-is-chinese-new-year', 'https://www.chinatravel.com/chinese-new-year/date']
+  }
+);
+
 // Días que no se muestran hasta tener confirmación clara (fechas en disputa o sin fuente oficial).
 export const UNVERIFIED = [
   { id: 'chocolate', why: 'Julio 7, 13 de septiembre y otras fechas según la fuente' },
@@ -186,6 +325,7 @@ export function worldDaysOn(todayISO, country = null) {
     if (d.onlyCountries && !(country && d.onlyCountries.includes(country))) return false;
     if (d.excludeCountries && country && d.excludeCountries.includes(country)) return false;
     const f = d.rule ? d.rule(year) : d.fixed;
+    if (!f) return false; // p. ej. Año Nuevo Chino fuera de la tabla
     return `${String(f.month).padStart(2, '0')}-${String(f.day).padStart(2, '0')}` === md;
   });
 }

@@ -65,6 +65,21 @@ export function pickRotating(pool, profile, todayISO, count, salt = '', min = 1)
   return picked;
 }
 
+// Para versiones de un mismo mensaje (luna llena, cumpleaños…): la que hoy ya se usó, o la que más tiempo
+// lleva sin usarse; si empatan, una al azar estable del día.
+export function leastUsed(items, profile, todayISO, salt = '') {
+  const used = profile.used || {};
+  const today = items.find((it) => used[it.id] === todayISO);
+  if (today) return today;
+  return [...items].sort((a, b) =>
+    (used[a.id] || '').localeCompare(used[b.id] || '') ||
+    hashStr(`${profile.id}:${todayISO}:${salt}:${a.id}`) - hashStr(`${profile.id}:${todayISO}:${salt}:${b.id}`)
+  )[0];
+}
+
+// Usado hoy o ya descansado: sirve para decidir si un gancho que se repite (p. ej. el atardecer) sale hoy.
+export const restedOrToday = (item, profile, todayISO) => profile.used?.[item.id] === todayISO || isRested(item, profile, todayISO);
+
 export function markUsed(profile, id, todayISO) {
   return { ...profile, used: { ...(profile.used || {}), [id]: todayISO } };
 }

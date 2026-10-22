@@ -112,7 +112,7 @@ function location() {
   return c && Number.isFinite(c.lat) && Number.isFinite(c.lon) && c.tz ? c : null;
 }
 function hookData(p) {
-  return generateHooks({ name: p.name, birth: p.birth, stage: p.stage, since: p.since, tastes: p.tastes, location: location(), country: S.settings.country }, today());
+  return generateHooks({ id: p.id, used: p.used, name: p.name, birth: p.birth, stage: p.stage, since: p.since, tastes: p.tastes, location: location(), country: S.settings.country }, today());
 }
 function longDate(iso) {
   return new Intl.DateTimeFormat('es', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(parseISO(iso));
@@ -283,7 +283,7 @@ function viewWrite(p) {
   };
   return `<main class="screen">
     <div class="row"><button class="btn small ghost" data-act="back" aria-label="Volver">‹</button><h1>${T.write.title}</h1></div>
-    ${hooks.length ? hooks.map((h) => card(h.message, h.source)).join('') : ''}
+    ${hooks.length ? hooks.map((h) => card(h.message, h.source, h.mid)).join('') : ''}
     <span class="label">${T.write.basics}</span>
     ${basics.map((m) => card(m.text, null, m.id)).join('')}
     ${!has('my_style') && !has('ai_rewrite') ? `<div class="card row"><span class="grow">${T.write.proRewrite}</span><span class="badge pro">${T.write.pro}</span></div>`
@@ -546,8 +546,11 @@ function render() {
 
 // ---------- acciones ----------
 // Mensaje del banco copiado o enviado: descansa unos días antes de volver a salir (engine/rotation.js).
+// En los ganchos (mid = "gancho:versión") se apunta también el gancho, para los que descansan enteros (el atardecer).
 function recordUse(mid) {
-  if (mid && prof()?.used?.[mid] !== today()) updateProfile((p) => markUsed(p, mid, today()));
+  if (!mid || prof()?.used?.[mid] === today()) return;
+  const family = mid.includes(':') ? mid.split(':')[0] : null;
+  updateProfile((p) => { const n = markUsed(p, mid, today()); return family ? markUsed(n, family, today()) : n; });
 }
 
 // Sin «Varias personas», un solo perfil. Las fichas que ya existan (importadas o de antes) nunca se borran.
@@ -814,7 +817,7 @@ const ACTS = {
     const p = prof(), msg = el.dataset.text;
     ui.busy = 'ai:' + msg; render();
     const facts = hookData(p).hooks.filter((h) => h.message).map((h) => h.message.replaceAll(p.name, '{n}'));
-    const r = await aiRewrite(S.settings, { message: msg.replaceAll(p.name, '{n}'), band: bandOf(p), group: STAGE_GROUP[p.stage], facts, traits: S.settings.style?.traits });
+    const r = await aiRewrite(S.settings, { message: msg.replaceAll(p.name, '{n}'), band: bandOf(p), group: STAGE_GROUP[p.stage], stage: p.stage, facts, traits: S.settings.style?.traits });
     ui.busy = null;
     if (r.ok && r.text) ui.alt[msg] = fillName(r.text, p.name);
     else showToast(AI_ERR[r.ok ? r.reason : r.reason] || 'No se pudo reescribir');
@@ -826,7 +829,7 @@ const ACTS = {
     const p = prof();
     ui.chat.push({ role: 'user', text: text.replaceAll(p.name, '{n}') });
     ui.chatDraft = ''; ui.busy = 'chat'; render();
-    const r = await aiSos(S.settings, { history: ui.chat, band: bandOf(p), group: STAGE_GROUP[p.stage] });
+    const r = await aiSos(S.settings, { history: ui.chat, band: bandOf(p), group: STAGE_GROUP[p.stage], stage: p.stage });
     ui.busy = null;
     if (r.ok && r.text) ui.chat.push({ role: 'assistant', text: r.text });
     else showToast(AI_ERR[r.reason] || 'No se pudo responder');

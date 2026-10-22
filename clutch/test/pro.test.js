@@ -97,3 +97,13 @@ test('copia cifrada: ida y vuelta, contraseña incorrecta y formato', async () =
   assert.equal((await encryptBackup(plain, '123')).reason, 'contrasena-corta');
   assert.equal(isEncryptedBackup(plain), false);
 });
+
+test('IA servidor: matiz por etapa (Objetivo sin intensidad ni manipulación)', () => {
+  const obj = buildRequest({ task: 'rewrite', band: '25-34', group: 'flirt', stage: 'objetivo', message: 'hola', facts: [] });
+  assert.ok(obj.payload.messages[0].content.includes('aún no hay nada'));
+  assert.ok(obj.payload.messages[0].content.includes('manipulación'));
+  const plain = buildRequest({ task: 'rewrite', band: '25-34', group: 'flirt', message: 'hola', facts: [] });
+  assert.ok(!plain.payload.messages[0].content.includes('Etapa:'), 'sin etapa, como antes');
+  const raro = buildRequest({ task: 'rewrite', band: '25-34', group: 'flirt', stage: '<script>', message: 'hola', facts: [] });
+  assert.ok(!raro.payload.messages[0].content.includes('<script>'), 'etapas desconocidas se ignoran');
+});

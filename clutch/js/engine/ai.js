@@ -34,12 +34,12 @@ async function call(settings, body, fetchFn = globalThis.fetch, timeoutMs = 2500
 }
 
 // facts: textos reales que el mensaje puede usar (nunca inventar más).
-export function aiRewrite(settings, { message, band, group, facts, traits }, fetchFn) {
-  return call(settings, { task: 'rewrite', message, band, group, facts: facts || [], traits: traits || null }, fetchFn);
+export function aiRewrite(settings, { message, band, group, stage, facts, traits }, fetchFn) {
+  return call(settings, { task: 'rewrite', message, band, group, stage: stage || null, facts: facts || [], traits: traits || null }, fetchFn);
 }
 
-export function aiSos(settings, { history, band, group }, fetchFn) {
-  return call(settings, { task: 'sos', history: (history || []).slice(-8), band, group }, fetchFn);
+export function aiSos(settings, { history, band, group, stage }, fetchFn) {
+  return call(settings, { task: 'sos', history: (history || []).slice(-8), band, group, stage: stage || null }, fetchFn);
 }
 
 // Foto → sugerencia de destino. La foto se envía reducida (la app ya la baja a 720 px).

@@ -14,6 +14,13 @@ const MAX_PHOTO_CHARS = 1_800_000;
 const FAST = { thinking: { type: 'disabled' }, output_config: { effort: 'low' } };
 const BANDS = ['18-24', '25-34', '35-49', '50+'];
 const GROUPS = ['amiga', 'flirt', 'pareja'];
+// Matiz por etapa dentro del registro (opcional; la app lo manda desde que existe).
+const STAGE_NOTES = {
+  objetivo: 'Etapa: aún no hay nada entre ellos y a él le gusta. Interés sincero, curiosidad y humor; ninguna declaración intensa ni presión. Si el mensaje suena demasiado intenso para esta etapa, suavízalo manteniendo la intención (por ejemplo, proponer verse sin decir que la echa de menos). Nada de técnicas de manipulación (desprecios, dar celos, prisas falsas).',
+  rollo: 'Etapa: ya hay algo, sin compromiso. Cercano y con chispa, sin exigir ni presionar.',
+  citas: 'Etapa: se están conociendo en serio. Cálido, con ganas de verla y sin agobiar.',
+  matrimonio: 'Etapa: matrimonio. Cariño de largo recorrido y complicidad.'
+};
 
 const BASE_RULES = `Eres el redactor de Clutch, una app que ayuda a un hombre a escribirle bien a una mujer adulta.
 Reglas que no se pueden saltar:
@@ -32,7 +39,7 @@ export const plain = (s) => String(s).replace(/\*\*|__/g, '').replace(/^#{1,6}\s
 export function buildRequest(body, model = 'claude-haiku-5-5') {
   // La foto no usa el registro (la app no lo manda); reescribir y SOS sí.
   if (!BANDS.includes(body.band) || (body.task !== 'photo' && !GROUPS.includes(body.group))) return { error: 'parametros' };
-  const ctx = `Tramo de edad de ella: ${body.band}. Registro: ${body.group}.`;
+  const ctx = `Tramo de edad de ella: ${body.band}. Registro: ${body.group}.${STAGE_NOTES[body.stage] ? ' ' + STAGE_NOTES[body.stage] : ''}`;
   if (body.task === 'rewrite') {
     const msg = String(body.message || '').slice(0, MAX_MESSAGE);
     if (!msg) return { error: 'vacio' };
