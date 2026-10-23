@@ -1,21 +1,21 @@
-// Voz del mensaje: el mismo dato se dice distinto según tramo de edad y registro (amiga / flirt / pareja).
+// Voz del mensaje: el mismo dato se dice distinto según tramo de edad y registro (flirt / pareja).
 
 import { STAGE_GROUP, ageBand, ageOn } from '../core/stages.js';
 
 const OPENERS = {
-  '18-24': { amiga: 'Oye {n}, ', flirt: 'Oye {n}… ', pareja: 'Hey {n}, ' },
-  '25-34': { amiga: 'Hola {n}, ', flirt: 'Hola {n}, ', pareja: '{n}, ' },
-  '35-49': { amiga: 'Hola {n}. ', flirt: 'Hola {n}. ', pareja: '{n}, ' },
-  '50+': { amiga: 'Hola, {n}. ', flirt: 'Hola, {n}. ', pareja: 'Querida {n}, ' }
+  '18-24': { flirt: 'Oye {n}… ', pareja: 'Hey {n}, ' },
+  '25-34': { flirt: 'Hola {n}, ', pareja: '{n}, ' },
+  '35-49': { flirt: 'Hola {n}. ', pareja: '{n}, ' },
+  '50+': { flirt: 'Hola, {n}. ', pareja: 'Querida {n}, ' }
 };
 
 const NO_NAME_OPENER = { '18-24': 'Oye, ', '25-34': 'Hola, ', '35-49': 'Hola, ', '50+': 'Hola, ' };
 
 const CLOSERS = {
-  '18-24': { amiga: ' jaja', flirt: ' 😏', pareja: ' ❤️' },
-  '25-34': { amiga: '', flirt: ' 😉', pareja: ' 🤍' },
-  '35-49': { amiga: '', flirt: '', pareja: ' Un beso.' },
-  '50+': { amiga: ' Un abrazo.', flirt: ' Un beso.', pareja: ' Un beso grande.' }
+  '18-24': { flirt: ' 😏', pareja: ' ❤️' },
+  '25-34': { flirt: ' 😉', pareja: ' 🤍' },
+  '35-49': { flirt: '', pareja: ' Un beso.' },
+  '50+': { flirt: ' Un beso.', pareja: ' Un beso grande.' }
 };
 
 const lcFirst = (s) => s.charAt(0).toLowerCase() + s.slice(1);

@@ -17,7 +17,7 @@ test('calendario: cumpleaños y aniversario anuales, hitos próximos y eventos',
   assert.equal(by['event-e1'].yearly, false);
   assert.equal(by['event-e2'].yearly, true);
   assert.ok(!by['event-e3'], 'eventos ya pasados no');
-  assert.equal(importantDates({ ...lucia, stage: 'amiga' }, T).some((x) => x.key === 'anniversary'), false);
+  assert.equal(importantDates({ ...lucia, stage: 'rollo' }, T).some((x) => x.key === 'anniversary'), false);
 });
 
 test('calendario: formato .ics, avisos y títulos discretos sin nombres', () => {

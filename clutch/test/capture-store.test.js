@@ -114,7 +114,7 @@ test('migración desde Barney v1', () => {
 });
 
 test('completitud de ficha solo cuenta datos reales', () => {
-  const { profile } = newProfile({ name: 'L', birth: '1997-05-14', stage: 'amiga' }, TODAY);
+  const { profile } = newProfile({ name: 'L', birth: '1997-05-14', stage: 'rollo' }, TODAY);
   const a = completeness(profile);
   const b = completeness(applyToProfile(profile, classify('Le encanta el té'), 'z', TODAY));
   assert.ok(b > a);
@@ -125,4 +125,16 @@ test('PIN: hash determinista y distinto con otra sal', async () => {
   assert.equal(a, await hashPin('1234', 's1'));
   assert.notEqual(a, await hashPin('1234', 's2'));
   assert.notEqual(a, await hashPin('1235', 's1'));
+});
+
+test('fichas de etapas retiradas (Amiga, Objetivo) pasan a Rollo sin perder datos', async () => {
+  const { upgradeStages, load } = await import('../js/core/store.js');
+  const old = { ...emptyState(), profiles: [{ id: 'a', name: 'Ana', birth: '1990-01-01', stage: 'amiga', tastes: ['té'], history: [{ stage: 'amiga', at: '2026-01-01' }] }, { id: 'b', name: 'Bea', birth: '1990-01-01', stage: 'pareja', history: [] }] };
+  const up = upgradeStages(old, '2026-10-23');
+  assert.equal(up.profiles[0].stage, 'rollo');
+  assert.deepEqual(up.profiles[0].tastes, ['té']);
+  assert.deepEqual(up.profiles[0].history.at(-1), { stage: 'rollo', at: '2026-10-23' });
+  assert.equal(up.profiles[1], old.profiles[1], 'las demás no se tocan');
+  const st = { getItem: () => JSON.stringify(old) };
+  assert.equal(load(st).profiles[0].stage, 'rollo');
 });

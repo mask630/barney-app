@@ -10,7 +10,7 @@ import { pickRotating } from './rotation.js';
 
 // Gestos y mensajes sencillos salen del banco y rotan con descanso según su esfuerzo (engine/rotation.js).
 
-// Un elemento con `st` solo sale en esas etapas (p. ej. lo intenso no sale en Objetivo).
+// Un elemento con `st` solo sale en esas etapas; sin `st`, en todas las de su registro.
 const forStage = (pool, stage) => pool.filter((it) => !it.st || it.st.includes(stage));
 
 // Tres gestos para hoy, estables durante el día. Devuelve elementos del banco: { id, e, t }.
@@ -81,7 +81,6 @@ export const SOS = [
     title: 'Está enfadada conmigo',
     steps: ['Respira antes de escribir.', 'No te defiendas todavía: primero reconoce lo que ella siente.', 'Pide perdón por lo concreto, no en general.'],
     scripts: {
-      amiga: 'Siento que te haya sentado mal. Dime qué ha pasado y lo hablamos con calma.',
       flirt: 'Veo que te ha molestado y no era mi intención. ¿Hablamos cuando te venga bien?',
       pareja: 'Siento haberte hecho sentir así. Te escucho cuando quieras, sin prisa y sin excusas.'
     }
@@ -91,7 +90,6 @@ export const SOS = [
     title: 'Me ha dejado en visto',
     steps: ['No mandes cinco mensajes seguidos.', 'Espera, mínimo, medio día.', 'Escribe algo ligero que no exija respuesta.'],
     scripts: {
-      amiga: 'Sin prisa con lo de antes. Cuando tengas un rato, me cuentas.',
       flirt: 'Veo que estás liada. Cuando respires, me cuentas.',
       pareja: 'Sé que andas a tope. Cuando puedas, me escribes. Un abrazo.'
     }
@@ -101,7 +99,6 @@ export const SOS = [
     title: 'La he liado',
     steps: ['Reconócelo pronto, sin adornos.', 'Di qué has hecho mal, con tus palabras.', 'Ofrece una forma concreta de arreglarlo.'],
     scripts: {
-      amiga: 'La he liado y lo sé. Perdóname. ¿Cómo puedo arreglarlo?',
       flirt: 'Me he equivocado y quiero arreglarlo. Perdóname. ¿Me dejas compensártelo?',
       pareja: 'Me equivoqué y lo sé. Perdóname. Dime cómo lo arreglamos, estoy dispuesto.'
     }
@@ -111,7 +108,6 @@ export const SOS = [
     title: 'Se me olvidó una fecha',
     steps: ['No inventes una excusa.', 'Dilo tú antes de que lo diga ella.', 'Haz algo concreto en las próximas 24 horas.'],
     scripts: {
-      amiga: 'Se me pasó por completo y me fastidia. Perdón. Déjame invitarte a algo para compensarlo.',
       flirt: 'Se me pasó, y lo siento. Déjame compensártelo con un plan, tú eliges.',
       pareja: 'Se me pasó y no tengo excusa. Perdóname. Esta semana me lo curro yo, tú solo disfruta.'
     }
@@ -121,7 +117,6 @@ export const SOS = [
     title: 'Estamos en plena discusión',
     steps: ['Baja la voz, o deja el chat: dilo con respeto.', 'Propón una pausa con hora para retomar.', 'Vuelve a la hora que dijiste.'],
     scripts: {
-      amiga: 'Prefiero parar un momento para no decir algo que no siento. ¿Lo retomamos mañana?',
       flirt: 'Ahora mismo estoy acalorado. Paramos un rato y lo hablamos luego, ¿vale?',
       pareja: 'Necesito parar un poco para hablarlo bien. Te prometo que lo retomamos esta noche. Te quiero.'
     }

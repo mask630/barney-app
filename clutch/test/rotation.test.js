@@ -18,7 +18,7 @@ test('banco: ids únicos, esfuerzos válidos y sin datos inventados', () => {
     assert.ok(x.e in REST_DAYS, x.id);
     if (x.st) assert.ok(x.st.length && x.st.every((st) => STAGES.includes(st)), x.id);
   }
-  for (const g of ['amiga', 'flirt', 'pareja']) {
+  for (const g of ['flirt', 'pareja']) {
     assert.ok(MESSAGES[g].length >= 12 && GESTURES[g].length >= 10, g);
     assert.ok(MESSAGES[g].some((m) => m.e === 'alto'));
   }
@@ -48,28 +48,16 @@ test('lo usado hoy sigue en la lista de hoy y deshacer lo libera', () => {
   assert.equal(unmarkUsedToday(p, before[1], day(START, 1)).used[before[1]], START, 'solo deshace lo de hoy');
 });
 
-test('etapas: lo intenso no sale en Objetivo y lo de Objetivo no sale en Rollo', () => {
-  const seen = (stage) => {
-    const ids = new Set();
-    let p = { ...mk(stage), id: 'p-' + stage };
-    for (let i = 0; i < 400; i++) {
-      const t = day(START, i);
-      for (const m of genericMessages(p, '25-34', 'flirt', t)) { ids.add(m.id); p = markUsed(p, m.id, t); }
-      for (const g of dailyGestures(p, t)) { ids.add(g.id); p = markUsed(p, g.id, t); }
-    }
-    return ids;
-  };
-  const obj = seen('objetivo'), rollo = seen('rollo');
-  for (const id of ['fl-desperte', 'fl-sonado', 'fl-mas-de-una', 'fl-repetimos', 'gf-nota']) assert.ok(!obj.has(id), `${id} en objetivo`);
-  assert.ok(obj.has('ob-tomar-algo') && obj.has('ob-playa'));
-  assert.ok(![...rollo].some((id) => id.startsWith('ob-')), 'objetivo en rollo');
-  assert.ok(rollo.has('fl-sonado'));
+test('etapas: rollo y citas comparten banco; pareja y matrimonio también', () => {
+  const ids = (stage, group) => genericMessages({ ...mk(stage), id: 'x' }, '25-34', group, START).map((m) => m.id);
+  assert.deepEqual(ids('rollo', 'flirt'), ids('citas', 'flirt'));
+  assert.deepEqual(ids('pareja', 'pareja'), ids('matrimonio', 'pareja'));
 });
 
 // Simulación de 6 meses. Realista: copia 1 mensaje y hace 2 gestos al día. Peor caso: usa todo lo que sale.
 function simulate(stage, useMsgs, useGest, seed = 'p1') {
   let p = { ...mk(stage), id: seed }; // id fijo: la simulación es reproducible
-  const group = { amiga: 'amiga', objetivo: 'flirt', citas: 'flirt', pareja: 'pareja' }[stage];
+  const group = { rollo: 'flirt', citas: 'flirt', pareja: 'pareja', matrimonio: 'pareja' }[stage];
   const byId = Object.fromEntries([...MESSAGES[group], ...GESTURES[group]].map((x) => [x.id, x]));
   const history = {};
   const days = [];
@@ -94,7 +82,7 @@ function simulate(stage, useMsgs, useGest, seed = 'p1') {
   return { byId, days, gaps, early, used: Object.keys(history).length };
 }
 
-for (const stage of ['amiga', 'objetivo', 'citas', 'pareja']) {
+for (const stage of ['rollo', 'citas', 'pareja', 'matrimonio']) {
   test(`simulación realista 6 meses (${stage}): nada antes de tiempo, sin patrón fijo, un plan grande al día`, () => {
     // 5 fichas distintas: como mucho un 1 % vuelve antes de tiempo (solo cuando un día no queda nada descansado)
     let early = 0, total = 0;

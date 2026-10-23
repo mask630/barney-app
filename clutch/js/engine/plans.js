@@ -7,11 +7,11 @@ import { compose } from './voice.js';
 
 export const PLAN_KINDS = {
   viewpoint: { label: 'Mirador', filter: '["tourism"="viewpoint"]', groups: ['flirt', 'pareja'], idea: 'Ver el atardecer desde' },
-  park: { label: 'Parque', filter: '["leisure"="park"]', groups: ['amiga', 'flirt', 'pareja'], idea: 'Pasear por' },
-  ice_cream: { label: 'Heladería', filter: '["amenity"="ice_cream"]', groups: ['amiga', 'flirt', 'pareja'], idea: 'Tomar un helado en' },
-  cinema: { label: 'Cine', filter: '["amenity"="cinema"]', groups: ['amiga', 'flirt', 'pareja'], idea: 'Ver una peli en' },
-  museum: { label: 'Museo', filter: '["tourism"="museum"]', groups: ['amiga', 'flirt', 'pareja'], idea: 'Visitar el' },
-  cafe: { label: 'Café', filter: '["amenity"="cafe"]', groups: ['amiga', 'flirt'], idea: 'Tomar un café en' }
+  park: { label: 'Parque', filter: '["leisure"="park"]', groups: ['flirt', 'pareja'], idea: 'Pasear por' },
+  ice_cream: { label: 'Heladería', filter: '["amenity"="ice_cream"]', groups: ['flirt', 'pareja'], idea: 'Tomar un helado en' },
+  cinema: { label: 'Cine', filter: '["amenity"="cinema"]', groups: ['flirt', 'pareja'], idea: 'Ver una peli en' },
+  museum: { label: 'Museo', filter: '["tourism"="museum"]', groups: ['flirt', 'pareja'], idea: 'Visitar el' },
+  cafe: { label: 'Café', filter: '["amenity"="cafe"]', groups: ['flirt'], idea: 'Tomar un café en' }
 };
 
 export function buildQuery(lat, lon, radius = 3500) {

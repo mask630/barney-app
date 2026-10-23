@@ -3,19 +3,19 @@
 
 import { parseISO } from './dates.js';
 
-export const STAGES = ['amiga', 'objetivo', 'rollo', 'citas', 'pareja', 'matrimonio'];
+export const STAGES = ['rollo', 'citas', 'pareja', 'matrimonio'];
+
+// Etapas retiradas (Clutch es para cuidar una relación afectiva): las fichas antiguas pasan a Rollo, sin perder nada.
+export const LEGACY_STAGE = { amiga: 'rollo', objetivo: 'rollo' };
 
 export const STAGE_LABEL = {
-  es: { amiga: 'Amiga', objetivo: 'Objetivo', rollo: 'Rollo', citas: 'Citas', pareja: 'Pareja', matrimonio: 'Matrimonio' }
+  es: { rollo: 'Rollo', citas: 'Citas', pareja: 'Pareja', matrimonio: 'Matrimonio' }
 };
 
-// Tres registros de contenido:
-//  - amiga: cercano, sin tonteo.
-//  - flirt: objetivo, rollo y citas (ligero y con chispa).
+// Dos registros de contenido:
+//  - flirt: rollo y citas (ligero y con chispa).
 //  - pareja: pareja y matrimonio (cariño, cuidado, constancia).
 export const STAGE_GROUP = {
-  amiga: 'amiga',
-  objetivo: 'flirt',
   rollo: 'flirt',
   citas: 'flirt',
   pareja: 'pareja',

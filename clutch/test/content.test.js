@@ -25,8 +25,8 @@ test('fechas próximas: cumpleaños y eventos, ordenadas', () => {
 });
 
 test('aniversario solo en etapas con hitos', () => {
-  const amiga = mk({ stage: 'amiga' });
-  assert.equal(upcoming(amiga, '2027-07-10').some((x) => x.kind === 'anniversary'), false);
+  const rollo = mk({ stage: 'rollo' });
+  assert.equal(upcoming(rollo, '2027-07-10').some((x) => x.kind === 'anniversary'), false);
   assert.equal(upcoming(mk(), '2027-07-10').some((x) => x.kind === 'anniversary'), true);
 });
 
@@ -43,10 +43,10 @@ test('ciclo: desactivado, etapa baja y fases', () => {
   assert.equal(cycleCare(p, T).phase, 'previos');
 });
 
-test('mensajes genéricos y SOS completos para los tres registros', () => {
+test('mensajes genéricos y SOS completos para los dos registros', () => {
   const msgs = genericMessages(mk(), '25-34', 'pareja', T);
   assert.equal(msgs.length, 3);
   assert.ok(msgs.every((m) => m.id && m.text.startsWith('Lucía, ')));
-  for (const s of SOS) for (const g of ['amiga', 'flirt', 'pareja']) assert.ok(s.scripts[g].length > 10);
+  for (const s of SOS) for (const g of ['flirt', 'pareja']) assert.ok(s.scripts[g].length > 10);
   assert.equal(es.stages.citas, 'Citas');
 });

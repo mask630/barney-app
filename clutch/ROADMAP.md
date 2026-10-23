@@ -16,6 +16,12 @@ Leyenda: 🤖 lo hago yo (Claude) · 👤 te toca a ti · ✅ hecho · ⚠️ ro
 | Opiniones | ⚠️ solo "Copiar para enviar" (el tester tiene que pegarlo en otro sitio) |
 | Clave de Anthropic | ⚠️ caduca el 21-nov-2026 |
 
+## Enfoque de la app (decidido 23-oct)
+Clutch es para **cuidar una relación afectiva en el tiempo**: recordar detalles de ella y saber qué hacer para agradarle.
+Etapas: **Rollo, Citas, Pareja, Matrimonio** (2 tonos: rollo/citas y pareja/matrimonio). Se retiraron Amiga y Objetivo; su contenido queda en el historial de git (commit anterior a la retirada). Fichas antiguas o importadas de Barney con esas etapas pasan a Rollo sin perder datos.
+- Base: Apuntar y ficha, fechas con aviso por calendario, gestos y mensajes que no se repiten, una persona.
+- PRO (por grupos desde el panel): IA (reescribir, SOS, foto), varias personas, planes cerca, tu estilo, acompañantes, copia cifrada.
+
 ## Fase 1 · Interruptores remotos de funciones ✅ (22-oct)
 Hecho. Arreglados de paso: la IA devolvía respuestas vacías (el modelo gastaba el límite "pensando"), el SOS salía con asteriscos y la foto con IA fallaba siempre en real.
 Pendiente de esta fase para la Fase 2: base de datos (Upstash) para guardar testers y grupos.

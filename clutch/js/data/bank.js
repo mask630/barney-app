@@ -1,58 +1,14 @@
-// Banco de mensajes sencillos y gestos diarios, por registro (amiga / flirt / pareja).
+// Banco de mensajes sencillos y gestos diarios, por registro (flirt = rollo y citas / pareja = pareja y matrimonio).
 // Reglas: ningún dato inventado (ni fechas, ni lugares, ni "estudios"); nada de presión ni contenido sexual.
 // Esfuerzo de los mensajes: ligero · medio · alto. De los gestos: micro · cuidado · cita · regalo.
 // Los días de descanso de cada esfuerzo están en engine/rotation.js. Los ids no se cambian: identifican lo ya usado.
 // Los mensajes van sin saludo: voice.js añade el saludo y la despedida según edad y registro.
-// st (opcional): etapas en las que sale. En flirt, lo intenso es solo para rollo y citas; lo de objetivo es más sutil:
-// interés real, curiosidad, humor e intención clara sin presión (nada de negs, celos ni prisas falsas).
+// st (opcional): etapas concretas en las que sale; sin st, sale en todas las del registro.
 
 export const MESSAGES = {
-  amiga: [
-    { id: 'am-semana', e: 'ligero', t: '¿cómo llevas la semana?' },
-    { id: 'am-acorde', e: 'ligero', t: 'me he acordado de ti hace un momento. ¿Qué tal todo?' },
-    { id: 'am-animo', e: 'ligero', t: 'ánimo con lo de hoy, seguro que sale bien.' },
-    { id: 'am-hace-dias', e: 'ligero', t: '¿qué tal va todo por ahí? Hace días que no hablamos.' },
-    { id: 'am-gracia', e: 'ligero', t: 'he visto algo que te habría hecho gracia, luego te lo cuento.' },
-    { id: 'am-como-acabo', e: 'ligero', t: '¿cómo terminó al final aquello que me contaste?' },
-    { id: 'am-aqui-estoy', e: 'ligero', t: 'que tengas buen día. Si necesitas algo, aquí estoy.' },
-    { id: 'am-recomienda', e: 'ligero', t: '¿alguna serie o libro que me recomiendes? Ando sin ideas.' },
-    { id: 'am-finde', e: 'ligero', t: '¿qué tal el finde? Cuéntame algo bueno.' },
-    { id: 'am-saludo', e: 'ligero', t: 'pasaba a saludarte. ¿Cómo va todo?' },
-    { id: 'am-cancion', e: 'ligero', t: 'he escuchado una canción que te pegaría mucho. ¿Te la paso?' },
-    { id: 'am-semana-animo', e: 'ligero', t: 'mucho ánimo con la semana, que tú puedes con todo.' },
-    { id: 'am-historias', e: 'ligero', t: 'hoy me he reído acordándome de una de tus historias.' },
-    { id: 'am-novedades', e: 'ligero', t: '¿alguna novedad? Te leo.' },
-    { id: 'am-empieza', e: 'ligero', t: '¿cómo empieza tu día?' },
-    { id: 'am-planes-finde', e: 'ligero', t: '¿qué planes tienes para el finde?' },
-    { id: 'am-familia', e: 'ligero', t: '¿cómo está tu familia? Hace tiempo que no me cuentas.' },
-    { id: 'am-cafe', e: 'medio', t: '¿te apetece un café esta semana? Tú eliges el día.' },
-    { id: 'am-acompano', e: 'medio', t: 'si un día te viene bien, te acompaño a eso que tenías pendiente.' },
-    { id: 'am-alegro', e: 'medio', t: 'me alegro mucho de lo bien que te está yendo. Te lo mereces.' },
-    { id: 'am-ponernos', e: 'medio', t: '¿nos ponemos al día un rato? Invito yo.' },
-    { id: 'am-paseo', e: 'medio', t: '¿te apetece dar un paseo un día de estos y ponernos al día?' },
-    { id: 'am-peli', e: 'medio', t: '¿te apetece ver una peli un día de estos?' },
-    { id: 'am-sitio-nuevo', e: 'medio', t: '¿probamos algún sitio nuevo un día de estos? Elige tú.' },
-    { id: 'am-cuenta', e: 'medio', t: 'cuenta conmigo para lo que necesites, de verdad.' },
-    { id: 'am-plan-grupo', e: 'alto', t: '¿hacemos un plan este finde con más gente? Yo me encargo de organizarlo.' },
-    { id: 'am-gracias', e: 'alto', t: 'gracias por estar siempre que hace falta. No te lo digo lo suficiente.' }
-  ],
   flirt: [
-    // solo objetivo
-    { id: 'ob-trabajo', st: ['objetivo'], e: 'ligero', t: '¿qué es lo que más te gusta de lo que haces? Me ha dado curiosidad.' },
-    { id: 'ob-recomienda', st: ['objetivo'], e: 'ligero', t: '¿me recomiendas algo para escuchar? Me fío de tu criterio.' },
-    { id: 'ob-finde', st: ['objetivo'], e: 'ligero', t: '¿qué tal el finde? ¿Algo que merezca la pena contar?' },
-    { id: 'ob-playa', st: ['objetivo'], e: 'ligero', t: 'pregunta rápida: ¿playa o montaña? Y no vale decir las dos.' },
-    { id: 'ob-tortilla', st: ['objetivo'], e: 'ligero', t: 'tengo un debate pendiente contigo: ¿la tortilla, con o sin cebolla?' },
-    { id: 'ob-como-acabo', st: ['objetivo'], e: 'ligero', t: '¿cómo acabó al final lo que me contaste el otro día?' },
-    { id: 'ob-historia', st: ['objetivo'], e: 'ligero', t: 'que tengas buena semana. Me debes una de tus historias.' },
-    { id: 'ob-buen-humor', st: ['objetivo'], e: 'ligero', t: 'hablar contigo siempre me pone de buen humor.' },
-    { id: 'ob-tomar-algo', st: ['objetivo'], e: 'medio', t: '¿te apetece tomar algo un día de estos? Me gusta hablar contigo.' },
-    { id: 'ob-ensenar', st: ['objetivo'], e: 'medio', t: 'si te apetece, un día de estos te enseño un sitio que me gusta. Sin compromiso.' },
-    { id: 'ob-cafe', st: ['objetivo'], e: 'medio', t: '¿un café esta semana? Tú eliges el día y yo el sitio.' },
-    { id: 'ob-cena', st: ['objetivo'], e: 'alto', t: 'me gustaría invitarte a cenar. ¿Te apetece?' },
-    // todas las etapas de flirt salvo lo marcado con st
     { id: 'fl-dia', e: 'ligero', t: '¿qué tal tu día? Cuéntame lo mejor.' },
-    { id: 'fl-desperte', st: ['rollo', 'citas'], e: 'ligero', t: 'me he despertado pensando en ti.' },
+    { id: 'fl-desperte', e: 'ligero', t: 'me he despertado pensando en ti.' },
     { id: 'fl-gracia', e: 'ligero', t: 'me ha pasado algo que te hará gracia, te lo cuento cuando nos veamos.' },
     { id: 'fl-alegrado', e: 'ligero', t: 'no sé qué tienes, pero hoy me has alegrado el día sin hacer nada.' },
     { id: 'fl-ahora', e: 'ligero', t: '¿qué estás haciendo ahora mismo? Seguro que algo más interesante que yo.' },
@@ -68,18 +24,18 @@ export const MESSAGES = {
     { id: 'fl-empieza', e: 'ligero', t: '¿cómo empieza tu día?' },
     { id: 'fl-mejor-hoy', e: 'ligero', t: '¿qué es lo mejor que te ha pasado hoy?' },
     { id: 'fl-ilusion', e: 'ligero', t: 'tengo curiosidad: ¿qué te hace ilusión últimamente?' },
-    { id: 'fl-mas-de-una', st: ['rollo', 'citas'], e: 'ligero', t: 'hoy me he acordado de ti más de una vez.' },
-    { id: 'fl-sonado', st: ['rollo', 'citas'], e: 'ligero', t: 'esta noche he soñado contigo.' },
+    { id: 'fl-mas-de-una', e: 'ligero', t: 'hoy me he acordado de ti más de una vez.' },
+    { id: 'fl-sonado', e: 'ligero', t: 'esta noche he soñado contigo.' },
     { id: 'fl-quedamos', e: 'medio', t: '¿te apetece que quedemos esta semana? Dime qué día te viene mejor.' },
-    { id: 'fl-plan', st: ['rollo', 'citas'], e: 'medio', t: 'tengo un plan para nosotros, pero te lo cuento en persona.' },
-    { id: 'fl-repetimos', st: ['rollo', 'citas'], e: 'medio', t: 'me gustó mucho la última vez. Repetimos pronto, ¿no?' },
+    { id: 'fl-plan', e: 'medio', t: 'tengo un plan para nosotros, pero te lo cuento en persona.' },
+    { id: 'fl-repetimos', e: 'medio', t: 'me gustó mucho la última vez. Repetimos pronto, ¿no?' },
     { id: 'fl-cafe', e: 'medio', t: 'te debo un café. ¿Cuándo te lo cobro?' },
     { id: 'fl-paseo', e: 'medio', t: '¿un paseo y algo de beber esta semana? Me apetece verte.' },
-    { id: 'fl-paso-bien', st: ['rollo', 'citas'], e: 'medio', t: 'me lo paso muy bien contigo. Quería que lo supieras.' },
-    { id: 'fl-distinto', st: ['rollo', 'citas'], e: 'medio', t: 'la próxima vez que quedemos, ¿probamos algo distinto? Tú propones y yo me apunto.' },
-    { id: 'fl-sorpresa', st: ['rollo', 'citas'], e: 'alto', t: 'este finde quiero llevarte a un sitio que creo que te va a gustar. ¿Te dejas sorprender?' },
+    { id: 'fl-paso-bien', e: 'medio', t: 'me lo paso muy bien contigo. Quería que lo supieras.' },
+    { id: 'fl-distinto', e: 'medio', t: 'la próxima vez que quedemos, ¿probamos algo distinto? Tú propones y yo me apunto.' },
+    { id: 'fl-sorpresa', e: 'alto', t: 'este finde quiero llevarte a un sitio que creo que te va a gustar. ¿Te dejas sorprender?' },
     { id: 'fl-cena', e: 'alto', t: '¿cena el viernes? Tú eliges el sitio y yo reservo.' },
-    { id: 'fl-sabado', st: ['rollo', 'citas'], e: 'alto', t: '¿te dejo elegir el plan del sábado y yo me encargo de todo lo demás?' }
+    { id: 'fl-sabado', e: 'alto', t: '¿te dejo elegir el plan del sábado y yo me encargo de todo lo demás?' }
   ],
   pareja: [
     { id: 'pa-como-vas', e: 'ligero', t: '¿cómo vas hoy? Cuéntame.' },
@@ -117,28 +73,6 @@ export const MESSAGES = {
 };
 
 export const GESTURES = {
-  amiga: [
-    { id: 'ga-seguimiento', e: 'micro', t: 'Pregúntale cómo acabó aquello que te contó hace unos días.' },
-    { id: 'ga-meme', e: 'micro', t: 'Comparte un meme o vídeo que sepas que le hará gracia.' },
-    { id: 'ga-felicita', e: 'micro', t: 'Felicítala por algo que haya logrado, aunque sea pequeño.' },
-    { id: 'ga-cancion', e: 'micro', t: 'Mándale una canción que te recordó a una conversación vuestra.' },
-    { id: 'ga-avisame', e: 'micro', t: 'Si salís juntos, pídele que te avise al llegar a casa.' },
-    { id: 'ga-historia', e: 'micro', t: 'Si comparte algo que le importa, responde con un comentario concreto, no solo un emoji.' },
-    { id: 'ga-como-esta', e: 'micro', t: 'Mándale un mensaje solo para saber cómo está, sin pedirle nada.' },
-    { id: 'ga-escucha', e: 'micro', t: 'Si te cuenta un problema, escucha antes de dar consejos.' },
-    { id: 'ga-foto', e: 'micro', t: 'Si ves algo que sabes que le gusta, hazle una foto y mándasela.' },
-    { id: 'ga-que-tal-fue', e: 'micro', t: 'Si sabes que tenía algo importante, pregúntale qué tal le fue.' },
-    { id: 'ga-reir', e: 'micro', t: 'Mándale algo que sepas que le va a hacer reír.' },
-    { id: 'ga-nombre', e: 'micro', t: 'Acuérdate del nombre de alguien que te mencionó y pregunta por esa persona.' },
-    { id: 'ga-buena-noticia', e: 'micro', t: 'Cuéntale tú también una buena noticia tuya: la confianza va en las dos direcciones.' },
-    { id: 'ga-acompana', e: 'cuidado', t: 'Ofrécete a acompañarla a algo que tenga pendiente.' },
-    { id: 'ga-cafe', e: 'cuidado', t: 'Propón un café sin motivo, a la hora que a ella le venga bien.' },
-    { id: 'ga-mano', e: 'cuidado', t: 'Si sabes que tiene una semana dura, ofrécele ayuda con algo concreto.' },
-    { id: 'ga-recomienda', e: 'cuidado', t: 'Recomiéndale algo que creas que le va a gustar y dile por qué.' },
-    { id: 'ga-grupo', e: 'cita', t: 'Organiza un plan con más amigos y cuenta con ella.' },
-    { id: 'ga-su-plan', e: 'cita', t: 'Proponle un plan que sepas que le gusta, aunque a ti no te apasione.' },
-    { id: 'ga-libro', e: 'regalo', t: 'Préstale o regálale un libro o una serie que creas que le encantará.' }
-  ],
   flirt: [
     { id: 'gf-cumplido', e: 'micro', t: 'Hazle un cumplido concreto, no genérico: algo que hayas notado de verdad.' },
     { id: 'gf-recuerda', e: 'micro', t: 'Recuerda algo que te contó y pregúntale cómo fue.' },
@@ -152,14 +86,14 @@ export const GESTURES = {
     { id: 'gf-escucha', e: 'micro', t: 'Menciona un detalle de algo que te contó: que vea que la escuchas.' },
     { id: 'gf-audio', e: 'micro', t: 'Si te manda un audio largo, contesta a lo que dice, no solo "jaja".' },
     { id: 'gf-planes-semana', e: 'micro', t: 'Pregúntale por sus planes de la semana y acuérdate de alguno.' },
-    { id: 'gf-nota', st: ['rollo', 'citas'], e: 'micro', t: 'Cuando os veáis, déjale una nota pequeña en el abrigo o el bolso: «Me lo he pasado muy bien hoy».' },
+    { id: 'gf-nota', e: 'micro', t: 'Cuando os veáis, déjale una nota pequeña en el abrigo o el bolso: «Me lo he pasado muy bien hoy».' },
     { id: 'gf-cancion', e: 'cuidado', t: 'Mándale una canción y dile que te has acordado de ella al escucharla.' },
     { id: 'gf-avisame', e: 'cuidado', t: 'Cuando os despidáis, pídele que te avise al llegar a casa.' },
     { id: 'gf-dia-importante', e: 'cuidado', t: 'Si sabes que tiene un día importante, deséale suerte por la mañana.' },
-    { id: 'gf-cansada', st: ['rollo', 'citas'], e: 'cuidado', t: 'Si sabes que está cansada, propón un plan tranquilo en vez de salir.' },
+    { id: 'gf-cansada', e: 'cuidado', t: 'Si sabes que está cansada, propón un plan tranquilo en vez de salir.' },
     { id: 'gf-fecha', e: 'cita', t: 'Propón un plan con fecha y hora, no un "a ver cuándo quedamos".' },
     { id: 'gf-elige', e: 'cita', t: 'Deja que ella elija el sitio y ofrécete a reservar tú.' },
-    { id: 'gf-atardecer', st: ['rollo', 'citas'], e: 'cita', t: 'Propón ver el atardecer en un sitio bonito, sin mirar el móvil.' },
+    { id: 'gf-atardecer', e: 'cita', t: 'Propón ver el atardecer en un sitio bonito, sin mirar el móvil.' },
     { id: 'gf-algo-nuevo', e: 'cita', t: 'Proponle probar algo nuevo juntos: una clase, una ruta, una exposición.' },
     { id: 'gf-detalle', e: 'regalo', t: 'Llévale un detalle pequeño relacionado con algo que te contó.' }
   ],

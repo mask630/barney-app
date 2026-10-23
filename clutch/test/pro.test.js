@@ -43,8 +43,8 @@ test('planes: consulta y análisis de la respuesta', () => {
   const pareja = parsePlans(json, { lat: 36.7213, lon: -4.4214, group: 'pareja' });
   assert.equal(pareja.length, 3);
   assert.ok(pareja.some((p) => p.text === 'Ver el atardecer desde Mirador de Gibralfaro'));
-  const amiga = parsePlans(json, { lat: 36.7213, lon: -4.4214, group: 'amiga' });
-  assert.equal(amiga.some((p) => p.kind === 'viewpoint'), false);
+  const flirt = parsePlans(json, { lat: 36.7213, lon: -4.4214, group: 'flirt' });
+  assert.ok(flirt.some((p) => p.kind === 'viewpoint'));
 });
 
 test('planes: errores de red no rompen', async () => {
@@ -98,10 +98,11 @@ test('copia cifrada: ida y vuelta, contraseña incorrecta y formato', async () =
   assert.equal(isEncryptedBackup(plain), false);
 });
 
-test('IA servidor: matiz por etapa (Objetivo sin intensidad ni manipulación)', () => {
-  const obj = buildRequest({ task: 'rewrite', band: '25-34', group: 'flirt', stage: 'objetivo', message: 'hola', facts: [] });
-  assert.ok(obj.payload.messages[0].content.includes('aún no hay nada'));
-  assert.ok(obj.payload.messages[0].content.includes('manipulación'));
+test('IA servidor: matiz por etapa y solo los dos registros', () => {
+  const rollo = buildRequest({ task: 'rewrite', band: '25-34', group: 'flirt', stage: 'rollo', message: 'hola', facts: [] });
+  assert.ok(rollo.payload.messages[0].content.includes('sin compromiso'));
+  assert.equal(buildRequest({ task: 'rewrite', band: '25-34', group: 'amiga', message: 'hola', facts: [] }).error, 'parametros');
+  assert.ok(!buildRequest({ task: 'rewrite', band: '25-34', group: 'flirt', stage: 'objetivo', message: 'hola', facts: [] }).payload.messages[0].content.includes('Etapa:'), 'etapas retiradas se ignoran');
   const plain = buildRequest({ task: 'rewrite', band: '25-34', group: 'flirt', message: 'hola', facts: [] });
   assert.ok(!plain.payload.messages[0].content.includes('Etapa:'), 'sin etapa, como antes');
   const raro = buildRequest({ task: 'rewrite', band: '25-34', group: 'flirt', stage: '<script>', message: 'hola', facts: [] });

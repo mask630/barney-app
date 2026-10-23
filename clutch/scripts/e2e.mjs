@@ -34,7 +34,8 @@ assert.match(await txt(), /18 años/);
 // Alta correcta
 await page.fill('#f-birth', '1997-05-14');
 await page.click('button:has-text("Pareja")');
-await page.fill('#f-since', '2026-07-14');
+// inicio hace exactamente 100 días (fecha local), para que el hito salga cualquier día que se ejecute
+await page.fill('#f-since', await page.evaluate(() => { const d = new Date(); d.setDate(d.getDate() - 100); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }));
 await page.click('text=Crear su ficha');
 let t = await txt();
 assert.match(t, /Lucía/);

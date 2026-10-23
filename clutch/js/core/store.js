@@ -1,6 +1,6 @@
 // Datos de Clutch v2. Todo vive en el dispositivo. Sin dependencias del DOM (el almacenamiento se inyecta).
 
-import { checkAdult, STAGES, isValidStage } from './stages.js';
+import { checkAdult, STAGES, isValidStage, LEGACY_STAGE } from './stages.js';
 
 export const STORE_KEY = 'clutch_v2';
 export const SCHEMA = 2;
@@ -40,7 +40,7 @@ export function newId(prefix = 'p') {
   return `${prefix}${Date.now().toString(36)}${seq.toString(36)}${Math.random().toString(36).slice(2, 5)}`;
 }
 
-export function newProfile({ name, birth, stage = 'amiga', since = null, tastes = [] }, todayISO) {
+export function newProfile({ name, birth, stage = 'pareja', since = null, tastes = [] }, todayISO) {
   const adult = checkAdult(birth, todayISO);
   if (!adult.ok) return { ok: false, reason: adult.reason };
   if (!isValidStage(stage)) return { ok: false, reason: 'etapa-invalida' };
@@ -96,10 +96,16 @@ export function load(storage) {
     if (!raw) return emptyState();
     const s = JSON.parse(raw);
     if (!s || s.v !== SCHEMA || !Array.isArray(s.profiles)) return emptyState();
-    return { ...emptyState(), ...s, settings: { ...emptyState().settings, ...s.settings } };
+    return upgradeStages({ ...emptyState(), ...s, settings: { ...emptyState().settings, ...s.settings } });
   } catch {
     return emptyState();
   }
+}
+
+// Fichas de etapas retiradas (Amiga, Objetivo): pasan a Rollo conservando todo su historial.
+export function upgradeStages(state, todayISO = new Date().toISOString().slice(0, 10)) {
+  const profiles = state.profiles.map((p) => (LEGACY_STAGE[p.stage] ? { ...p, stage: LEGACY_STAGE[p.stage], history: [...(p.history || []), { stage: LEGACY_STAGE[p.stage], at: todayISO }] } : p));
+  return { ...state, profiles };
 }
 
 export function save(storage, state) {
@@ -130,7 +136,7 @@ export function importBackup(text) {
   }
   if (o && o.app === 'clutch' && o.v === SCHEMA && Array.isArray(o.profiles)) {
     const { app, ...rest } = o;
-    return { ok: true, state: { ...emptyState(), ...rest, settings: { ...emptyState().settings, ...rest.settings } }, source: 'clutch' };
+    return { ok: true, state: upgradeStages({ ...emptyState(), ...rest, settings: { ...emptyState().settings, ...rest.settings } }), source: 'clutch' };
   }
   if (o && Array.isArray(o.girls)) return migrateFromBarney(o);
   return { ok: false, reason: 'formato-desconocido' };
@@ -138,14 +144,14 @@ export function importBackup(text) {
 
 // --- Migración desde Barney v1 (clave barney_v9) ---
 
-const V1_STAGE = { crush: 'objetivo', casual: 'rollo', dating: 'citas', partner: 'pareja' };
+const V1_STAGE = { crush: 'rollo', casual: 'rollo', dating: 'citas', partner: 'pareja' };
 const V1_DEMO_NAMES = new Set(['Lucía', 'Vanesa', 'Claudia']); // los tres perfiles de ejemplo que trae Barney v1
 
 export function migrateFromBarney(v1, todayISO = new Date().toISOString().slice(0, 10)) {
   const state = emptyState();
   const skipped = [];
   for (const g of v1.girls || []) {
-    const r = newProfile({ name: g.name, birth: g.bday, stage: V1_STAGE[g.stage] || 'amiga' }, todayISO);
+    const r = newProfile({ name: g.name, birth: g.bday, stage: V1_STAGE[g.stage] || 'rollo' }, todayISO);
     if (!r.ok) {
       skipped.push({ name: g.name, reason: r.reason });
       continue;

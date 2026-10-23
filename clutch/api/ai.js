@@ -13,21 +13,20 @@ const MAX_PHOTO_CHARS = 1_800_000;
 // Respuestas cortas: sin «pensamiento» (en Haiku 5.5 viene activado y se comía todo max_tokens) y esfuerzo bajo.
 const FAST = { thinking: { type: 'disabled' }, output_config: { effort: 'low' } };
 const BANDS = ['18-24', '25-34', '35-49', '50+'];
-const GROUPS = ['amiga', 'flirt', 'pareja'];
+const GROUPS = ['flirt', 'pareja'];
 // Matiz por etapa dentro del registro (opcional; la app lo manda desde que existe).
 const STAGE_NOTES = {
-  objetivo: 'Etapa: aún no hay nada entre ellos y a él le gusta. Interés sincero, curiosidad y humor; ninguna declaración intensa ni presión. Si el mensaje suena demasiado intenso para esta etapa, suavízalo manteniendo la intención (por ejemplo, proponer verse sin decir que la echa de menos). Nada de técnicas de manipulación (desprecios, dar celos, prisas falsas).',
-  rollo: 'Etapa: ya hay algo, sin compromiso. Cercano y con chispa, sin exigir ni presionar.',
+    rollo: 'Etapa: ya hay algo, sin compromiso. Cercano y con chispa, sin exigir ni presionar.',
   citas: 'Etapa: se están conociendo en serio. Cálido, con ganas de verla y sin agobiar.',
   matrimonio: 'Etapa: matrimonio. Cariño de largo recorrido y complicidad.'
 };
 
-const BASE_RULES = `Eres el redactor de Clutch, una app que ayuda a un hombre a escribirle bien a una mujer adulta.
+const BASE_RULES = `Eres el redactor de Clutch, una app que ayuda a un hombre a cuidar su relación con una mujer adulta.
 Reglas que no se pueden saltar:
 - Escribe siempre en español natural, sin sonar a anuncio.
 - Usa SOLO los datos que te doy. No inventes fechas, números, nombres, lugares, recuerdos ni gustos.
 - El nombre de ella aparece como {n}. Déjalo tal cual.
-- Respeta el registro: amiga = cercano sin tonteo; flirt = ligero y con chispa; pareja = cariño y constancia.
+- Respeta el registro: flirt = ligero y con chispa (rollo y citas); pareja = cariño y constancia.
 - Adapta el tono al tramo de edad: 18-24 informal, 25-34 natural, 35-49 sobrio y cálido, 50+ cuidado y respetuoso.
 - Nada de manipulación, presión, culpa ni contenido sexual. Si algo se pide así, responde con una alternativa respetuosa.
 - Responde solo con el texto pedido, sin explicaciones.
@@ -72,7 +71,7 @@ export function buildRequest(body, model = 'claude-haiku-5-5') {
     return {
       payload: {
         model, max_tokens: 1024, ...FAST,
-        system: 'Clasificas una foto que un usuario hizo para recordar algo de su pareja o amiga. Responde SOLO con JSON: {"dest":"gustos|tallas|regalos|eventos|recordar","field":"opcional (p. ej. anillo, calzado)","value":"texto corto en español","confidence":"alta|media|baja"}. Si no estás seguro, dest "recordar" y confidence "baja". No describas personas ni intentes identificarlas.',
+        system: 'Clasificas una foto que un usuario hizo para recordar algo de su pareja. Responde SOLO con JSON: {"dest":"gustos|tallas|regalos|eventos|recordar","field":"opcional (p. ej. anillo, calzado)","value":"texto corto en español","confidence":"alta|media|baja"}. Si no estás seguro, dest "recordar" y confidence "baja". No describas personas ni intentes identificarlas.',
         messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: m[1] } }, { type: 'text', text: '¿A dónde va esta foto?' }] }]
       }
     };

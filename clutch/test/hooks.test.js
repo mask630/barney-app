@@ -63,9 +63,9 @@ test('sin datos: sin hitos ni ubicación, aparecen sugerencias para desbloquear'
   assert.ok(ids.includes('since') && ids.includes('tastes') && ids.includes('location'));
 });
 
-test('etapa amiga: nada de hitos ni sugerencia de fecha de inicio', () => {
-  const r = generateHooks({ ...base, stage: 'amiga' }, '2026-10-22');
-  assert.equal(r.hooks.some((h) => ['milestone', 'anniversary', 'sunset'].includes(h.kind)), false);
+test('etapa rollo: nada de hitos ni sugerencia de fecha de inicio', () => {
+  const r = generateHooks({ ...base, stage: 'rollo' }, '2026-10-22');
+  assert.equal(r.hooks.some((h) => ['milestone', 'anniversary'].includes(h.kind)), false);
   assert.equal(r.unlocks.some((u) => u.id === 'since'), false);
 });
 
@@ -103,29 +103,33 @@ test('estación: otoño empieza el 23-sep-2026 en el hemisferio norte', () => {
   assert.equal(ids.filter(Boolean).length, 1);
 });
 
-test('voz: sin tokens sin sustituir, amiga sin coqueteo, distinta por edad', () => {
-  const flirty = /(amor|mi vida|guapa|beso|cariño|te quiero|😏|😉|❤️|🤍)/i;
+test('voz: sin tokens sin sustituir y distinta por edad y registro', () => {
   const out = new Set();
   for (const birth of ['2006-01-01', '1997-01-01', '1982-01-01', '1965-01-01']) {
-    for (const stage of ['amiga', 'objetivo', 'rollo', 'citas', 'pareja', 'matrimonio']) {
+    for (const stage of ['rollo', 'citas', 'pareja', 'matrimonio']) {
       const r = generateHooks({ name: 'Lucía', birth, stage, since: '2026-07-14', tastes: ['pasta'], location: MAD }, '2026-10-25');
       assert.ok(r.ok);
       assert.ok(r.hooks.length > 0);
       for (const h of r.hooks) {
         if (h.message) assert.ok(!/[{}]|undefined|null|NaN/.test(h.message), h.message);
-        if (stage === 'amiga' && h.message) assert.ok(!flirty.test(h.message), `amiga coquetea: ${h.message}`);
       }
       out.add(r.hooks.find((h) => h.id === 'world-pasta').message);
     }
   }
-  assert.ok(out.size >= 10, `mensajes distintos: ${out.size}`);
+  assert.ok(out.size >= 8, `mensajes distintos: ${out.size}`); // 4 edades × 2 registros
 });
 
 test('voz: sin nombre usa saludo genérico', () => {
-  assert.equal(compose({ text: 'hoy es sábado.', name: '', band: '35-49', group: 'amiga' }), 'Hola, hoy es sábado.');
+  assert.equal(compose({ text: 'hoy es sábado.', name: '', band: '35-49', group: 'flirt' }), 'Hola, hoy es sábado.');
 });
 
 import { worldDaysOn, mothersDay, UNVERIFIED } from '../js/data/worldDays.js';
+import { STAGES, STAGE_GROUP } from '../js/core/stages.js';
+
+test('etapas: solo relaciones afectivas (rollo, citas, pareja, matrimonio)', () => {
+  assert.deepEqual(STAGES, ['rollo', 'citas', 'pareja', 'matrimonio']);
+  assert.deepEqual([...new Set(Object.values(STAGE_GROUP))].sort(), ['flirt', 'pareja']);
+});
 
 test('días mundiales verificados: fechas y país', () => {
   const on = (d, c) => worldDaysOn(d, c).map((x) => x.id);

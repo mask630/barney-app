@@ -46,7 +46,7 @@ const ACT_EVENT = {
 const ui = {
   tab: 'hoy', screen: null, sheet: null, ask: null, toast: null,
   locked: false, pinEntry: '', pinError: false,
-  form: { name: '', birth: '', stage: 'amiga', since: '', error: '' },
+  form: { name: '', birth: '', stage: 'pareja', since: '', error: '' },
   edit: {}, draft: '', pending: null, imp: { text: '', msg: '' }, exp: { text: '' }, pin: { value: '', error: '' }, fb: { text: '' },
   open: null, breath: { on: false, phase: 'in' },
   alt: {}, busy: null, chat: [], chatDraft: '', plansMsg: '', pass: { value: '' }, styleDraft: '',
@@ -579,7 +579,7 @@ function tryCreateProfile() {
   S.profiles.push(r.profile);
   S.activeId = r.profile.id;
   persist();
-  ui.form = { name: '', birth: '', stage: 'amiga', since: '', error: '' };
+  ui.form = { name: '', birth: '', stage: 'pareja', since: '', error: '' };
   ui.sheet = null;
   ui.tab = 'hoy';
   render();
@@ -644,7 +644,7 @@ const ACTS = {
   createProfile() { tryCreateProfile(); },
   newProfileSheet() {
     if (!canAddProfile()) { showToast('Tener varias personas llegará pronto'); return; }
-    ui.form = { name: '', birth: '', stage: 'amiga', since: '', error: '' }; ui.sheet = { type: 'newProfile' }; render();
+    ui.form = { name: '', birth: '', stage: 'pareja', since: '', error: '' }; ui.sheet = { type: 'newProfile' }; render();
   },
   pickProfile(el) { S.activeId = el.dataset.v; persist(); render(); },
   stageSheet(el) { if (el.dataset.v !== prof().stage) { ui.edit = {}; ui.sheet = { type: 'stage', to: el.dataset.v }; render(); } },

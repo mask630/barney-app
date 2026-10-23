@@ -5,10 +5,8 @@ export default {
   appName: 'Clutch',
   tagline: 'Nunca falles en el momento importante',
   tabs: { hoy: 'Hoy', ella: 'Ella', apuntar: 'Apuntar', escribele: 'Escríbele', yo: 'Yo' },
-  stages: { amiga: 'Amiga', objetivo: 'Objetivo', rollo: 'Rollo', citas: 'Citas', pareja: 'Pareja', matrimonio: 'Matrimonio' },
+  stages: { rollo: 'Rollo', citas: 'Citas', pareja: 'Pareja', matrimonio: 'Matrimonio' },
   stageHint: {
-    amiga: 'Cercano, sin tonteo.',
-    objetivo: 'Ligero y con chispa.',
     rollo: 'Ligero y con chispa.',
     citas: 'Ilusión y planes.',
     pareja: 'Cariño y constancia.',

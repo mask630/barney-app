@@ -114,7 +114,6 @@ export function generateHooks(profile, todayISO) {
       },
       bd.daysAhead === 0
         ? {
-            amiga: ['feliz cumpleaños. Que sea un día de los buenos.', 'feliz cumpleaños. Que este año te traiga todo lo que te mereces.', 'feliz cumpleaños. Hoy toca celebrarlo a lo grande.'],
             flirt: ['feliz cumpleaños. Hoy tienes permiso para que te mimen.', 'feliz cumpleaños. Espero que hoy te traten como te mereces.', 'feliz cumpleaños. Que sea un día tan bonito como tú.'],
             pareja: ['feliz cumpleaños, mi vida. Hoy el plan eres tú.', 'feliz cumpleaños. Gracias por un año más a tu lado.', 'feliz cumpleaños. Hoy todo lo eliges tú.']
           }
@@ -188,7 +187,6 @@ export function generateHooks(profile, todayISO) {
     add(
       { id: 'moon-in-sign', kind: 'astro', priority: 60, usedData: ['birth'], source: { label: SRC_ASTRO } },
       {
-        amiga: [`según los astros, hoy la Luna está en ${sign}, tu signo. Que te sea leve.`, `hoy la Luna pasa por ${sign}, tu signo. Según los astros, buen día para ti.`, `dicen los astros que hoy la Luna está en ${sign}, tu signo. Aprovéchalo.`],
         flirt: [`la Luna está hoy en ${sign}, tu signo. Según los astros, hoy brillas más de lo normal.`, `según los astros, hoy la Luna está en ${sign}, tu signo. Ya decía yo que hoy tenías algo especial.`, `la Luna está hoy en ${sign}, tu signo. Si los astros lo dicen, será verdad: hoy es tu día.`],
         pareja: [`según los astros, la Luna pasa hoy por ${sign}, tu signo. Hoy te toca mimo extra.`, `según los astros, hoy la Luna está en ${sign}, tu signo. Así que hoy mandas tú.`, `hoy la Luna pasa por ${sign}, tu signo. Según los astros te toca un día bonito; yo me encargo del resto.`]
       }
@@ -201,7 +199,6 @@ export function generateHooks(profile, todayISO) {
     add(
       { id: 'full-moon', kind: 'astro', priority: 45, usedData: [], source: { label: SRC_ASTRO } },
       {
-        amiga: ['hay luna llena esta noche. Mírala un momento, que vale la pena.', 'esta noche hay luna llena. Si puedes, asómate a verla.', 'luna llena esta noche. De las que merece la pena mirar un rato.'],
         flirt: ['hay luna llena esta noche. Mírala un momento y me cuentas.', 'esta noche hay luna llena. Te reto a asomarte y decirme si la ves.', 'luna llena esta noche. Buena excusa para dar un paseo, ¿no?'],
         pareja: ['hay luna llena esta noche. Salimos un momento a mirarla.', 'esta noche hay luna llena. ¿Paseo después de cenar?', 'luna llena esta noche. Te espero en la ventana.']
       }
@@ -210,7 +207,6 @@ export function generateHooks(profile, todayISO) {
     add(
       { id: 'new-moon', kind: 'astro', priority: 35, usedData: [], source: { label: SRC_ASTRO } },
       {
-        amiga: ['hoy es luna nueva, buen día para empezar algo.', 'hoy hay luna nueva. Dicen que es buen momento para empezar cosas.'],
         flirt: ['hoy es luna nueva, buen día para empezar algo.', 'luna nueva hoy. Buen día para planes nuevos, ¿no crees?'],
         pareja: ['hoy es luna nueva, buen día para empezar algo juntos.', 'hoy hay luna nueva. ¿Empezamos algo nuevo los dos? Tú eliges qué.']
       }
@@ -224,7 +220,6 @@ export function generateHooks(profile, todayISO) {
       add(
         { id: `season-${season}`, kind: 'season', priority: 50, usedData: ['location'], source: { label: SRC_ASTRO } },
         {
-          amiga: [`hoy empieza el ${season}. Buen momento para quedar a tomar algo.`, `hoy empieza el ${season}. ¿Celebramos el cambio con un café?`, `arranca el ${season}. Que te traiga cosas buenas.`],
           flirt: [`hoy empieza el ${season}. Excusa perfecta para un plan nuevo.`, `hoy empieza el ${season}. Tengo un par de planes en mente para estrenarlo.`, `arranca el ${season}. ¿Lo estrenamos con algo?`],
           pareja: [`hoy empieza el ${season}. Excusa perfecta para un plan los dos.`, `hoy empieza el ${season}. Propongo estrenarlo con una cena los dos.`, `arranca el ${season}. Que sea el mejor que pasemos juntos.`]
         }
