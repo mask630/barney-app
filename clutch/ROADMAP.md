@@ -94,6 +94,9 @@ Decidido: se apuntan solos y tú los apruebas. Métricas anónimas con su permis
 - ✅ Publicada en https://mask630.github.io/barney-app/clutch/ (main). Privacidad con responsable (Isaac Briales) y contacto.
 - ✅ Prueba real en la web publicada: alta contra el servidor (CORS bien), calendario, sin errores. Panel limpio (0 testers).
 - Pulido detectado: «Próximas fechas» dice «Aún no hay fechas» aunque haya cumpleaños a más de 4 meses.
+- ✅ (23-oct, primera prueba de mask) En el ordenador el año de nacimiento se cortaba en «0001»: arreglado y probado en la web.
+- ✅ Para empezar basta el nombre: fecha de nacimiento opcional (o edad aproximada, que mantiene el 18+); se completa luego en Ella > Editar.
+- ✅ Importar/restaurar fuera del inicio. Copia de seguridad (exportar y restaurar) = función PRO; «¿Ya usabas Clutch? Restaurar mi copia» pide el código de tester.
 
 Plan original:
 - 👤 Decidir dominio (y comprobar marca "Clutch") → 🤖 configurarlo.
