@@ -1,13 +1,26 @@
-// Acompañantes. Gym Bro es gratis (y se puede renombrar). El resto son PRO. Nombres y frases originales.
-// Barney: el aliado seguro de sí mismo, con humor y buen fondo (personaje propio de Clutch, no imita a nadie).
+// Acompañantes: quién te habla en la app. En la base, Clutch te habla de forma cordial y cercana (sin personaje).
+// Las personalidades son PRO. Nombres y frases propios de Clutch: no imitan a personajes de series, películas ni cómics
+// (tienen derechos); se inspiran en tipos de personaje con voz original.
+// Barney: el aliado seguro de sí mismo, con humor y buen fondo.
+
+export const DEFAULT_COMPANION = 'cordial';
 
 export const COMPANIONS = {
-  gymbro: {
+  cordial: {
     pro: false,
-    label: 'Neutro y positivo',
+    label: 'Cordial',
+    persona: false, // sin nombre de personaje: «La jugada de hoy» a secas
     lines: {
-      hook: ['Dato real en mano. Hoy sumas puntos fácil.', 'Esto es oro: envíalo y a por el día.'],
-      nodata: ['Sin dato especial hoy: un gesto pequeño vale más que nada.', 'Hoy toca constancia. Haz uno de los gestos.']
+      hook: ['Hoy tienes un buen motivo para escribirle. Aprovéchalo.', 'Tienes un dato real: es un buen momento para un detalle.'],
+      nodata: ['Hoy no hay fecha especial: un gesto sencillo siempre suma.', 'Día tranquilo. Elige uno de los gestos y listo.']
+    }
+  },
+  gymbro: {
+    pro: true,
+    label: 'Gym Bro',
+    lines: {
+      hook: ['Dato real en mano, hermano. Hoy sumas puntos fácil.', 'Esto es oro puro. Envíalo y a darlo todo.'],
+      nodata: ['Hoy no hay fecha, pero la constancia es el músculo que más se nota. Un gesto.', 'Día de rutina: un gesto pequeño y a por la siguiente serie.']
     }
   },
   barney: {
@@ -61,7 +74,7 @@ export function isAvailable(id, isPro) {
 
 // Frase estable durante el día para un acompañante.
 export function companionLine(id, kind, todayISO, isPro) {
-  const use = isAvailable(id, isPro) ? id : 'gymbro';
+  const use = isAvailable(id, isPro) ? id : DEFAULT_COMPANION;
   const pool = COMPANIONS[use].lines[kind];
   const n = (todayISO.charCodeAt(9) + todayISO.charCodeAt(8) + (kind === 'hook' ? 1 : 0)) % pool.length;
   return pool[n];

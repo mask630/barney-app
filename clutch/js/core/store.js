@@ -12,13 +12,12 @@ export function emptyState() {
       lang: 'es',
       country: null,
       city: null, // { name, lat, lon, tz }
-      companion: 'Gym Bro',
       pinHash: null,
       pinSalt: null,
       lockOnLeave: false,
       discreetNotifs: true,
       theme: 'auto',
-      companionStyle: 'gymbro',
+      companionStyle: 'cordial',
       style: null,
       testerCode: '',
       features: [], // funciones abiertas para este tester (las manda el servidor)

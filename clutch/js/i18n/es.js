@@ -103,7 +103,7 @@ export default {
     city: 'Ciudad',
     useGps: 'Usar GPS',
     companion: 'Tu acompañante',
-    companionHint: 'Ponle el nombre que quieras. Tono neutro y positivo.',
+    companionHint: 'Quién te habla en la app. Por defecto, Clutch te habla de forma cordial y cercana. Las personalidades son PRO.',
     data: 'Tus datos',
     export: 'Copia de seguridad',
     exportHint: 'Se muestra el texto para que lo copies y lo guardes.',

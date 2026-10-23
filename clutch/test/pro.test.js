@@ -23,13 +23,14 @@ test('estilo: rasgos y adaptación sin añadir datos', () => {
 });
 
 test('acompañantes: gratis vs PRO', () => {
-  assert.equal(isAvailable('gymbro', false), true);
+  assert.equal(isAvailable('cordial', false), true, 'la voz cordial es la base');
+  assert.equal(isAvailable('gymbro', false), false, 'Gym Bro es una personalidad PRO');
   assert.equal(isAvailable('mentor', false), false);
   assert.equal(isAvailable('mentor', true), true);
-  assert.equal(Object.keys(COMPANIONS).length, 6);
+  assert.equal(Object.keys(COMPANIONS).length, 7);
   assert.equal(isAvailable('barney', false), false, 'Barney es PRO');
   assert.equal(isAvailable('barney', true), true);
-  assert.equal(companionLine('mentor', 'hook', '2026-10-22', false), companionLine('gymbro', 'hook', '2026-10-22', false));
+  assert.equal(companionLine('mentor', 'hook', '2026-10-22', false), companionLine('cordial', 'hook', '2026-10-22', false), 'sin PRO habla la voz cordial');
   assert.notEqual(companionLine('mentor', 'hook', '2026-10-22', true), companionLine('colega', 'hook', '2026-10-22', true));
 });
 

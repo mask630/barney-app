@@ -125,6 +125,10 @@ function applyTheme() {
   else delete document.documentElement.dataset.theme;
 }
 
+// ---------- marca ----------
+// Logo de Clutch (la «C» del momento). El icono de la pantalla de inicio es el mismo, sin nombre (se llama «Agenda»).
+const LOGO = '<svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#0e1014"/><path d="M348 164A130 130 0 1 0 348 348" fill="none" stroke="#c8f23d" stroke-width="58" stroke-linecap="round"/><circle cx="372" cy="256" r="26" fill="#f3f5f8"/></svg>';
+
 // ---------- iconos ----------
 const ICON = {
   hoy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
@@ -162,7 +166,7 @@ function profileForm() {
 
 function viewOnboarding() {
   return `<main class="screen">
-    <div class="stack"><span class="badge" style="align-self:flex-start">${T.me.beta}</span>
+    <div class="stack"><div class="row" style="gap:10px"><span style="width:40px;height:40px;display:block">${LOGO}</span><b style="font-family:var(--font-display);font-size:26px;letter-spacing:-0.5px" class="grow">Clutch</b><span class="badge">${T.me.beta}</span></div>
     <h1>${T.welcome.title}</h1><p class="muted">${T.welcome.body}</p></div>
     <div class="card">${profileForm()}
       <button class="btn primary block" data-act="createProfile">${T.welcome.cta}</button></div>
@@ -202,7 +206,10 @@ function plansCard(p) {
 
 function viewHoy(p) {
   const r = hookData(p);
-  const comp = esc(S.settings.companion);
+  // Personalidad elegida (PRO) o la voz cordial por defecto, que no lleva nombre.
+  const style = isAvailable(S.settings.companionStyle, has('companions_pro')) ? S.settings.companionStyle : 'cordial';
+  const persona = COMPANIONS[style].persona === false ? '' : COMPANIONS[style].label;
+  const voice = (kind) => `<p class="small muted">${persona ? `<b>${esc(persona)}</b>: ` : ''}${esc(companionLine(style, kind, today(), true))}</p>`;
   const msgHooks = r.hooks.filter((h) => h.message);
   const hero = msgHooks.find((h) => h.daysAhead === 0) || null;
   // Cuatro gestos: el primero es la jugada del día (si no hay dato especial) y los otros tres van a la lista, sin repetirse.
@@ -220,15 +227,15 @@ function viewHoy(p) {
     <h1>${esc(p.name)}</h1></div>
 
     <section class="card hero" aria-label="${T.today.play}">
-      <span class="label" style="padding:0">${T.today.play} · ${comp}</span>
+      <span class="label" style="padding:0">${T.today.play}${persona ? ` · ${esc(persona)}` : ''}</span>
       ${hero
         ? `<p class="big">${esc(hero.message)}</p>
            <p class="source"><b>${T.write.realData}</b> · ${esc(hero.source.label)}</p>
-           <p class="small muted"><b>${comp}</b>: ${esc(companionLine(S.settings.companionStyle, 'hook', today(), has('companions_pro')))}</p>
+           ${voice('hook')}
            <button class="btn primary block" data-act="goWrite">${T.tabs.escribele}</button>`
         : `<p class="big">${esc(lead.t)}</p>
            <p class="source">${T.today.emptyHook}</p>
-           <p class="small muted"><b>${comp}</b>: ${esc(companionLine(S.settings.companionStyle, 'nodata', today(), has('companions_pro')))}</p>
+           ${voice('nodata')}
            <button class="btn block" data-act="goWrite">${T.tabs.escribele}</button>`}
     </section>
 
@@ -399,7 +406,7 @@ function viewMe() {
     </div></div>
 
     <div class="stack"><span class="label">${T.me.companion}</span><div class="card">
-      <div class="field"><label for="comp">${T.me.companionHint}</label><input id="comp" class="input" data-bind="edit.companion" data-change="companion" value="${esc(s.companion)}" maxlength="24"></div>
+      <p class="small muted">${T.me.companionHint}</p>
       <div class="chips">${COMPANION_IDS.map((id) => `<button class="chip" aria-pressed="${s.companionStyle === id}" data-act="companionStyle" data-v="${id}" ${isAvailable(id, has('companions_pro')) ? '' : 'style="opacity:.55"'}>${esc(COMPANIONS[id].label)}${isAvailable(id, has('companions_pro')) ? '' : ' <span class="badge pro" style="padding:1px 5px">Pronto</span>'}</button>`).join('')}</div></div></div>
 
     <div class="stack"><span class="label">Tu estilo</span><div class="card">
@@ -956,7 +963,6 @@ const CHANGES = {
     }
   },
   aiCode(el) { S.settings.testerCode = el.value.trim(); persist(); refreshAccess(true); },
-  companion(el) { S.settings.companion = el.value.trim().slice(0, 24) || 'Gym Bro'; persist(); },
   cycleLast(el) { updateProfile((p) => ({ ...p, cycle: { ...p.cycle, lastStart: el.value || null } })); }
 };
 

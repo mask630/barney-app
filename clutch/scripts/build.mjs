@@ -17,7 +17,8 @@ writeFileSync('dist/index.html', `<!doctype html>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Agenda">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
 ${fonts}
 <style>${css}</style></head>
 <body><div id="app"></div>
@@ -33,5 +34,5 @@ ${fonts}
 <div id="app"></div>
 <script>${safeJs}</script>`);
 
-for (const f of ['manifest.webmanifest', 'sw.js', 'icon-192.png', 'icon-512.png']) if (existsSync(`public/${f}`)) copyFileSync(`public/${f}`, `dist/${f}`);
+for (const f of ['manifest.webmanifest', 'sw.js', 'icon-180.png', 'icon-192.png', 'icon-512.png']) if (existsSync(`public/${f}`)) copyFileSync(`public/${f}`, `dist/${f}`);
 console.log('ok', (safeJs.length / 1024).toFixed(0) + ' KB js');
