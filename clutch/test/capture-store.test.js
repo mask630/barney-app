@@ -91,26 +91,8 @@ test('copia de seguridad: exportar e importar', () => {
   assert.equal(importBackup('{"x":1}').reason, 'formato-desconocido');
 });
 
-test('migración desde Barney v1', () => {
-  const v1 = {
-    city: 'Málaga',
-    girls: [
-      { id: 1, name: 'Lucía', stage: 'partner', bday: '1996-02-10', last: '2026-10-01', cycle: 28, cycleEnabled: true, favs: { Café: 'Matcha Latte' }, sizes: { Calzado: '37 EU' }, wish: [{ t: 'Collar dorado', tag: 'Cumpleaños' }], events: [{ t: 'Dani Martín', tag: 'Gira' }], dates: [{ t: 'Primera cita', d: '2026-11-05' }] },
-      { id: 2, name: 'Menor', stage: 'crush', bday: '2015-01-01' }
-    ]
-  };
-  const r = importBackup(JSON.stringify(v1));
-  assert.equal(r.ok, true);
-  assert.equal(r.state.profiles.length, 1);
-  assert.equal(r.skipped[0].reason, 'menor-de-edad');
-  const p = r.state.profiles[0];
-  assert.equal(p.stage, 'pareja');
-  assert.equal(p.sizes.calzado, '37 EU');
-  assert.ok(p.tastes.includes('matcha latte'));
-  assert.equal(p.gifts.length, 1);
-  assert.equal(p.events[0].month, 11);
-  assert.equal(p.cycle.enabled, true);
-  assert.equal(r.state.settings.city.name, 'Málaga');
+test('copias que no son de Clutch se rechazan (ya no hay migración desde otras apps)', () => {
+  assert.equal(importBackup(JSON.stringify({ girls: [{ name: 'X', bday: '1990-01-01' }] })).reason, 'formato-desconocido');
 });
 
 test('completitud de ficha solo cuenta datos reales', () => {

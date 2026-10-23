@@ -10,14 +10,9 @@ const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => { if (m.type() === 'error' && !/fonts\.g|ERR_|Failed to load resource/.test(m.text())) errors.push(m.text()); });
-await page.addInitScript(() => {
-  if (!localStorage.getItem('clutch_v2')) localStorage.setItem('barney_v9', JSON.stringify({ city: 'Málaga', girls: [
-    { id: 1, name: 'Marta', stage: 'dating', bday: '1995-06-01', last: '2026-10-01', cycle: 28, cycleEnabled: false, favs: { Café: 'Cortado' }, sizes: { Calzado: '38' }, wish: [], events: [], dates: [] }] }));
-});
 await page.goto(url);
-// Aunque haya datos de Barney, el inicio ya no ofrece importar (decisión 23-oct: fuera de la beta por ahora)
 await page.waitForSelector('text=Crear su ficha');
-assert.equal(await page.locator('text=Encontré tus datos de Barney').count(), 0);
+assert.ok(!/barney/i.test(await page.locator('#app').innerText()), 'el inicio no menciona Barney');
 const txt = () => page.locator('#app').innerText();
 const shot = (n) => process.env.SHOTS ? page.screenshot({ path: `${process.env.SHOTS}/shot-${n}.png` }) : null;
 

@@ -142,41 +142,7 @@ export function importBackup(text) {
     const { app, ...rest } = o;
     return { ok: true, state: upgradeStages({ ...emptyState(), ...rest, settings: { ...emptyState().settings, ...rest.settings } }), source: 'clutch' };
   }
-  if (o && Array.isArray(o.girls)) return migrateFromBarney(o);
   return { ok: false, reason: 'formato-desconocido' };
-}
-
-// --- Migración desde Barney v1 (clave barney_v9) ---
-
-const V1_STAGE = { crush: 'rollo', casual: 'rollo', dating: 'citas', partner: 'pareja' };
-const V1_DEMO_NAMES = new Set(['Lucía', 'Vanesa', 'Claudia']); // los tres perfiles de ejemplo que trae Barney v1
-
-export function migrateFromBarney(v1, todayISO = new Date().toISOString().slice(0, 10)) {
-  const state = emptyState();
-  const skipped = [];
-  for (const g of v1.girls || []) {
-    const r = newProfile({ name: g.name, birth: g.bday, stage: V1_STAGE[g.stage] || 'rollo' }, todayISO);
-    if (!r.ok) {
-      skipped.push({ name: g.name, reason: r.reason });
-      continue;
-    }
-    const p = r.profile;
-    for (const [k, val] of Object.entries(g.sizes || {})) p.sizes[String(k).toLowerCase()] = String(val);
-    for (const [k, val] of Object.entries(g.favs || {})) if (val) p.tastes.push(String(val).toLowerCase());
-    p.tastes = [...new Set(p.tastes)];
-    for (const w of g.wish || []) p.gifts.push({ id: newId('g'), text: w.tag ? `${w.t} (${w.tag})` : String(w.t), at: todayISO });
-    for (const e of g.events || []) p.remember.push({ id: newId('r'), text: e.tag ? `${e.t} · ${e.tag}` : String(e.t), at: todayISO });
-    for (const d of g.dates || []) {
-      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d.d || '');
-      if (m) p.events.push({ id: newId('e'), text: d.t, month: +m[2], day: +m[3], year: +m[1], yearly: false });
-    }
-    if (g.cycleEnabled && g.last) p.cycle = { enabled: true, lastStart: String(g.last).slice(0, 10), length: g.cycle || 28 };
-    state.profiles.push(p);
-  }
-  state.activeId = state.profiles[0]?.id || null;
-  if (v1.city) state.settings.city = { name: v1.city, lat: null, lon: null, tz: null };
-  const demoOnly = state.profiles.length === 3 && state.profiles.every((p) => V1_DEMO_NAMES.has(p.name));
-  return { ok: true, state, source: 'barney-v1', skipped, demoOnly };
 }
 
 // --- PIN (SHA-256 con sal). El PIN bloquea la interfaz, no cifra los datos. ---

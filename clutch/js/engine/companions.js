@@ -1,4 +1,5 @@
 // Acompañantes. Gym Bro es gratis (y se puede renombrar). El resto son PRO. Nombres y frases originales.
+// Barney: el aliado seguro de sí mismo, con humor y buen fondo (personaje propio de Clutch, no imita a nadie).
 
 export const COMPANIONS = {
   gymbro: {
@@ -7,6 +8,14 @@ export const COMPANIONS = {
     lines: {
       hook: ['Dato real en mano. Hoy sumas puntos fácil.', 'Esto es oro: envíalo y a por el día.'],
       nodata: ['Sin dato especial hoy: un gesto pequeño vale más que nada.', 'Hoy toca constancia. Haz uno de los gestos.']
+    }
+  },
+  barney: {
+    pro: true,
+    label: 'Barney',
+    lines: {
+      hook: ['Tienes el dato y el momento. Esto no se piensa: se envía.', 'Con esto quedas como un señor. Adelante.', 'Hoy juegas con ventaja. Úsala con cabeza.'],
+      nodata: ['Día tranquilo, oportunidad perfecta: un detalle pequeño y te ganas la semana.', 'Nada especial en el calendario. Por eso mismo sorprende más un gesto.', 'Los grandes no esperan a una fecha. Haz uno de los gestos.']
     }
   },
   mentor: {

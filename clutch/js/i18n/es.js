@@ -108,7 +108,7 @@ export default {
     export: 'Copia de seguridad',
     exportHint: 'Se muestra el texto para que lo copies y lo guardes.',
     import: 'Restaurar o importar',
-    importHint: 'Pega una copia de Clutch o de Barney v1.',
+    importHint: 'Pega una copia de seguridad de Clutch.',
     theme: 'Aspecto',
     themeAuto: 'Automático',
     themeDark: 'Oscuro',

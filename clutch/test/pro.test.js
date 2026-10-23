@@ -26,7 +26,9 @@ test('acompañantes: gratis vs PRO', () => {
   assert.equal(isAvailable('gymbro', false), true);
   assert.equal(isAvailable('mentor', false), false);
   assert.equal(isAvailable('mentor', true), true);
-  assert.equal(Object.keys(COMPANIONS).length, 5);
+  assert.equal(Object.keys(COMPANIONS).length, 6);
+  assert.equal(isAvailable('barney', false), false, 'Barney es PRO');
+  assert.equal(isAvailable('barney', true), true);
   assert.equal(companionLine('mentor', 'hook', '2026-10-22', false), companionLine('gymbro', 'hook', '2026-10-22', false));
   assert.notEqual(companionLine('mentor', 'hook', '2026-10-22', true), companionLine('colega', 'hook', '2026-10-22', true));
 });

@@ -8,7 +8,7 @@ import { PLAN_KINDS, buildQuery } from '../js/engine/plans.js';
 
 const TTL_MS = 7 * 24 * 3600e3;
 const MAX_KM = 6;
-const UA = { 'User-Agent': 'Clutch/0.1 (+https://mask630.github.io/barney-app/clutch/)', Accept: 'application/json' };
+const UA = { 'User-Agent': 'Clutch/0.2 (clutch.app.2026@gmail.com)', Accept: 'application/json' };
 
 // '["tourism"="viewpoint"]' -> ['tourism', 'viewpoint']
 const tagOf = (kind) => /\["(\w+)"="(\w+)"\]/.exec(PLAN_KINDS[kind].filter).slice(1);

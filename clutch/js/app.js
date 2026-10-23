@@ -160,18 +160,6 @@ function profileForm() {
   </div>`;
 }
 
-// Si Barney v1 está en este mismo móvil y dominio, ofrecemos traer sus perfiles sin pegar nada.
-function readBarney() {
-  try {
-    const v1 = JSON.parse(localStorage.getItem('barney_v9'));
-    if (!v1 || !Array.isArray(v1.girls)) return null;
-    const r = Store.migrateFromBarney(v1, today());
-    return r.demoOnly || !r.state.profiles.length ? null : r;
-  } catch {
-    return null;
-  }
-}
-
 function viewOnboarding() {
   return `<main class="screen">
     <div class="stack"><span class="badge" style="align-self:flex-start">${T.me.beta}</span>
@@ -802,20 +790,9 @@ const ACTS = {
       text = d.text;
     }
     const r = Store.importBackup(text);
-    if (!r.ok) { ui.imp.msg = r.reason === 'no-es-json' ? 'Eso no parece una copia válida.' : 'No reconozco ese formato.'; render(); return; }
-    if (r.source === 'barney-v1') {
-      if (r.demoOnly || !r.state.profiles.length) {
-        ui.imp.msg = r.state.profiles.length ? 'Solo hay datos de demostración de Barney: no se ha importado nada.' : 'No hay perfiles de adultos que importar.';
-        render(); return;
-      }
-      S.profiles.push(...r.state.profiles);
-      if (!S.activeId) S.activeId = r.state.profiles[0].id;
-      if (!S.settings.city && r.state.settings.city) S.settings.city = r.state.settings.city;
-      ui.imp = { text: '', msg: `Listo: ${r.state.profiles.length} perfil(es) importado(s) desde Barney.` };
-    } else {
-      S = r.state;
-      ui.imp = { text: '', msg: `Listo: copia restaurada (${S.profiles.length} perfil(es)).` };
-    }
+    if (!r.ok) { ui.imp.msg = r.reason === 'no-es-json' ? 'Eso no parece una copia válida.' : 'Eso no es una copia de Clutch.'; render(); return; }
+    S = r.state;
+    ui.imp = { text: '', msg: `Listo: copia restaurada (${S.profiles.length} perfil(es)).` };
     ui.sheet = null;
     persist(); render(); showToast(ui.imp.msg.replace(/^Listo: /, ''));
   },
@@ -824,15 +801,6 @@ const ACTS = {
     S = Store.emptyState(); persist();
     Object.assign(ui, { ask: null, tab: 'hoy', screen: null, locked: false, exp: { text: '' } });
     render();
-  },
-  importBarney() {
-    const r = readBarney();
-    if (!r) return;
-    S.profiles.push(...r.state.profiles);
-    S.activeId = S.activeId || r.state.profiles[0].id;
-    if (!S.settings.city && r.state.settings.city) S.settings.city = r.state.settings.city;
-    persist(); render();
-    showToast(`Importados ${r.state.profiles.length} perfil(es) de Barney`);
   },
   companionStyle(el) {
     const id = el.dataset.v;
