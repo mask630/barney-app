@@ -90,7 +90,12 @@ Decidido: se apuntan solos y tú los apruebas. Métricas anónimas con su permis
 - Avisos/recordatorios: comprobar qué funciona hoy sin push real y dejarlo claro en la app.
 - Renovación de la clave: aviso en el panel antes de que caduque.
 
-## Fase 5 · Publicar la beta
+## Fase 5 · Publicar la beta ← publicada beta 0.2 (23-oct)
+- ✅ Publicada en https://mask630.github.io/barney-app/clutch/ (main). Privacidad con responsable (Isaac Briales) y contacto.
+- ✅ Prueba real en la web publicada: alta contra el servidor (CORS bien), calendario, sin errores. Panel limpio (0 testers).
+- Pulido detectado: «Próximas fechas» dice «Aún no hay fechas» aunque haya cumpleaños a más de 4 meses.
+
+Plan original:
 - 👤 Decidir dominio (y comprobar marca "Clutch") → 🤖 configurarlo.
 - 🤖 Publicar en `main` (GitHub Pages) siguiendo el proceso de HANDOFF.md.
 - 👤 Invitar a los primeros 5-10 testers solo con funciones `base`.
