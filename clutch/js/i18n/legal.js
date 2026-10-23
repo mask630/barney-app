@@ -2,7 +2,7 @@
 // Rellena OWNER y CONTACT: el RGPD exige identificar al responsable y dar un contacto.
 
 export const OWNER = 'Isaac Briales';
-export const CONTACT = 'isaacmask0@gmail.com';
+export const CONTACT = 'clutch.app.2026@gmail.com';
 export const UPDATED = '23 de octubre de 2026';
 
 export const LEGAL = [
