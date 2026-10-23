@@ -1,9 +1,9 @@
 // Condiciones de la beta y política de privacidad (borrador: revisar antes de publicar).
 // Rellena OWNER y CONTACT: el RGPD exige identificar al responsable y dar un contacto.
 
-export const OWNER = '[NOMBRE DEL RESPONSABLE]';
-export const CONTACT = '[EMAIL DE CONTACTO]';
-export const UPDATED = '22 de octubre de 2026';
+export const OWNER = 'Isaac Briales';
+export const CONTACT = 'isaacmask0@gmail.com';
+export const UPDATED = '23 de octubre de 2026';
 
 export const LEGAL = [
   { h: 'Condiciones de la beta', p: [

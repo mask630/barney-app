@@ -193,7 +193,7 @@ assert.ok(ics.includes('BEGIN:VCALENDAR') && ics.includes('Agenda · evento') &&
 await page.fill('#fb', 'Me gusta mucho la pantalla Hoy');
 await page.click('button[data-act=sendFeedback]');
 await page.waitForSelector('text=¡Gracias!');
-assert.deepEqual(feedback.at(-1), { kind: 'opinion', text: 'Me gusta mucho la pantalla Hoy', screen: 'yo', version: 'Clutch beta 0.1' });
+assert.deepEqual(feedback.at(-1), { kind: 'opinion', text: 'Me gusta mucho la pantalla Hoy', screen: 'yo', version: 'Clutch beta 0.2' });
 
 // El servidor cierra funciones (grupo base): la app las muestra como "Pronto" sin romperse
 granted = [];

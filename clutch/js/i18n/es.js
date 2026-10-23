@@ -113,7 +113,7 @@ export default {
     themeLight: 'Claro',
     beta: 'Beta',
     feedback: 'Enviar comentario',
-    version: 'Clutch beta 0.1'
+    version: 'Clutch beta 0.2'
   },
   join: {
     title: 'Únete a la beta',
