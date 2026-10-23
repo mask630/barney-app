@@ -25,7 +25,7 @@ Dueño: mask. Habla español. Pide respaldos antes de tocar cosas, interfaz simp
 
 ## Servidor (actualizado 22-oct-2026)
 - Vercel, proyecto `clutch-ia`: https://clutch-ia.vercel.app. IA, funciones por tester, alta de testers, estadísticas, opiniones y planes cerca (`api/`). Base de datos Upstash conectada.
-- Panel del dueño: https://clutch-ia.vercel.app/admin/ (entra con el código de dueño, `CLUTCH_CODES`).
+- Panel del dueño: https://clutch-ia.vercel.app/admin/ (entra con la contraseña `CLUTCH_ADMIN`, que puso mask; el código de dueño `CLUTCH_CODES` sirve para la app, no para el panel).
 - La clave de Anthropic caduca (la actual, el 2026-11-21): crear otra y ejecutar `desplegar-ia.ps1`; conserva el código de dueño. El panel avisa 14 días antes.
 - Hoja de ruta y estado detallado: `ROADMAP.md`.
 

@@ -141,7 +141,7 @@ const seen = (iso) => { const d = daysAgo(iso); return d == null ? '—' : d <= 
 function viewLogin() {
   return `<h1>Clutch · Panel beta</h1>
   <div class="card"><h2>Entrar</h2>
-    <p class="small muted">Usa tu código de dueño (el mismo de Clutch &gt; Yo &gt; Acceso beta).</p>
+    <p class="small muted">Usa la contraseña del panel (la que guardaste en Vercel como CLUTCH_ADMIN).</p>
     <form class="row" id="login"><input class="grow" type="password" id="key" autocomplete="current-password" placeholder="Clave" required><button class="primary">Entrar</button></form>
     <p class="msg ${msg.kind}">${esc(msg.text)}</p></div>`;
 }
