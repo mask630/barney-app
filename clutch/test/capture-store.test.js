@@ -61,10 +61,10 @@ test('perfil: solo adultos, nombre obligatorio', () => {
 });
 
 test('subir de etapa conserva el historial y los datos', () => {
-  const { profile } = newProfile({ name: 'Lucía', birth: '1997-05-14', stage: 'citas', tastes: ['Pasta'] }, TODAY);
+  const { profile } = newProfile({ name: 'Lucía', birth: '1997-05-14', stage: 'rollo', tastes: ['Pasta'] }, TODAY);
   const up = setStage(profile, 'pareja', '2026-11-01');
   assert.equal(up.stage, 'pareja');
-  assert.deepEqual(up.history.map((h) => h.stage), ['citas', 'pareja']);
+  assert.deepEqual(up.history.map((h) => h.stage), ['rollo', 'pareja']);
   assert.deepEqual(up.tastes, ['pasta']);
 });
 

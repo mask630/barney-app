@@ -5,7 +5,7 @@
 import { getJson, setJson, incr, addToSet, expire } from './db.js';
 
 // multi_profile: más de una persona. Sin ella, un solo perfil.
-export const FEATURES = ['multi_profile', 'ai_rewrite', 'my_style', 'companions_pro', 'sos_chat', 'photo_ai', 'plans', 'encrypted_backup'];
+export const FEATURES = ['multi_profile', 'ai_rewrite', 'my_style', 'companions_pro', 'sos_chat', 'photo_ai', 'profile_ai', 'plans', 'encrypted_backup'];
 
 export const DEFAULT_GROUPS = {
   base: [],
@@ -40,6 +40,8 @@ export const isActive = (t) => t?.status === 'active';
 
 export async function featuresFor(tester) {
   if (!isActive(tester)) return [];
+  // El dueño lo tiene siempre todo, también las funciones nuevas que aún no estén en los grupos guardados.
+  if (tester.group === 'admin') return FEATURES;
   const g = await groups();
   return (g[tester.group] || []).filter((f) => FEATURES.includes(f));
 }

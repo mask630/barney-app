@@ -106,6 +106,18 @@ Plan original:
 - Semana 2-4: abrir `pro-1` (IA reescribir + estilo) a la mitad de testers, comparar.
 - Semana 4+: abrir `pro-2` (SOS, foto, planes, copia cifrada).
 
+## Cambios tras la segunda prueba de mask (24-oct) ✅
+- Inicio con menos texto (nombre, fecha o «No sé su fecha», etapa). Hoy sin explicaciones: avisos, jugada, gestos, fechas.
+- Etapas: Rollo, Pareja y Matrimonio (Citas pasa a Rollo sin perder nada; Rollo también tiene hitos «desde que nos conocimos»).
+- SOS simplificado: eliges qué ha pasado → consejo de una línea + mensaje. Respirar, abajo y opcional.
+- Gustos, Tallas, Evitar, Regalos, Eventos y Recordar: se añade directamente desde la ficha.
+- Modo claro: la pestaña activa lleva fondo y color más oscuro.
+- Su ciclo vuelve, para todas las etapas: fase, qué le suele pasar, qué funciona (chocolate antes de la regla…) y deseo según los estudios. «Le ha venido hoy» aprende la duración.
+- Calendario dentro de la app (adiós al .ics): «Te toca» en Hoy (pensar regalo a 30 días, comprarlo a 14, preparar el plan a 3, chocolate antes de la regla) y «Ver calendario» con todo el año.
+- PRO «Analizar su perfil»: capturas de su perfil público → gustos, regalos, planes y una lectura en frío; marcas lo que encaja y va a su ficha. Capturas, no enlaces: Instagram y TikTok no dejan leer perfiles de forma automática y sus normas lo prohíben. 👤 Activarla en el panel para el grupo que quieras (el dueño ya la tiene).
+- Mensajes reescritos para que suenen a persona: sin «Raquel, …» delante, jóvenes en minúscula y sin punto final, emojis solo a veces.
+- 👤 Pendiente: avisos push reales (que avise con la app cerrada). Requiere servidor de avisos.
+
 ## Fase 6 · Después de la beta (ya en HANDOFF.md)
 - Cuentas, copia en la nube cifrada y avisos push reales.
 - Más días mundiales y santos por país (solo con fuente verificada).

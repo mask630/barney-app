@@ -12,7 +12,7 @@ import { leastUsed, restedOrToday } from './rotation.js';
 
 const MILESTONE_DAYS = [50, 100, 150, 200, 250, 300, 400, 500, 600, 700, 800, 900, 1000, 1500, 2000, 2500, 3000, 5000, 7500, 10000];
 const SINCE_LABEL = {
-  citas: 'de nuestra primera cita',
+  rollo: 'desde que nos conocimos',
   pareja: 'desde que estamos juntos',
   matrimonio: 'desde que nos casamos'
 };
@@ -114,22 +114,22 @@ export function generateHooks(profile, todayISO) {
       },
       bd.daysAhead === 0
         ? {
-            flirt: ['feliz cumpleaños. Hoy tienes permiso para que te mimen.', 'feliz cumpleaños. Espero que hoy te traten como te mereces.', 'feliz cumpleaños. Que sea un día tan bonito como tú.'],
-            pareja: ['feliz cumpleaños, mi vida. Hoy el plan eres tú.', 'feliz cumpleaños. Gracias por un año más a tu lado.', 'feliz cumpleaños. Hoy todo lo eliges tú.']
+            flirt: ['¡feliz cumple! Hoy déjate mimar, que te toca.', '¡feliz cumpleaños! Espero que hoy te traten como te mereces.', '¡feliz cumple! Disfruta mucho hoy, y luego me cuentas.'],
+            pareja: ['¡feliz cumpleaños, mi vida! Hoy el plan eres tú.', '¡feliz cumple! Otro año más aguantándome, gracias.', '¡feliz cumpleaños! Hoy todo lo eliges tú.']
           }
         : {}
     );
   }
 
-  // 2. Hitos y aniversario (solo citas / pareja / matrimonio con fecha de inicio)
+  // 2. Hitos y aniversario (con fecha de inicio)
   if (STAGES_WITH_MILESTONES.includes(profile.stage)) {
     if (profile.since && parseISO(profile.since)) {
       const label = SINCE_LABEL[profile.stage];
       const ms = nextMilestone(profile.since, todayISO);
       if (ms) {
-        const phrase = profile.stage === 'citas' ? `hoy hace ${ms.n} días ${label}.` : `hoy se cumplen ${ms.n} días ${label}.`;
+        const phrase = profile.stage === 'rollo' ? `hoy hace ${ms.n} días ${label}.` : `hoy se cumplen ${ms.n} días ${label}.`;
         const tails = {
-          citas: [' Y me acuerdo bien.', ' Y se me han pasado volando.', ' Y los que quedan.'],
+          rollo: [' Y me acuerdo bien.', ' Y se me han pasado volando.', ' Y los que quedan.'],
           pareja: [' Cada uno ha valido la pena.', ' Y quiero muchos más.', ' Y cada día me alegro más.'],
           matrimonio: [' Gracias por cada uno.', ' Y seguimos sumando.', ' Volvería a elegirte en cada uno.']
         }[profile.stage];
@@ -154,7 +154,7 @@ export function generateHooks(profile, todayISO) {
           },
           an.daysAhead === 0
             ? {
-                flirt: [`hoy hace ${yrs} ${SINCE_LABEL.citas}. No se me ha olvidado.`, `hoy hace ${yrs} ${SINCE_LABEL.citas}. Qué buena decisión fue.`],
+                flirt: [`hoy hace ${yrs} ${SINCE_LABEL.rollo}. No se me ha olvidado.`, `hoy hace ${yrs} ${SINCE_LABEL.rollo}. Qué buena decisión fue.`],
                 pareja: [`hoy hace ${yrs} ${profile.stage === 'matrimonio' ? 'que nos casamos' : 'que empezamos'}. Gracias por quedarte.`, `hoy hace ${yrs} ${profile.stage === 'matrimonio' ? 'que nos casamos' : 'que empezamos'}. Lo mejor que me ha pasado.`]
               }
             : {}
@@ -187,7 +187,7 @@ export function generateHooks(profile, todayISO) {
     add(
       { id: 'moon-in-sign', kind: 'astro', priority: 60, usedData: ['birth'], source: { label: SRC_ASTRO } },
       {
-        flirt: [`la Luna está hoy en ${sign}, tu signo. Según los astros, hoy brillas más de lo normal.`, `según los astros, hoy la Luna está en ${sign}, tu signo. Ya decía yo que hoy tenías algo especial.`, `la Luna está hoy en ${sign}, tu signo. Si los astros lo dicen, será verdad: hoy es tu día.`],
+        flirt: [`dicen los astros que hoy la Luna está en ${sign}, tu signo. Yo de esto no sé mucho, pero te pega.`, `según los astros, hoy la Luna está en ${sign}, tu signo. Ya decía yo que hoy tenías algo.`, `la Luna está hoy en ${sign}, tu signo. Si lo dicen los astros, será verdad: hoy es tu día.`],
         pareja: [`según los astros, la Luna pasa hoy por ${sign}, tu signo. Hoy te toca mimo extra.`, `según los astros, hoy la Luna está en ${sign}, tu signo. Así que hoy mandas tú.`, `hoy la Luna pasa por ${sign}, tu signo. Según los astros te toca un día bonito; yo me encargo del resto.`]
       }
     );

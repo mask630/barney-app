@@ -31,3 +31,18 @@ test('servidor: sin configurar, sin código y con código', async () => {
     r = mkRes(); await handler(req({ body: { task: 'x', band: '25-34', group: 'pareja' } }), r); assert.equal(r.code, 400);
   } finally { globalThis.fetch = realFetch; }
 });
+
+test('análisis de perfil: hasta 6 capturas jpeg, respuesta limpia y con límites', async () => {
+  const { buildRequest, parseProfile } = await import('../api/ai.js');
+  const ph = 'data:image/jpeg;base64,AAAA';
+  const b = buildRequest({ task: 'profile', photos: Array(9).fill(ph), band: '25-34', group: 'pareja' });
+  assert.equal(b.payload.messages[0].content.filter((c) => c.type === 'image').length, 6);
+  assert.match(b.payload.system, /datos sensibles/);
+  assert.equal(buildRequest({ task: 'profile', photos: [], band: '25-34' }).error, 'foto');
+  assert.equal(buildRequest({ task: 'profile', photos: ['data:image/png;base64,AAAA'], band: '25-34' }).error, 'foto');
+  const r = parseProfile('```json\n' + JSON.stringify({ gustos: ['sushi', 'yoga', 3], regalos: ['x'.repeat(99)], lectura: 'Le encanta viajar.' }) + '\n```');
+  assert.deepEqual(r.gustos, ['sushi', 'yoga', '3']);
+  assert.equal(r.regalos[0].length, 60);
+  assert.deepEqual(r.evitar, []);
+  assert.equal(parseProfile('no es json'), null);
+});

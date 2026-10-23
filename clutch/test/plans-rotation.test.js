@@ -33,7 +33,7 @@ test('planes: si todo está propuesto, sale al menos uno', () => {
 
 test('planes: mensaje para proponerlo', () => {
   const mirador = items.find((i) => i.kind === 'viewpoint');
-  assert.equal(planMessage(mirador, { name: 'Lucía', band: '25-34', group: 'pareja' }), 'Lucía, ¿te apetece ver el atardecer desde Mirador de Gibralfaro? 🤍');
+  assert.match(planMessage(mirador, { name: 'Lucía', band: '25-34', group: 'pareja' }), /¿te apetece ver el atardecer desde Mirador de Gibralfaro\?/);
   const cine = items.find((i) => i.kind === 'cinema');
   assert.match(planMessage(cine, { name: 'Lucía', band: '25-34', group: 'pareja' }), /ver una peli en Cine Albéniz\?/);
 });

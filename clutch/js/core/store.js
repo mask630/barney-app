@@ -15,7 +15,6 @@ export function emptyState() {
       pinHash: null,
       pinSalt: null,
       lockOnLeave: false,
-      discreetNotifs: true,
       theme: 'auto',
       companionStyle: 'cordial',
       style: null,
@@ -63,7 +62,7 @@ export function newProfile({ name, birth = null, band = null, stage = 'pareja', 
       events: [], // { id, text, month, day, year|null, yearly }
       remember: [], // { id, text, at }
       avoid: [], // lo que no le gusta
-      cycle: { enabled: false, lastStart: null, length: 28 },
+      cycle: { enabled: false, lastStart: null, length: 28, starts: [] },
       history: [{ stage, at: todayISO }],
       createdAt: todayISO
     }
@@ -88,7 +87,7 @@ export function completeness(p) {
     Object.keys(p.sizes).length > 0,
     p.gifts.length > 0,
     p.events.length > 0,
-    !!p.since || stageRank(p.stage) < stageRank('citas')
+    !!p.since
   ];
   return Math.round((checks.filter(Boolean).length / checks.length) * 100);
 }

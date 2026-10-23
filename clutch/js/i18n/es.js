@@ -5,25 +5,25 @@ export default {
   appName: 'Clutch',
   tagline: 'Nunca falles en el momento importante',
   tabs: { hoy: 'Hoy', ella: 'Ella', apuntar: 'Apuntar', escribele: 'Escríbele', yo: 'Yo' },
-  stages: { rollo: 'Rollo', citas: 'Citas', pareja: 'Pareja', matrimonio: 'Matrimonio' },
+  stages: { rollo: 'Rollo', pareja: 'Pareja', matrimonio: 'Matrimonio' },
   stageHint: {
     rollo: 'Ligero y con chispa.',
-    citas: 'Ilusión y planes.',
     pareja: 'Cariño y constancia.',
     matrimonio: 'Cariño y constancia.'
   },
   welcome: {
     title: 'Tu mejor amigo para no fallar',
-    body: 'Clutch te recuerda lo que importa de ella y te ayuda a decirlo bien. Empieza solo con su nombre: lo demás, cuando lo sepas. Tus datos se quedan en este móvil.',
+    body: 'Empieza con su nombre. Lo demás, cuando lo sepas.',
     cta: 'Crear su ficha'
   },
   profile: {
     name: 'Su nombre (o cómo la llamas)',
     birth: 'Fecha de nacimiento (si la sabes)',
-    band: '¿No sabes su fecha? Elige su edad aproximada',
+    band: 'Su edad aproximada',
+    noBirth: 'No sé su fecha',
     stage: 'Etapa',
     since: 'Desde cuándo (opcional)',
-    sinceHint: 'Fecha de la primera cita, de cuando empezasteis o de la boda',
+    sinceHint: 'Cuando os conocisteis, empezasteis o os casasteis',
     adultOnly: 'Solo se pueden crear perfiles de personas adultas (18 años o más).',
     errors: {
       'menor-de-edad': 'Solo se admiten perfiles de personas de 18 años o más.',
@@ -40,11 +40,11 @@ export default {
     play: 'La jugada de hoy',
     gestures: 'Gestos para hoy',
     dates: 'Próximas fechas',
-    noDates: 'Aún no hay fechas. Apunta un cumpleaños o un plan y aparecerá aquí.',
-    unlock: 'Para desbloquear más',
-    care: 'Cuidado de hoy',
+    noDates: 'Aún no hay fechas. Pon su cumpleaños en Ella > Editar.',
+    todo: 'Te toca',
+    calendar: 'Ver calendario',
+    calendarHint: 'Clutch te avisa aquí, en Hoy, de lo que toca hacer antes de cada fecha: pensar el regalo, comprarlo y preparar el plan.',
     sosRow: '¿La has liado? Ve a SOS',
-    emptyHook: 'Hoy no hay ningún dato especial. Tienes mensajes sencillos en Escríbele.',
     days: (n) => (n === 0 ? 'hoy' : n === 1 ? 'mañana' : `en ${n} días`)
   },
   write: {
@@ -75,7 +75,8 @@ export default {
   },
   sos: {
     title: 'SOS',
-    breathe: 'Respira conmigo',
+    breathe: 'Respira un minuto',
+    breatheHint: 'Antes de escribir en caliente',
     inhale: 'Inspira',
     hold: 'Sostén',
     exhale: 'Espira',
@@ -92,8 +93,6 @@ export default {
     plan: 'Modo simple',
     planBody: 'Un perfil, gestos diarios, Apuntar, ganchos y SOS con guiones. Durante la beta iremos abriendo funciones nuevas poco a poco.',
     discretion: 'Discreción',
-    discreetNotifs: 'Títulos discretos',
-    discreetNotifsHint: 'En el calendario se verá «Agenda · evento», sin nombres',
     pin: 'PIN de Clutch',
     pinHint: 'Aparte del bloqueo de huella o cara de tu móvil',
     lockLeave: 'Bloqueo al salir',
@@ -115,7 +114,7 @@ export default {
     themeLight: 'Claro',
     beta: 'Beta',
     feedback: 'Enviar comentario',
-    version: 'Clutch beta 0.2'
+    version: 'Clutch beta 0.3'
   },
   join: {
     title: 'Únete a la beta',
@@ -137,5 +136,20 @@ export default {
     }
   },
   lock: { title: 'Introduce tu PIN', wrong: 'PIN incorrecto', unlock: 'Entrar' },
+  cycle: {
+    title: 'Su ciclo',
+    off: 'Apunta cuándo le viene la regla y Clutch te dice en qué fase está y qué suele funcionar: chocolate antes de la regla, una cita especial en sus mejores días…',
+    startedToday: 'Le ha venido hoy',
+    last: 'Primer día de la última regla',
+    length: 'Días del ciclo',
+    note: 'Son tendencias de los estudios, no reglas: cada mujer es distinta (y con anticonceptivos hormonales se notan menos). No sirve como método anticonceptivo.'
+  },
+  social: {
+    title: 'Analizar su perfil',
+    row: 'Sus redes con IA: gustos e ideas de regalo',
+    pitch: 'Haz capturas de su perfil público (Instagram, TikTok…) y la IA te dice qué le puede gustar, ideas de regalo y planes que le pueden ir.',
+    how: 'Haz capturas de su perfil público: fotos, publicaciones y lo que escribe. Hasta 6.',
+    privacy: 'Solo perfiles públicos. Las capturas se envían a la IA para analizarlas y no se guardan en ningún sitio.'
+  },
   dest: { gustos: 'Gustos', evitar: 'Evitar', tallas: 'Tallas', regalos: 'Regalos', eventos: 'Eventos', recordar: 'Recordar', bandeja: 'Bandeja' }
 };

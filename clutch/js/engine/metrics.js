@@ -8,7 +8,7 @@ export const EVENTS = [
   'open', 'tab_hoy', 'tab_ella', 'tab_apuntar', 'tab_yo',
   'write_open', 'copy', 'whatsapp', 'style_apply', 'ai_rewrite',
   'sos_open', 'sos_script', 'sos_chat', 'breath',
-  'capture_save', 'photo_add', 'photo_ai', 'plans_search',
+  'capture_save', 'photo_add', 'photo_ai', 'profile_ai', 'reminder_done', 'agenda_open', 'section_add', 'plans_search',
   'profile_create', 'stage_change', 'gesture_done', 'backup_export', 'feedback_send'
 ];
 

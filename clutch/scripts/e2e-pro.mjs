@@ -9,7 +9,7 @@ const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 const calls = [];
-const ALL = ['multi_profile', 'ai_rewrite', 'my_style', 'companions_pro', 'sos_chat', 'photo_ai', 'plans', 'encrypted_backup'];
+const ALL = ['multi_profile', 'ai_rewrite', 'my_style', 'companions_pro', 'sos_chat', 'photo_ai', 'profile_ai', 'plans', 'encrypted_backup'];
 let granted = ALL;
 const json = (route, out, status = 200) => route.fulfill({ status, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(out) });
 let newStatus = 'pending';
@@ -31,6 +31,7 @@ await page.route('https://clutch-ia.vercel.app/api/ai', async (route) => {
   calls.push({ body, code: route.request().headers()['x-clutch-code'] });
   const out = body.task === 'rewrite' ? { text: 'oye {n}, ya son 100 días juntos' }
     : body.task === 'sos' ? { text: 'Respira. Escríbele: "Lo siento, hablemos".' }
+    : body.task === 'profile' ? { result: { gustos: ['yoga', 'sushi'], evitar: [], regalos: ['esterilla de yoga'], planes: ['clase de cerámica'], lectura: 'Le encanta cuidarse y probar sitios nuevos.' } }
     : { dest: 'regalos', field: '', value: 'collar dorado', confidence: 'alta' };
   await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(out) });
 });
@@ -45,9 +46,13 @@ const txt = () => page.locator('#app').innerText();
 await page.fill('#f-name', 'Lucía');
 await page.fill('#f-birth', '1997-05-14');
 await page.click('button:has-text("Pareja")');
-// inicio hace exactamente 100 días (fecha local), para que el hito salga cualquier día que se ejecute
-await page.fill('#f-since', await page.evaluate(() => { const d = new Date(); d.setDate(d.getDate() - 100); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }));
 await page.click('text=Crear su ficha');
+// inicio hace exactamente 100 días (fecha local), para que el hito salga cualquier día que se ejecute
+await page.click('.nav button:has-text("Ella")');
+await page.click('button:has-text("Editar")');
+await page.fill('#e-since', await page.evaluate(() => { const d = new Date(); d.setDate(d.getDate() - 100); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }));
+await page.click('.sheet button:has-text("Guardar")');
+await page.click('.nav button:has-text("Hoy")');
 
 // Hoy invita a apuntarse; el alta exige aceptar condiciones y queda pendiente hasta que el dueño apruebe
 assert.match(await txt(), /Únete a la beta/);
@@ -110,7 +115,7 @@ assert.match(await txt(), /oye Lucía, ya son 100 días juntos/);
 const rw = calls.find((c) => c.body.task === 'rewrite');
 assert.equal(rw.code, 'tester1');
 assert.ok(!JSON.stringify(rw.body).includes('Lucía'), 'el nombre no debe viajar al servidor');
-assert.ok(rw.body.message.includes('{n}'));
+assert.ok(rw.body.message.length > 5);
 await page.click('button[aria-label=Volver]');
 
 // SOS chat
@@ -187,18 +192,31 @@ assert.equal(batch.events.copy, 2);
 assert.ok(batch.events.tab_hoy >= 1);
 assert.ok(!JSON.stringify(events).includes('Lucía'), 'nunca datos de ella');
 
-// Avisos: el calendario se descarga con títulos discretos (sin nombres) por defecto
-await page.click('.nav button:has-text("Yo")');
-const [dl] = await Promise.all([page.waitForEvent('download'), page.click('text=Añadir fechas a mi calendario')]);
-assert.equal(dl.suggestedFilename(), 'agenda.ics');
-const ics = await (await import('node:fs/promises')).readFile(await dl.path(), 'utf8');
-assert.ok(ics.includes('BEGIN:VCALENDAR') && ics.includes('Agenda · evento') && !ics.includes('Lucía'));
+// Analizar su perfil (capturas) con IA: sugerencias que se añaden a la ficha; las capturas no se guardan
+await page.click('.nav button:has-text("Ella")');
+await page.click('text=Analizar su perfil');
+await page.setInputFiles('input[data-change=socialPhotos]', [resolve('public/icon-192.png'), resolve('public/icon-512.png')]);
+await page.waitForSelector('img[alt="Captura 2"]');
+await page.click('text=Analizar con IA');
+await page.waitForSelector('text=Le encanta cuidarse');
+const prof = calls.find((c) => c.body.task === 'profile');
+assert.equal(prof.body.photos.length, 2);
+assert.ok(!JSON.stringify(prof.body).includes('Lucía'));
+await page.click('.chip:has-text("yoga")');
+await page.click('.chip:has-text("esterilla de yoga")');
+await page.click('text=Añadir lo marcado a su ficha');
+await page.waitForSelector('text=2 dato(s) añadidos');
+await page.click('button.item:has-text("Gustos")');
+assert.match(await page.locator('.sheet').innerText(), /yoga/);
+await page.click('.sheet button:has-text("Cerrar")');
+assert.ok(!(await page.evaluate(() => localStorage.getItem('clutch_v2'))).includes('Captura'), 'las capturas no se guardan');
 
 // Opinión: llega al servidor con la pantalla y la versión
+await page.click('.nav button:has-text("Yo")');
 await page.fill('#fb', 'Me gusta mucho la pantalla Hoy');
 await page.click('button[data-act=sendFeedback]');
 await page.waitForSelector('text=¡Gracias!');
-assert.deepEqual(feedback.at(-1), { kind: 'opinion', text: 'Me gusta mucho la pantalla Hoy', screen: 'yo', version: 'Clutch beta 0.2' });
+assert.deepEqual(feedback.at(-1), { kind: 'opinion', text: 'Me gusta mucho la pantalla Hoy', screen: 'yo', version: 'Clutch beta 0.3' });
 
 // El servidor cierra funciones (grupo base): la app las muestra como "Pronto" sin romperse
 granted = [];
@@ -208,7 +226,7 @@ await page.click('text=Comprobar acceso');
 await page.waitForSelector('text=Acceso actualizado');
 assert.equal(await page.locator('text=Aprender mi estilo').count(), 0);
 await page.click('.nav button:has-text("Hoy")');
-assert.match(await txt(), /Planes cerca[\s\S]*Pronto/);
+assert.equal(await page.locator('text=Planes cerca').count(), 0, 'sin la función no se muestra');
 assert.equal(await page.locator('text=Buscar planes').count(), 0);
 await page.click('text=Escríbele >> nth=0');
 assert.equal(await page.locator('text=Reescribir con IA').count(), 0);

@@ -8,7 +8,8 @@
 import { cors, findTester, featuresFor, isActive, aiQuotaOk, readBody } from './_lib/access.js';
 
 const MAX_MESSAGE = 600;
-const TASK_FEATURE = { rewrite: 'ai_rewrite', sos: 'sos_chat', photo: 'photo_ai' };
+const TASK_FEATURE = { rewrite: 'ai_rewrite', sos: 'sos_chat', photo: 'photo_ai', profile: 'profile_ai' };
+const MAX_PROFILE_PHOTOS = 6;
 const MAX_PHOTO_CHARS = 1_800_000;
 // Respuestas cortas: sin «pensamiento» (en Haiku 5.5 viene activado y se comía todo max_tokens) y esfuerzo bajo.
 const FAST = { thinking: { type: 'disabled' }, output_config: { effort: 'low' } };
@@ -16,8 +17,7 @@ const BANDS = ['18-24', '25-34', '35-49', '50+'];
 const GROUPS = ['flirt', 'pareja'];
 // Matiz por etapa dentro del registro (opcional; la app lo manda desde que existe).
 const STAGE_NOTES = {
-    rollo: 'Etapa: ya hay algo, sin compromiso. Cercano y con chispa, sin exigir ni presionar.',
-  citas: 'Etapa: se están conociendo en serio. Cálido, con ganas de verla y sin agobiar.',
+  rollo: 'Etapa: ya hay algo, sin compromiso o empezando. Cercano y con chispa, sin exigir ni presionar.',
   matrimonio: 'Etapa: matrimonio. Cariño de largo recorrido y complicidad.'
 };
 
@@ -26,7 +26,7 @@ Reglas que no se pueden saltar:
 - Escribe siempre en español natural, sin sonar a anuncio.
 - Usa SOLO los datos que te doy. No inventes fechas, números, nombres, lugares, recuerdos ni gustos.
 - El nombre de ella aparece como {n}. Déjalo tal cual.
-- Respeta el registro: flirt = ligero y con chispa (rollo y citas); pareja = cariño y constancia.
+- Respeta el registro: flirt = ligero y con chispa (rollo); pareja = cariño y constancia.
 - Adapta el tono al tramo de edad: 18-24 informal, 25-34 natural, 35-49 sobrio y cálido, 50+ cuidado y respetuoso.
 - Nada de manipulación, presión, culpa ni contenido sexual. Si algo se pide así, responde con una alternativa respetuosa.
 - Responde solo con el texto pedido, sin explicaciones.
@@ -37,7 +37,7 @@ export const plain = (s) => String(s).replace(/\*\*|__/g, '').replace(/^#{1,6}\s
 
 export function buildRequest(body, model = 'claude-haiku-5-5') {
   // La foto no usa el registro (la app no lo manda); reescribir y SOS sí.
-  if (!BANDS.includes(body.band) || (body.task !== 'photo' && !GROUPS.includes(body.group))) return { error: 'parametros' };
+  if (!BANDS.includes(body.band) || (body.task !== 'photo' && body.task !== 'profile' && !GROUPS.includes(body.group))) return { error: 'parametros' };
   const ctx = `Tramo de edad de ella: ${body.band}. Registro: ${body.group}.${STAGE_NOTES[body.stage] ? ' ' + STAGE_NOTES[body.stage] : ''}`;
   if (body.task === 'rewrite') {
     const msg = String(body.message || '').slice(0, MAX_MESSAGE);
@@ -76,7 +76,45 @@ export function buildRequest(body, model = 'claude-haiku-5-5') {
       }
     };
   }
+  if (body.task === 'profile') {
+    const list = Array.isArray(body.photos) ? body.photos.slice(0, MAX_PROFILE_PHOTOS) : [];
+    const imgs = [];
+    for (const ph of list) {
+      const m = /^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/.exec(ph || '');
+      if (!m || m[1].length > MAX_PHOTO_CHARS) return { error: 'foto' };
+      imgs.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: m[1] } });
+    }
+    if (!imgs.length) return { error: 'foto' };
+    return {
+      payload: {
+        model, max_tokens: 1500, ...FAST,
+        system: `Analizas capturas del perfil PÚBLICO en redes sociales (Instagram, TikTok…) de una mujer adulta. Quien te las pasa tiene una relación afectiva con ella y quiere acertar con regalos, planes y detalles.
+Deduce gustos probables a partir de lo que se ve y se lee: aficiones, comida, viajes, música, series, estética y colores, marcas, mascotas, deporte, sitios que frecuenta.
+Reglas:
+- No identifiques a nadie ni describas su cuerpo ni su físico.
+- No deduzcas datos sensibles: salud, religión, política, orientación sexual, dinero.
+- Nada inventado: solo lo que se apoya en las capturas. Si no hay pistas suficientes, devuelve listas cortas o vacías.
+- Textos cortos en español (máximo 6 palabras por elemento), en minúscula salvo nombres propios.
+- "lectura": 2 o 3 frases tipo lectura en frío, prudentes y en tono cercano, dirigidas a él (tú), sobre qué le suele hacer ilusión. Sin nombres: si hace falta, di "ella".
+- ${ctx}
+Responde SOLO con JSON: {"gustos":[hasta 8],"evitar":[hasta 4],"regalos":[hasta 5 ideas concretas],"planes":[hasta 4],"lectura":"..."}`,
+        messages: [{ role: 'user', content: [...imgs, { type: 'text', text: '¿Qué le puede gustar según su perfil?' }] }]
+      }
+    };
+  }
   return { error: 'tarea' };
+}
+
+const strList = (a, n) => (Array.isArray(a) ? a : []).map((x) => String(x).trim().slice(0, 60)).filter(Boolean).slice(0, n);
+
+// Respuesta del análisis de perfil, limpia y con límites. null si no es JSON válido.
+export function parseProfile(text) {
+  try {
+    const j = JSON.parse(String(text).replace(/^```(?:json)?|```$/g, '').trim());
+    return { gustos: strList(j.gustos, 8), evitar: strList(j.evitar, 4), regalos: strList(j.regalos, 5), planes: strList(j.planes, 4), lectura: String(j.lectura || '').slice(0, 500) };
+  } catch {
+    return null;
+  }
 }
 
 const nums = (s) => (String(s).match(/\d+/g) || []).sort().join(',');
@@ -136,6 +174,10 @@ export default async function handler(req, res) {
   if (body.task === 'rewrite') {
     const safe = safeRewrite(built.msg, body.facts, text);
     return safe ? res.status(200).json({ text: safe }) : res.status(200).json({ text: null, reason: 'descartado' });
+  }
+  if (body.task === 'profile') {
+    const result = parseProfile(text);
+    return result ? res.status(200).json({ result }) : res.status(502).json({ error: 'ia' });
   }
   if (body.task === 'photo') {
     try {

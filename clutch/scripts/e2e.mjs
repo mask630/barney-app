@@ -14,7 +14,7 @@ await page.goto(url);
 await page.waitForSelector('text=Crear su ficha');
 assert.ok(!/barney/i.test(await page.locator('#app').innerText()), 'el inicio no menciona Barney');
 const txt = () => page.locator('#app').innerText();
-const shot = (n) => process.env.SHOTS ? page.screenshot({ path: `${process.env.SHOTS}/shot-${n}.png` }) : null;
+const shot = (n) => process.env.SHOTS ? page.screenshot({ path: `${process.env.SHOTS}/shot-${n}.png`, fullPage: true }) : null;
 
 // Onboarding: el año se puede teclear número a número (antes se cortaba en «0001»)
 await page.click('#f-birth');
@@ -25,10 +25,11 @@ await page.fill('#f-birth', '');
 await page.fill('#f-name', 'Sin fecha');
 await page.click('text=Crear su ficha');
 assert.match(await txt(), /edad aproximada/);
+await page.click('text=No sé su fecha');
 await page.click('button[data-act=formBand][data-v="25-34"]');
 await page.click('text=Crear su ficha');
 await page.waitForSelector('h1:has-text("Sin fecha")');
-assert.match(await txt(), /fecha de nacimiento/i, 'sugiere añadirla');
+assert.ok(!/OpenStreetMap|Prueba antes que nadie|Para desbloquear/.test(await txt()), 'Hoy sin explicaciones de más');
 await page.click('.nav button:has-text("Ella")');
 await page.click('button:has-text("Editar")');
 await page.click('text=Eliminar perfil');
@@ -43,9 +44,14 @@ assert.match(await txt(), /18 años/);
 // Alta correcta
 await page.fill('#f-birth', '1997-05-14');
 await page.click('button:has-text("Pareja")');
-// inicio hace exactamente 100 días (fecha local), para que el hito salga cualquier día que se ejecute
-await page.fill('#f-since', await page.evaluate(() => { const d = new Date(); d.setDate(d.getDate() - 100); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }));
+assert.equal(await page.locator('.chip:text-is("Citas")').count(), 0, 'sin Citas');
 await page.click('text=Crear su ficha');
+// inicio hace exactamente 100 días (fecha local), para que el hito salga cualquier día que se ejecute
+await page.click('.nav button:has-text("Ella")');
+await page.click('button:has-text("Editar")');
+await page.fill('#e-since', await page.evaluate(() => { const d = new Date(); d.setDate(d.getDate() - 100); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }));
+await page.click('.sheet button:has-text("Guardar")');
+await page.click('.nav button:has-text("Hoy")');
 let t = await txt();
 assert.match(t, /Lucía/);
 assert.match(t, /100 días/, 'hito de 100 días visible: ' + t.slice(0, 300));
@@ -79,15 +85,41 @@ t = await txt();
 assert.match(t, /Tallas/);
 assert.match(t, /anillo 14/);
 await shot('ella');
+// Añadir directamente desde la ficha
+await page.click('button.item:has-text("Gustos")');
+await page.fill('#add-text', 'sushi');
+await page.click('.sheet button:has-text("Añadir")');
+assert.match(await page.locator('.sheet').innerText(), /sushi/);
+await page.click('.sheet button:has-text("Cerrar")');
+await page.click('button.item:has-text("Eventos")');
+await page.fill('#add-text', 'Concierto');
+const in40 = await page.evaluate(() => { const d = new Date(); d.setDate(d.getDate() + 40); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
+await page.fill('#add-date', in40);
+await page.click('.sheet button:has-text("Añadir")');
+assert.match(await page.locator('.sheet').innerText(), new RegExp(`Concierto · ${in40.slice(8)}/${in40.slice(5, 7)}`));
+await page.click('.sheet button:has-text("Cerrar")');
+// Su ciclo
+await page.click('button[role=switch][data-act=toggleCycle]');
+await page.click('text=Le ha venido hoy');
+assert.match(await txt(), /Tiene la regla · día 1/);
+assert.match(await txt(), /Analizar su perfil/);
+await shot('ciclo');
 // Cambiar etapa conserva datos
 await page.click('.chip:has-text("Matrimonio")');
 await page.click('button:has-text("Cambiar a Matrimonio")');
 assert.match(await txt(), /anillo 14/);
 // SOS
 await page.click('.nav button:has-text("Hoy")');
+assert.match(await txt(), /Chocolate/, 'el ciclo sale en Hoy');
+await page.click('text=Ver calendario');
+assert.match(await txt(), /Le puede venir la regla/);
+assert.match(await txt(), /Concierto/);
+await shot('calendario');
+await page.click('button[aria-label=Volver]');
 await page.click('text=¿La has liado?');
-await page.click('text=La he liado');
-assert.match(await txt(), /mensaje para copiar/i);
+await page.click('.chip:has-text("La he liado")');
+assert.match(await txt(), /Reconócelo pronto/);
+assert.equal(await page.locator('main button:has-text("Copiar")').count(), 1);
 await shot('sos');
 await page.click('button[aria-label=Volver]');
 // Yo + PIN
@@ -109,6 +141,8 @@ assert.match(await txt(), /Lucía/);
 await page.click('.nav button:has-text("Yo")');
 await page.click('.chip:has-text("Claro")');
 await shot('claro');
+const navOn = await page.evaluate(() => getComputedStyle(document.querySelector('.nav button[aria-current=page]')).backgroundColor);
+assert.notEqual(navOn, 'rgba(0, 0, 0, 0)', 'la pestaña activa se distingue en claro');
 // sin desbordamiento horizontal
 const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
 assert.equal(overflow, false, 'hay scroll horizontal');

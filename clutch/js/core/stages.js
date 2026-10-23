@@ -3,27 +3,27 @@
 
 import { parseISO } from './dates.js';
 
-export const STAGES = ['rollo', 'citas', 'pareja', 'matrimonio'];
+export const STAGES = ['rollo', 'pareja', 'matrimonio'];
 
 // Etapas retiradas (Clutch es para cuidar una relación afectiva): las fichas antiguas pasan a Rollo, sin perder nada.
-export const LEGACY_STAGE = { amiga: 'rollo', objetivo: 'rollo' };
+// Citas se unió a Rollo el 24-oct-2026 (eran casi lo mismo).
+export const LEGACY_STAGE = { amiga: 'rollo', objetivo: 'rollo', citas: 'rollo' };
 
 export const STAGE_LABEL = {
-  es: { rollo: 'Rollo', citas: 'Citas', pareja: 'Pareja', matrimonio: 'Matrimonio' }
+  es: { rollo: 'Rollo', pareja: 'Pareja', matrimonio: 'Matrimonio' }
 };
 
 // Dos registros de contenido:
-//  - flirt: rollo y citas (ligero y con chispa).
+//  - flirt: rollo (ligero y con chispa).
 //  - pareja: pareja y matrimonio (cariño, cuidado, constancia).
 export const STAGE_GROUP = {
   rollo: 'flirt',
-  citas: 'flirt',
   pareja: 'pareja',
   matrimonio: 'pareja'
 };
 
 // Etapas en las que tiene sentido una fecha de inicio de la relación (hitos).
-export const STAGES_WITH_MILESTONES = ['citas', 'pareja', 'matrimonio'];
+export const STAGES_WITH_MILESTONES = ['rollo', 'pareja', 'matrimonio'];
 
 export const MIN_AGE = 18;
 export const AGE_BANDS = ['18-24', '25-34', '35-49', '50+'];

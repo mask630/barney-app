@@ -5,18 +5,18 @@ import { localISO, daysBetween, parseISO } from './core/dates.js';
 import { STAGES, STAGE_GROUP, STAGES_WITH_MILESTONES, AGE_BANDS, profileBand } from './core/stages.js';
 import * as Store from './core/store.js';
 import { generateHooks } from './engine/hooks.js';
-import { genericMessages, dailyGestures, upcoming, cycleCare, SOS } from './engine/content.js';
+import { genericMessages, dailyGestures, cycleInfo, cycleLength, CYCLE_MIN, CYCLE_MAX, SOS } from './engine/content.js';
+import { agenda, reminders, markDone, when } from './engine/agenda.js';
 import { classify, applyToProfile, DESTINATIONS } from './engine/capture.js';
 import { CITIES, countryFromTimezone, detectTimezone, nearestCity } from './core/geo.js';
 import { COMPANIONS, COMPANION_IDS, isAvailable, companionLine } from './engine/companions.js';
 import { analyzeStyle, applyStyle, describeStyle } from './engine/style.js';
 import { fetchPlans, plansForToday, planMessage } from './engine/plans.js';
-import { aiConfigured, aiRewrite, aiSos, aiPhoto, fillName } from './engine/ai.js';
+import { aiConfigured, aiRewrite, aiSos, aiPhoto, aiProfile, fillName, SOCIAL_MAX } from './engine/ai.js';
 import { FEATURES, has as hasFeature, fetchConfig, registerBeta } from './engine/features.js';
 import { LEGAL, UPDATED } from './i18n/legal.js';
 import { createMetrics, sendFeedback } from './engine/metrics.js';
 import { markUsed, unmarkUsedToday } from './engine/rotation.js';
-import { buildICS } from './engine/calendar.js';
 
 const T = es;
 
@@ -40,13 +40,15 @@ const track = (ev) => metrics.track(S.settings, ev);
 const ACT_EVENT = {
   goWrite: 'write_open', copy: 'copy', goSos: 'sos_open', aiMsg: 'ai_rewrite', styleMsg: 'style_apply', aiChat: 'sos_chat',
   savePending: 'capture_save', aiPhoto: 'photo_ai', findPlans: 'plans_search', createProfile: 'profile_create',
-  confirmStage: 'stage_change', toggleGesture: 'gesture_done', exportData: 'backup_export', exportEnc: 'backup_export', openSos: 'sos_script'
+  confirmStage: 'stage_change', toggleGesture: 'gesture_done', exportData: 'backup_export', exportEnc: 'backup_export', openSos: 'sos_script',
+  aiProfile: 'profile_ai', doneReminder: 'reminder_done', goAgenda: 'agenda_open', addItem: 'section_add'
 };
 
 const ui = {
   tab: 'hoy', screen: null, sheet: null, ask: null, toast: null,
   locked: false, pinEntry: '', pinError: false,
   form: { name: '', birth: '', band: '', stage: 'pareja', since: '', error: '' },
+  add: { text: '', field: '', date: '' }, social: { photos: [], result: null, pick: {} },
   edit: {}, draft: '', pending: null, imp: { text: '', msg: '' }, exp: { text: '' }, pin: { value: '', error: '' }, fb: { text: '' },
   open: null, breath: { on: false, phase: 'in' },
   alt: {}, busy: null, chat: [], chatDraft: '', plansMsg: '', pass: { value: '' }, styleDraft: '',
@@ -144,30 +146,27 @@ function switchHtml(on, act, extra = '') {
 
 function profileForm() {
   const f = ui.form;
-  const needsSince = STAGES_WITH_MILESTONES.includes(f.stage);
+  const noBirth = f.noBirth || (!f.birth && f.band);
   return `
   <div class="stack">
     <div class="field"><label for="f-name">${T.profile.name}</label>
       <input id="f-name" class="input" data-bind="form.name" value="${esc(f.name)}" autocomplete="off" maxlength="40"></div>
-    <div class="field"><label for="f-birth">${T.profile.birth}</label>
-      <input id="f-birth" class="input" type="date" data-bind="form.birth" value="${esc(f.birth)}" max="${today()}"></div>
-    <div class="field"><label>${T.profile.band}</label>
-      <div class="chips">${AGE_BANDS.map((b) => `<button class="chip" aria-pressed="${f.band === b}" data-act="formBand" data-v="${b}">${b === '50+' ? '50 o más' : b}</button>`).join('')}</div></div>
+    ${noBirth
+      ? `<div class="field"><label>${T.profile.band}</label>
+      <div class="chips">${AGE_BANDS.map((b) => `<button class="chip" aria-pressed="${f.band === b}" data-act="formBand" data-v="${b}">${b === '50+' ? '50 o más' : b}</button>`).join('')}</div></div>`
+      : `<div class="field"><label for="f-birth">${T.profile.birth}</label>
+      <input id="f-birth" class="input" type="date" data-bind="form.birth" value="${esc(f.birth)}" max="${today()}">
+      <button class="chip" style="align-self:flex-start;min-height:32px" data-act="formNoBirth">${T.profile.noBirth}</button></div>`}
     <div class="field"><label>${T.profile.stage}</label>
-      <div class="chips">${STAGES.map((s) => `<button class="chip" aria-pressed="${f.stage === s}" data-act="formStage" data-v="${s}">${T.stages[s]}</button>`).join('')}</div>
-      <span class="small muted">${T.stageHint[f.stage]}</span></div>
-    ${needsSince ? `<div class="field"><label for="f-since">${T.profile.since}</label>
-      <input id="f-since" class="input" type="date" data-bind="form.since" value="${esc(f.since)}" max="${today()}">
-      <span class="small muted">${T.profile.sinceHint}</span></div>` : ''}
+      <div class="chips">${STAGES.map((s) => `<button class="chip" aria-pressed="${f.stage === s}" data-act="formStage" data-v="${s}">${T.stages[s]}</button>`).join('')}</div></div>
     ${f.error ? `<p class="error" role="alert">${esc(f.error)}</p>` : ''}
-    <p class="small muted">${T.profile.adultOnly}</p>
   </div>`;
 }
 
 function viewOnboarding() {
   return `<main class="screen">
-    <div class="stack"><div class="row" style="gap:10px"><span style="width:40px;height:40px;display:block">${LOGO}</span><b style="font-family:var(--font-display);font-size:26px;letter-spacing:-0.5px" class="grow">Clutch</b><span class="badge">${T.me.beta}</span></div>
-    <h1>${T.welcome.title}</h1><p class="muted">${T.welcome.body}</p></div>
+    <div class="row" style="gap:10px"><span style="width:40px;height:40px;display:block">${LOGO}</span><b style="font-family:var(--font-display);font-size:26px;letter-spacing:-0.5px" class="grow">Clutch</b><span class="badge">${T.me.beta}</span></div>
+    <div class="stack" style="gap:6px"><h1>${T.welcome.title}</h1><p class="muted">${T.welcome.body}</p></div>
     <div class="card">${profileForm()}
       <button class="btn primary block" data-act="createProfile">${T.welcome.cta}</button></div>
     <button class="btn ghost block small" data-act="restoreSheet">¿Ya usabas Clutch? Restaurar mi copia</button>
@@ -185,23 +184,32 @@ function viewLock() {
 }
 
 function plansCard(p) {
-  if (!has('plans')) return `<div class="card row"><span class="grow"><b>Planes cerca</b><br><span class="small muted">Ideas reales de tu ciudad</span></span>${SOON}</div>`;
+  // Sin la función o sin ciudad no se muestra: la pantalla Hoy va al grano.
+  if (!has('plans') || !location()) return '';
   const c = S.settings.plans;
   const city = S.settings.city;
   const items = c && city && c.city === city.name && c.group === STAGE_GROUP[p.stage] ? c.items : null;
   return `<div class="stack"><span class="label">Planes cerca</span><div class="card">
-    ${!location() ? '<p class="muted">Elige tu ciudad en Yo para ver planes cerca de ti.</p>'
-      : items && items.length ? `<div class="list">${plansForToday(items, p, today()).map((i) => {
+    ${items && items.length ? `<div class="list">${plansForToday(items, p, today()).map((i) => {
         const msg = planMessage(i, { name: p.name, band: bandOf(p), group: STAGE_GROUP[p.stage] });
         return `<div class="item" style="padding:8px 0;min-height:44px;flex-wrap:wrap"><div class="grow"><b>${esc(i.text)}</b><br><span class="small muted">${esc(i.label)} · ${i.km} km</span></div>
           <button class="btn small" data-act="copy" data-text="${esc(msg)}" data-mid="${esc(i.id)}">Proponer</button>
           <a class="btn small" data-track="whatsapp" data-mid="${esc(i.id)}" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">${T.write.whatsapp}</a></div>`;
-      }).join('')}</div><p class="small muted">Los que propongas descansan unas semanas para que no se repitan.</p>`
-      : '<p class="muted">Lugares reales de tu ciudad (OpenStreetMap) para proponerle un plan.</p>'}
+      }).join('')}</div>` : ''}
     ${ui.plansMsg ? `<p class="small error">${esc(ui.plansMsg)}</p>` : ''}
-    ${location() ? `<button class="btn small" data-act="findPlans" ${ui.busy === 'plans' ? 'disabled' : ''}>${ui.busy === 'plans' ? 'Buscando…' : items ? 'Actualizar' : 'Buscar planes'}</button>
-    <p class="small muted">Solo se envía la ciudad elegida, nunca datos de ella.</p>` : ''}
+    <button class="btn small" data-act="findPlans" ${ui.busy === 'plans' ? 'disabled' : ''}>${ui.busy === 'plans' ? 'Buscando…' : items ? 'Actualizar' : 'Buscar planes'}</button>
   </div></div>`;
+}
+
+const agendaOpts = () => ({ country: S.settings.country });
+
+function remindersCard(p) {
+  const list = reminders(p, today(), agendaOpts()).slice(0, 3);
+  if (!list.length) return '';
+  return `<div class="stack"><span class="label">${T.today.todo}</span><div class="card flat list">${list.map((r) => `<div class="item" style="align-items:flex-start">
+      <div class="grow"><b>${esc(r.title)}</b><br><span class="small muted">${esc(r.label)} · ${when(r.daysAhead)}</span>
+      ${r.ideas ? `<br><span class="small">${r.ideas.length ? `Ideas: ${esc(r.ideas.join(' · '))}` : '<span class="muted">Apunta en Regalos lo que le haga ilusión.</span>'}</span>` : ''}</div>
+      <button class="btn small" data-act="doneReminder" data-v="${esc(r.id)}">Hecho</button></div>`).join('')}</div></div>`;
 }
 
 function viewHoy(p) {
@@ -209,7 +217,6 @@ function viewHoy(p) {
   // Personalidad elegida (PRO) o la voz cordial por defecto, que no lleva nombre.
   const style = isAvailable(S.settings.companionStyle, has('companions_pro')) ? S.settings.companionStyle : 'cordial';
   const persona = COMPANIONS[style].persona === false ? '' : COMPANIONS[style].label;
-  const voice = (kind) => `<p class="small muted">${persona ? `<b>${esc(persona)}</b>: ` : ''}${esc(companionLine(style, kind, today(), true))}</p>`;
   const msgHooks = r.hooks.filter((h) => h.message);
   const hero = msgHooks.find((h) => h.daysAhead === 0) || null;
   // Cuatro gestos: el primero es la jugada del día (si no hay dato especial) y los otros tres van a la lista, sin repetirse.
@@ -217,46 +224,61 @@ function viewHoy(p) {
   const lead = picks[0];
   const gest = picks.length > 3 ? picks.slice(1) : picks;
   const done = (p.done && p.done[today()]) || [];
-  const care = cycleCare(p, today());
-  const dates = upcoming(p, today(), 120, S.settings.country).slice(0, 4);
-  const reminders = r.hooks.filter((h) => h.reminder && h.daysAhead > 0).slice(0, 2);
-  const unlocks = r.unlocks.slice(0, 2);
+  const cyc = cycleInfo(p, today());
+  const dates = agenda(p, today(), agendaOpts()).slice(0, 3);
 
   return `<main class="screen">
     <div><span class="small muted">${esc(cap(longDate(today())))}</span>
     <h1>${esc(p.name)}</h1></div>
+
+    ${remindersCard(p)}
 
     <section class="card hero" aria-label="${T.today.play}">
       <span class="label" style="padding:0">${T.today.play}${persona ? ` · ${esc(persona)}` : ''}</span>
       ${hero
         ? `<p class="big">${esc(hero.message)}</p>
            <p class="source"><b>${T.write.realData}</b> · ${esc(hero.source.label)}</p>
-           ${voice('hook')}
+           ${persona ? `<p class="small muted"><b>${esc(persona)}</b>: ${esc(companionLine(style, 'hook', today(), true))}</p>` : ''}
            <button class="btn primary block" data-act="goWrite">${T.tabs.escribele}</button>`
         : `<p class="big">${esc(lead.t)}</p>
-           <p class="source">${T.today.emptyHook}</p>
-           ${voice('nodata')}
+           ${persona ? `<p class="small muted"><b>${esc(persona)}</b>: ${esc(companionLine(style, 'nodata', today(), true))}</p>` : ''}
            <button class="btn block" data-act="goWrite">${T.tabs.escribele}</button>`}
     </section>
 
-    ${care ? `<section class="card"><h3>${T.today.care}</h3><p>${esc(care.text)}</p></section>` : ''}
+    ${cyc ? `<button class="card" style="text-align:left" data-act="tab" data-v="ella"><span class="label" style="padding:0">${esc(cyc.name)}</span><p>${esc(cyc.tip)}</p></button>` : ''}
 
     <div class="stack"><span class="label">${T.today.gestures}</span>
       <div class="card flat list">${gest.map((g) => `<button class="gesture" aria-pressed="${done.includes(g.id)}" data-act="toggleGesture" data-v="${g.id}"><span class="tick">${done.includes(g.id) ? '✓' : ''}</span><span>${esc(g.t)}</span></button>`).join('')}</div></div>
 
     <div class="stack"><span class="label">${T.today.dates}</span>
-      ${dates.length || reminders.length
-        ? `<div class="card flat list">${dates.map((d) => `<div class="item"><span class="grow">${esc(d.label)}</span><span class="badge">${T.today.days(d.daysAhead)}</span></div>`).join('')}</div>`
-        : `<div class="card"><p class="muted">${T.today.noDates}</p></div>`}</div>
-
-    ${unlocks.length ? `<div class="stack"><span class="label">${T.today.unlock}</span>
-      <div class="card flat list">${unlocks.map((u) => `<div class="item"><span class="grow small">${esc(u.text)}</span></div>`).join('')}</div></div>` : ''}
+      <div class="card flat list">${dates.length
+        ? dates.map((d) => `<div class="item"><span class="grow">${esc(d.label)}</span><span class="badge">${when(d.daysAhead)}</span></div>`).join('')
+        : `<div class="item"><span class="grow muted">${T.today.noDates}</span></div>`}
+        <button class="item" data-act="goAgenda"><span class="grow"><b>${T.today.calendar}</b></span><span aria-hidden="true">›</span></button></div></div>
 
     ${plansCard(p)}
 
-    ${!aiConfigured(S.settings) ? `<button class="card row" style="text-align:left;background:var(--surface)" data-act="goJoin"><span class="grow"><b>${T.join.title}</b><br><span class="small muted">Prueba antes que nadie las funciones nuevas.</span></span><span aria-hidden="true">›</span></button>` : ''}
+    <button class="card row" style="text-align:left" data-act="goSos"><span class="grow"><b>${T.today.sosRow}</b></span><span aria-hidden="true">›</span></button>
+    ${!aiConfigured(S.settings) ? `<button class="card row" style="text-align:left" data-act="goJoin"><span class="grow"><b>${T.join.title}</b></span><span aria-hidden="true">›</span></button>` : ''}
+  </main>`;
+}
 
-    <button class="card row" style="text-align:left;background:var(--surface)" data-act="goSos"><span class="grow"><b>${T.today.sosRow}</b></span><span aria-hidden="true">›</span></button>
+// Calendario de la app: todo el año de un vistazo, por meses.
+function viewAgenda(p) {
+  const all = agenda(p, today(), agendaOpts());
+  const month = (iso) => cap(new Intl.DateTimeFormat('es', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(parseISO(iso)));
+  const day = (iso) => new Intl.DateTimeFormat('es', { weekday: 'short', day: 'numeric', timeZone: 'UTC' }).format(parseISO(iso));
+  const groups = [];
+  for (const d of all) {
+    const m = month(d.iso);
+    if (!groups.length || groups[groups.length - 1].m !== m) groups.push({ m, items: [] });
+    groups[groups.length - 1].items.push(d);
+  }
+  return `<main class="screen">
+    <div class="row"><button class="btn small ghost" data-act="back" aria-label="Volver">‹</button><h1>${T.today.calendar}</h1></div>
+    ${groups.length ? groups.map((g) => `<div class="stack"><span class="label">${esc(g.m)}</span><div class="card flat list">${g.items.map((d) => `<div class="item"><span class="small muted" style="width:56px">${esc(day(d.iso))}</span><span class="grow">${esc(d.label)}</span><span class="badge">${when(d.daysAhead)}</span></div>`).join('')}</div></div>`).join('')
+      : `<div class="card"><p class="muted">${T.today.noDates}</p></div>`}
+    <p class="small muted">${T.today.calendarHint}</p>
   </main>`;
 }
 
@@ -296,7 +318,6 @@ function sizeLine(p) {
 
 function viewElla(p) {
   const pct = Store.completeness(p);
-  const rank = Store.stageRank(p.stage);
   const tiles = [
     ['gustos', p.tastes.length], ['evitar', p.avoid.length], ['tallas', Object.keys(p.sizes).length],
     ['regalos', p.gifts.length], ['eventos', p.events.length], ['recordar', p.remember.length]
@@ -306,18 +327,60 @@ function viewElla(p) {
       <button class="chip" data-act="newProfileSheet" ${canAddProfile() ? '' : 'style="opacity:.7"'}>+ Añadir${canAddProfile() ? '' : ' <span class="badge pro" style="padding:1px 5px">Pronto</span>'}</button></div>
     <div class="row"><h1 class="grow">${esc(p.name)}</h1><button class="btn small" data-act="editSheet">Editar</button></div>
 
-    <div class="stack"><span class="label">${T.profile.stage}</span>
-      <div class="chips">${STAGES.map((s) => `<button class="chip" aria-pressed="${p.stage === s}" data-act="stageSheet" data-v="${s}">${T.stages[s]}</button>`).join('')}</div>
-      <p class="small muted">${T.profile.upgradeNote}</p></div>
+    <div class="chips">${STAGES.map((s) => `<button class="chip" aria-pressed="${p.stage === s}" data-act="stageSheet" data-v="${s}">${T.stages[s]}</button>`).join('')}</div>
 
     <div class="card"><div class="row"><h3 class="grow">Ficha</h3><b>${pct}%</b></div>
-      <div class="bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div>
-      ${pct < 100 ? '<p class="small muted">Cuanto más sepas de ella, mejores serán los mensajes. Usa Apuntar.</p>' : ''}</div>
+      <div class="bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div></div>
 
-    <div class="card flat list">${tiles.map(([k, n]) => `<button class="item" data-act="openSection" data-v="${k}"><span class="grow"><b>${T.dest[k]}</b>${k === 'tallas' && n ? `<br><span class="small muted">${sizeLine(p)}</span>` : ''}</span><span class="badge">${n}</span></button>`).join('')}</div>
+    <div class="card flat list">${tiles.map(([k, n]) => `<button class="item" data-act="openSection" data-v="${k}"><span class="grow"><b>${T.dest[k]}</b>${k === 'tallas' && n ? `<br><span class="small muted">${sizeLine(p)}</span>` : ''}</span><span class="badge">${n || '+'}</span></button>`).join('')}</div>
 
-    ${rank >= Store.stageRank('citas') ? `<div class="card"><div class="row"><span class="grow"><b>Cuidado según su ciclo</b><br><span class="small muted">Opcional y orientativo. Tú decides.</span></span>${switchHtml(p.cycle.enabled, 'toggleCycle')}</div>
-      ${p.cycle.enabled ? `<div class="field"><label for="c-last">Primer día de su última regla</label><input id="c-last" class="input" type="date" data-bind="edit.cycleLast" data-change="cycleLast" value="${esc(p.cycle.lastStart || '')}" max="${today()}"></div>` : ''}</div>` : ''}
+    ${cycleCard(p)}
+
+    <button class="card row" style="text-align:left" data-act="goSocial"><span class="grow"><b>${T.social.title}</b><br><span class="small muted">${T.social.row}</span></span>${has('profile_ai') ? '<span aria-hidden="true">›</span>' : SOON}</button>
+  </main>`;
+}
+
+function cycleCard(p) {
+  const c = p.cycle;
+  const info = cycleInfo(p, today());
+  const lens = Array.from({ length: CYCLE_MAX - CYCLE_MIN + 1 }, (_, i) => CYCLE_MIN + i);
+  return `<div class="card"><div class="row"><span class="grow"><b>${T.cycle.title}</b></span>${switchHtml(c.enabled, 'toggleCycle')}</div>
+    ${!c.enabled ? `<p class="small muted">${T.cycle.off}</p>` : `
+      ${info ? `<div class="msg"><b>${esc(info.name)}</b> · día ${info.day} de ${info.len}<br>${esc(info.mood)}<br><b>Qué te puede funcionar:</b> ${esc(info.tip)}<br><span class="muted">${esc(info.desire)}</span></div>
+        <p class="small muted">Próxima regla, aprox.: ${esc(longDate(info.nextStart))} (${when(info.toNext)}).</p>` : ''}
+      <button class="btn small" data-act="cycleStart">${T.cycle.startedToday}</button>
+      <div class="row"><div class="field grow"><label for="c-last">${T.cycle.last}</label><input id="c-last" class="input" type="date" data-change="cycleLast" value="${esc(c.lastStart || '')}" max="${today()}"></div>
+        <div class="field"><label for="c-len">${T.cycle.length}</label><select id="c-len" class="select" data-change="cycleLen">${lens.map((n) => `<option ${cycleLength(c) === n ? 'selected' : ''}>${n}</option>`).join('')}</select></div></div>
+      <p class="small muted">${T.cycle.note}</p>`}
+  </div>`;
+}
+
+// Análisis de su perfil público con IA (PRO): capturas → gustos, regalos y una lectura prudente.
+function viewSocial(p) {
+  const so = ui.social;
+  const r = so.result;
+  const opt = (kind, text) => {
+    const k = `${kind}|${text}`;
+    return `<button class="chip" aria-pressed="${!!so.pick[k]}" data-act="socialPick" data-v="${esc(k)}">${esc(text)}</button>`;
+  };
+  const block = (kind, label) => (r[kind] && r[kind].length ? `<div class="field"><label>${label}</label><div class="chips">${r[kind].map((t) => opt(kind, t)).join('')}</div></div>` : '');
+  return `<main class="screen">
+    <div class="row"><button class="btn small ghost" data-act="back" aria-label="Volver">‹</button><h1>${T.social.title}</h1></div>
+    ${!has('profile_ai') ? `<div class="card"><p>${T.social.pitch}</p><span class="badge pro" style="align-self:flex-start">PRO · Pronto</span></div>` : `
+    <div class="card">
+      <p class="small muted">${T.social.how}</p>
+      ${so.photos.length ? `<div class="chips">${so.photos.map((ph, i) => `<span style="position:relative"><img src="${ph}" alt="Captura ${i + 1}" style="width:72px;height:96px;object-fit:cover;border-radius:10px"><button class="chip" style="position:absolute;top:-6px;right:-6px;min-height:28px;padding:0 8px" data-act="socialDel" data-v="${i}" aria-label="Quitar">✕</button></span>`).join('')}</div>` : ''}
+      ${so.photos.length < SOCIAL_MAX ? `<label class="btn" style="cursor:pointer">${so.photos.length ? 'Añadir más capturas' : 'Elegir capturas'}<input type="file" accept="image/*" multiple hidden data-change="socialPhotos"></label>` : ''}
+      <button class="btn primary block" data-act="aiProfile" ${!so.photos.length || ui.busy === 'social' ? 'disabled' : ''}>${ui.busy === 'social' ? 'Analizando…' : 'Analizar con IA'}</button>
+      <p class="small muted">${T.social.privacy}</p>
+    </div>
+    ${r ? `<div class="card">
+      ${r.lectura ? `<span class="label" style="padding:0">Lectura</span><p>${esc(fillName(r.lectura, p.name))}</p>` : ''}
+      ${block('gustos', 'Le puede gustar')}${block('regalos', 'Ideas de regalo')}${block('evitar', 'Mejor evitar')}
+      ${r.planes && r.planes.length ? `<div class="field"><label>Planes que le pueden ir</label><ul style="margin:0;padding-left:20px">${r.planes.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
+      <p class="small muted">Es una suposición a partir de lo que publica. Marca lo que te encaje y se guarda en su ficha.</p>
+      <button class="btn primary block" data-act="socialSave" ${Object.values(so.pick).some(Boolean) ? '' : 'disabled'}>Añadir lo marcado a su ficha</button>
+    </div>` : ''}`}
   </main>`;
 }
 
@@ -356,29 +419,27 @@ function viewCapture(p) {
   </main>`;
 }
 
+// SOS simplificado: eliges qué ha pasado y sale un consejo corto y el mensaje listo. Respirar y el chat con IA, abajo.
 function viewSos(p) {
   const group = STAGE_GROUP[p.stage];
   const phases = { in: T.sos.inhale, hold: T.sos.hold, out: T.sos.exhale };
+  const s = SOS.find((x) => x.id === ui.open);
   return `<main class="screen">
     <div class="row"><button class="btn small ghost" data-act="back" aria-label="Volver">‹</button><h1>${T.sos.title}</h1></div>
-    <div class="card" style="align-items:center;text-align:center">
-      <h3>${T.sos.breathe}</h3>
-      <div class="breath ${ui.breath.on ? ui.breath.phase : ''}" id="breath" aria-live="polite">${ui.breath.on ? phases[ui.breath.phase] : ''}</div>
-      <button class="btn small" data-act="toggleBreath">${ui.breath.on ? T.sos.stop : T.sos.start}</button></div>
     <span class="label">${T.sos.situations}</span>
-    <div class="stack">${SOS.map((s) => {
-      const open = ui.open === s.id;
-      return `<div class="card"><button class="row" style="background:none;border:0;text-align:left;min-height:44px" data-act="openSos" data-v="${s.id}" aria-expanded="${open}"><b class="grow">${s.title}</b><span aria-hidden="true">${open ? '−' : '+'}</span></button>
-        ${open ? `<span class="label" style="padding:0">${T.sos.steps}</span><ol style="margin:0;padding-left:20px">${s.steps.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>
-          <span class="label" style="padding:0">${T.sos.script}</span><div class="msg">${esc(s.scripts[group])}</div>
-          <div class="row wrap"><button class="btn primary small" data-act="copy" data-text="${esc(s.scripts[group])}">${T.write.copy}</button>
-          <a class="btn small" data-track="whatsapp" href="https://wa.me/?text=${encodeURIComponent(s.scripts[group])}" target="_blank" rel="noopener">${T.write.whatsapp}</a></div>` : ''}</div>`;
-    }).join('')}</div>
-    ${!has('sos_chat') ? `<div class="card row"><span class="grow">${T.sos.proChat}</span><span class="badge pro">${T.sos.pro}</span></div>`
-      : `<div class="card"><h3>${T.sos.proChat}</h3>
+    <div class="chips">${SOS.map((x) => `<button class="chip" aria-pressed="${ui.open === x.id}" data-act="openSos" data-v="${x.id}">${x.title}</button>`).join('')}</div>
+    ${s ? `<div class="card">
+      <p><b>${esc(s.tip)}</b></p>
+      <div class="msg">${esc(s.scripts[group])}</div>
+      <div class="row wrap"><button class="btn primary small" data-act="copy" data-text="${esc(s.scripts[group])}">${T.write.copy}</button>
+      <a class="btn small" data-track="whatsapp" href="https://wa.me/?text=${encodeURIComponent(s.scripts[group])}" target="_blank" rel="noopener">${T.write.whatsapp}</a></div></div>` : ''}
+    ${has('sos_chat') ? `<div class="card"><h3>${T.sos.proChat}</h3>
             ${ui.chat.map((m) => `<div class="msg" style="${m.role === 'user' ? 'background:var(--surface)' : ''}"><span class="small muted">${m.role === 'user' ? 'Tú' : 'Clutch'}</span><br>${esc(fillName(m.text, p.name))}</div>`).join('')}
             <textarea id="chat-in" class="textarea" data-bind="chatDraft" placeholder="Cuéntame qué ha pasado">${esc(ui.chatDraft)}</textarea>
-            <button class="btn primary block" data-act="aiChat" ${ui.busy === 'chat' ? 'disabled' : ''}>${ui.busy === 'chat' ? 'Pensando…' : 'Enviar'}</button></div>`}
+            <button class="btn primary block" data-act="aiChat" ${ui.busy === 'chat' ? 'disabled' : ''}>${ui.busy === 'chat' ? 'Pensando…' : 'Enviar'}</button></div>` : ''}
+    <div class="card"><div class="row"><span class="grow"><b>${T.sos.breathe}</b>${ui.breath.on ? '' : `<br><span class="small muted">${T.sos.breatheHint}</span>`}</span>
+      ${ui.breath.on ? `<div class="breath small ${ui.breath.phase}" id="breath" aria-live="polite">${phases[ui.breath.phase]}</div>` : ''}
+      <button class="btn small" data-act="toggleBreath">${ui.breath.on ? T.sos.stop : T.sos.start}</button></div></div>
   </main>`;
 }
 
@@ -393,11 +454,6 @@ function viewMe() {
       <div class="item"><div class="grow"><b>${T.me.lockLeave}</b><br><span class="small muted">${T.me.lockLeaveHint}</span></div>${switchHtml(s.lockOnLeave, 'toggleSetting', `data-v="lockOnLeave" ${s.pinHash ? '' : 'disabled'}`)}</div>
     </div></div>
 
-    <div class="stack"><span class="label">Avisos</span><div class="card">
-      <p class="small muted">Clutch aún no envía notificaciones (llegarán más adelante). Para que te avise tu móvil, añade sus fechas a tu calendario: te avisará el día antes y el mismo día a las 9:00.</p>
-      <div class="row"><div class="grow"><b>${T.me.discreetNotifs}</b><br><span class="small muted">${T.me.discreetNotifsHint}</span></div>${switchHtml(s.discreetNotifs, 'toggleSetting', 'data-v="discreetNotifs"')}</div>
-      <button class="btn block" data-act="exportCalendar">Añadir fechas a mi calendario</button>
-      <p class="small muted">Si cambias o añades fechas, vuelve a pulsarlo.</p></div></div>
 
     <div class="stack"><span class="label">${T.me.where}</span><div class="card flat list">
       <div class="item"><div class="grow"><b>${T.me.country}: ${esc(s.country || '—')}</b><br><span class="small muted">Se detecta por la zona horaria.</span></div></div>
@@ -482,6 +538,27 @@ function betaCard() {
 }
 
 // ---------- hojas modales ----------
+// Añadir directamente desde Gustos, Tallas, Evitar… (sin pasar por Apuntar).
+const ADD_HINT = { gustos: 'sushi, Coldplay, el color verde…', evitar: 'el cilantro, las sorpresas en público…', regalos: 'la colonia que miró, un libro…', recordar: 'su amiga se llama Ana…', eventos: 'concierto, examen, viaje…' };
+function addForm(k) {
+  const a = ui.add;
+  return `<div class="card">
+    ${k === 'tallas' ? `<div class="row"><div class="field grow"><label for="add-field">Prenda</label><input id="add-field" class="input" data-bind="add.field" value="${esc(a.field)}" placeholder="anillo, calzado…"></div>
+      <div class="field" style="width:96px"><label for="add-text">Talla</label><input id="add-text" class="input" data-bind="add.text" value="${esc(a.text)}"></div></div>`
+      : `<div class="field"><label for="add-text">${k === 'eventos' ? 'Qué es' : 'Añadir'}</label><input id="add-text" class="input" data-bind="add.text" value="${esc(a.text)}" placeholder="${esc(ADD_HINT[k] || '')}" maxlength="120"></div>`}
+    ${k === 'eventos' ? `<div class="field"><label for="add-date">Fecha</label><input id="add-date" class="input" type="date" data-bind="add.date" value="${esc(a.date)}"></div>` : ''}
+    <button class="btn primary small" data-act="addItem" data-kind="${k}">Añadir</button></div>`;
+}
+
+// Número en el icono de la app (si el móvil lo permite) con los avisos de hoy.
+let lastBadge = -1;
+function updateBadge() {
+  if (!('setAppBadge' in navigator)) return;
+  const n = S.profiles.reduce((acc, p) => acc + reminders(p, today(), agendaOpts()).length, 0);
+  if (n === lastBadge) return;
+  lastBadge = n;
+  (n ? navigator.setAppBadge(n) : navigator.clearAppBadge()).catch(() => {});
+}
 function sheetHtml() {
   const sh = ui.sheet;
   if (!sh) return '';
@@ -511,7 +588,7 @@ function sheetHtml() {
     if (k === 'regalos') rows = p.gifts.map((g) => ({ id: g.id, text: g.text, photo: g.photo }));
     if (k === 'eventos') rows = p.events.map((e) => ({ id: e.id, text: `${e.text} · ${String(e.day).padStart(2, '0')}/${String(e.month).padStart(2, '0')}${e.year ? '/' + e.year : ''}` }));
     if (k === 'recordar') rows = p.remember.map((r) => ({ id: r.id, text: r.text, photo: r.photo }));
-    body = `<h2>${T.dest[k]}</h2>${rows.length ? `<div class="card flat list">${rows.map((r) => `<div class="item"><div class="grow">${r.photo ? `<img class="thumb" style="max-height:120px;width:auto" src="${r.photo}" alt="">` : ''}${esc(r.text)}</div><button class="btn small ghost" data-act="delItem" data-kind="${k}" data-v="${esc(r.id)}" aria-label="Quitar">✕</button></div>`).join('')}</div>` : '<p class="muted">Aún no hay nada. Usa Apuntar para añadirlo.</p>'}
+    body = `<h2>${T.dest[k]}</h2>${addForm(k)}${rows.length ? `<div class="card flat list">${rows.map((r) => `<div class="item"><div class="grow">${r.photo ? `<img class="thumb" style="max-height:120px;width:auto" src="${r.photo}" alt="">` : ''}${esc(r.text)}</div><button class="btn small ghost" data-act="delItem" data-kind="${k}" data-v="${esc(r.id)}" aria-label="Quitar">✕</button></div>`).join('')}</div>` : ''}
       <button class="btn ghost block" data-act="closeSheet">Cerrar</button>`;
   } else if (sh.type === 'restore') {
     body = has('encrypted_backup')
@@ -551,6 +628,8 @@ function render() {
     let main;
     if (ui.screen === 'write') main = viewWrite(p);
     else if (ui.screen === 'sos') main = viewSos(p);
+    else if (ui.screen === 'agenda') main = viewAgenda(p);
+    else if (ui.screen === 'social') main = viewSocial(p);
     else if (ui.tab === 'ella') main = viewElla(p);
     else if (ui.tab === 'apuntar') main = viewCapture(p);
     else if (ui.tab === 'yo') main = viewMe();
@@ -558,6 +637,7 @@ function render() {
     html = main + navHtml();
   }
   app.innerHTML = html + sheetHtml() + (ui.toast ? `<div class="toast" role="status">${esc(ui.toast)}</div>` : '');
+  updateBadge();
   if (focusId) {
     const el = document.getElementById(focusId);
     if (el) {
@@ -597,19 +677,18 @@ function tryCreateProfile() {
   render();
 }
 
-function readPhoto(file) {
+function readPhoto(file, max = 720, quality = 0.65) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
-      const max = 720;
       const k = Math.min(1, max / Math.max(img.width, img.height));
       const c = document.createElement('canvas');
       c.width = Math.round(img.width * k);
       c.height = Math.round(img.height * k);
       c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
       URL.revokeObjectURL(url);
-      resolve(c.toDataURL('image/jpeg', 0.65));
+      resolve(c.toDataURL('image/jpeg', quality));
     };
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('imagen')); };
     img.src = url;
@@ -652,6 +731,51 @@ const ACTS = {
   back() { ui.screen = null; stopBreath(); render(); },
   goWrite() { ui.screen = 'write'; render(); },
   goSos() { ui.screen = 'sos'; render(); },
+  goAgenda() { ui.screen = 'agenda'; render(); },
+  goSocial() { ui.screen = 'social'; render(); },
+  formNoBirth() { ui.form.noBirth = true; ui.form.birth = ''; render(); },
+  doneReminder(el) { updateProfile((p) => markDone(p, el.dataset.v, today())); showToast('Hecho'); render(); },
+  addItem(el) {
+    const k = el.dataset.kind, a = ui.add;
+    const value = String(a.text || '').trim();
+    if (!value) { showToast(k === 'tallas' ? 'Escribe la talla' : 'Escribe qué quieres guardar'); return; }
+    const c = { dest: k, value, field: k === 'tallas' ? String(a.field || '').trim() || 'talla' : null };
+    if (k === 'eventos') {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(a.date || '');
+      if (!m) { showToast('Elige la fecha'); return; }
+      c.date = { year: +m[1], month: +m[2], day: +m[3] };
+    }
+    updateProfile((p) => applyToProfile(p, c, Store.newId('x'), today()));
+    ui.add = { text: '', field: '', date: '' };
+    render();
+    setTimeout(() => document.getElementById('add-text')?.focus(), 0);
+  },
+  cycleStart() {
+    updateProfile((p) => ({ ...p, cycle: { ...p.cycle, lastStart: today(), starts: [...new Set([...(p.cycle.starts || []), today()])].slice(-12) } }));
+    showToast('Apuntado: hoy le ha venido');
+    render();
+  },
+  socialPick(el) { ui.social.pick[el.dataset.v] = !ui.social.pick[el.dataset.v]; render(); },
+  socialDel(el) { ui.social.photos.splice(+el.dataset.v, 1); render(); },
+  async aiProfile() {
+    const p = prof();
+    ui.busy = 'social'; render();
+    const r = await aiProfile(S.settings, { photos: ui.social.photos, band: bandOf(p), group: STAGE_GROUP[p.stage] });
+    ui.busy = null;
+    if (r.ok && r.result) { ui.social.result = r.result; ui.social.pick = {}; }
+    else showToast(AI_ERR[r.reason] || 'No se pudo analizar');
+    render();
+  },
+  socialSave() {
+    const picks = Object.keys(ui.social.pick).filter((k) => ui.social.pick[k]);
+    updateProfile((p) => picks.reduce((acc, k) => {
+      const i = k.indexOf('|');
+      return applyToProfile(acc, { dest: k.slice(0, i), value: k.slice(i + 1) }, Store.newId('x'), today());
+    }, p));
+    ui.social = { photos: [], result: null, pick: {} };
+    showToast(`${picks.length} dato(s) añadidos a su ficha`);
+    ui.screen = null; ui.tab = 'ella'; render();
+  },
   formStage(el) { ui.form.stage = el.dataset.v; render(); },
   formBand(el) { ui.form.band = ui.form.band === el.dataset.v ? '' : el.dataset.v; render(); },
   editBand(el) { ui.edit.band = el.dataset.v; render(); },
@@ -689,7 +813,7 @@ const ACTS = {
   },
   closeSheet() { ui.sheet = null; ui.ask = null; ui.edit = {}; render(); },
   closeSheetBack(el, ev) { if (ev.target === el) ACTS.closeSheet(); },
-  openSection(el) { ui.sheet = { type: 'section', kind: el.dataset.v }; render(); },
+  openSection(el) { ui.add = { text: '', field: '', date: '' }; ui.sheet = { type: 'section', kind: el.dataset.v }; render(); },
   delItem(el) {
     const { kind, v } = el.dataset;
     updateProfile((p) => {
@@ -894,17 +1018,6 @@ const ACTS = {
     await refreshAccess(true);
     render();
   },
-  // Archivo .ics con las fechas de todas las fichas; al abrirlo el móvil ofrece añadirlas al calendario.
-  exportCalendar() {
-    const { text, count } = buildICS(S.profiles, today(), { discreet: S.settings.discreetNotifs });
-    if (!count) { showToast('Aún no hay fechas que añadir'); return; }
-    const url = URL.createObjectURL(new Blob([text], { type: 'text/calendar;charset=utf-8' }));
-    const a = document.createElement('a');
-    a.href = url; a.download = 'agenda.ics';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 30000);
-    showToast(`${count} fecha(s) listas: ábrelas para añadirlas a tu calendario`);
-  },
   goJoin() { ui.tab = 'yo'; ui.screen = null; render(); setTimeout(() => document.getElementById('join')?.scrollIntoView({ behavior: 'smooth' }), 0); },
   legalSheet(el, ev) { ev?.preventDefault(); ui.sheet = { type: 'legal' }; render(); },
   joinCheck(el) { ui.join[el.dataset.v] = el.checked; },
@@ -963,7 +1076,13 @@ const CHANGES = {
     }
   },
   aiCode(el) { S.settings.testerCode = el.value.trim(); persist(); refreshAccess(true); },
-  cycleLast(el) { updateProfile((p) => ({ ...p, cycle: { ...p.cycle, lastStart: el.value || null } })); }
+  cycleLast(el) { updateProfile((p) => ({ ...p, cycle: { ...p.cycle, lastStart: el.value || null, starts: el.value ? [...new Set([...(p.cycle.starts || []), el.value])].slice(-12) : p.cycle.starts } })); render(); },
+  cycleLen(el) { updateProfile((p) => ({ ...p, cycle: { ...p.cycle, length: +el.value, starts: [] } })); render(); },
+  async socialPhotos(el) {
+    const files = [...(el.files || [])].slice(0, SOCIAL_MAX - ui.social.photos.length);
+    try { for (const f of files) ui.social.photos.push(await readPhoto(f, 1024, 0.72)); } catch { showToast('No se pudo leer alguna captura'); }
+    ui.social.result = null; render();
+  }
 };
 
 // ---------- respiración ----------
@@ -978,7 +1097,7 @@ function startBreath() {
     ui.breath.phase = order[i];
     const b = $('#breath');
     if (!b) return;
-    b.className = `breath ${order[i]}`;
+    b.className = `breath small ${order[i]}`;
     b.textContent = { in: T.sos.inhale, hold: T.sos.hold, out: T.sos.exhale }[order[i]];
   }, 4000);
 }

@@ -63,10 +63,11 @@ test('sin datos: sin hitos ni ubicación, aparecen sugerencias para desbloquear'
   assert.ok(ids.includes('since') && ids.includes('tastes') && ids.includes('location'));
 });
 
-test('etapa rollo: nada de hitos ni sugerencia de fecha de inicio', () => {
-  const r = generateHooks({ ...base, stage: 'rollo' }, '2026-10-22');
-  assert.equal(r.hooks.some((h) => ['milestone', 'anniversary'].includes(h.kind)), false);
-  assert.equal(r.unlocks.some((u) => u.id === 'since'), false);
+test('etapa rollo: hitos desde que os conocisteis', () => {
+  const r = generateHooks({ ...base, stage: 'rollo', since: null }, '2026-10-22');
+  assert.equal(r.unlocks.some((u) => u.id === 'since'), true);
+  const m = generateHooks({ ...base, stage: 'rollo', since: '2026-07-14' }, '2026-10-22').hooks.find((h) => h.kind === 'milestone');
+  assert.match(m.message, /100 días desde que nos conocimos/);
 });
 
 test('cumpleaños: aviso previo y mensaje el propio día', () => {
@@ -106,7 +107,7 @@ test('estación: otoño empieza el 23-sep-2026 en el hemisferio norte', () => {
 test('voz: sin tokens sin sustituir y distinta por edad y registro', () => {
   const out = new Set();
   for (const birth of ['2006-01-01', '1997-01-01', '1982-01-01', '1965-01-01']) {
-    for (const stage of ['rollo', 'citas', 'pareja', 'matrimonio']) {
+    for (const stage of ['rollo', 'pareja', 'matrimonio']) {
       const r = generateHooks({ name: 'Lucía', birth, stage, since: '2026-07-14', tastes: ['pasta'], location: MAD }, '2026-10-25');
       assert.ok(r.ok);
       assert.ok(r.hooks.length > 0);
@@ -116,18 +117,24 @@ test('voz: sin tokens sin sustituir y distinta por edad y registro', () => {
       out.add(r.hooks.find((h) => h.id === 'world-pasta').message);
     }
   }
-  assert.ok(out.size >= 8, `mensajes distintos: ${out.size}`); // 4 edades × 2 registros
+  assert.ok(out.size >= 6, `mensajes distintos: ${out.size}`); // 4 edades × 2 registros (alguno puede coincidir: sin saludo ni emoji)
 });
 
-test('voz: sin nombre usa saludo genérico', () => {
-  assert.equal(compose({ text: 'hoy es sábado.', name: '', band: '35-49', group: 'flirt' }), 'Hola, hoy es sábado.');
+test('voz: natural, sin empezar por su nombre, jóvenes en minúscula y sin punto final', () => {
+  for (const band of ['18-24', '25-34', '35-49', '50+']) for (const group of ['flirt', 'pareja']) for (const t of ['hoy es sábado.', 'te echo de menos.', '¿qué tal el día?']) {
+    const m = compose({ text: t, name: 'Lucía', band, group });
+    assert.ok(!m.includes('Lucía'), m);
+    if (band === '18-24' || band === '25-34') assert.ok(!/^[A-ZÁÉÍÓÚ]/.test(m) && !/\.$/.test(m.replace(/ \S+$/u, (x) => (/\p{Extended_Pictographic}/u.test(x) ? '' : x))), m);
+    else assert.match(m, /^[A-ZÁÉÍÓÚ¿¡]/, m);
+  }
+  assert.equal(compose({ text: 'hoy es sábado.', name: 'Lucía', band: '35-49', group: 'flirt' }), compose({ text: 'hoy es sábado.', name: 'Lucía', band: '35-49', group: 'flirt' }), 'estable');
 });
 
 import { worldDaysOn, mothersDay, UNVERIFIED } from '../js/data/worldDays.js';
 import { STAGES, STAGE_GROUP } from '../js/core/stages.js';
 
-test('etapas: solo relaciones afectivas (rollo, citas, pareja, matrimonio)', () => {
-  assert.deepEqual(STAGES, ['rollo', 'citas', 'pareja', 'matrimonio']);
+test('etapas: solo relaciones afectivas (rollo, pareja, matrimonio)', () => {
+  assert.deepEqual(STAGES, ['rollo', 'pareja', 'matrimonio']);
   assert.deepEqual([...new Set(Object.values(STAGE_GROUP))].sort(), ['flirt', 'pareja']);
 });
 

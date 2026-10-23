@@ -3,7 +3,7 @@
   "buildCommand": "true",
   "outputDirectory": "site",
   "functions": {
-    "api/ai.js": { "maxDuration": 30 },
+    "api/ai.js": { "maxDuration": 60 },
     "api/plans.js": { "maxDuration": 30 }
   },
   "headers": [

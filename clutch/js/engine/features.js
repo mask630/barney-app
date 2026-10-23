@@ -9,6 +9,7 @@ export const FEATURES = {
   companions_pro: 'Más acompañantes',
   sos_chat: 'Chat SOS con IA',
   photo_ai: 'Reconocer fotos con IA',
+  profile_ai: 'Analizar su perfil con IA',
   plans: 'Planes cerca',
   encrypted_backup: 'Copia de seguridad'
 };

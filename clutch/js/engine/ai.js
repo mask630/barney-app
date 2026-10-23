@@ -47,6 +47,14 @@ export function aiPhoto(settings, { photo, band }, fetchFn) {
   return call(settings, { task: 'photo', photo, band }, fetchFn);
 }
 
+// Capturas de su perfil público → { gustos, evitar, regalos, planes, lectura }. Las capturas no se guardan.
+export const SOCIAL_MAX = 6;
+export async function aiProfile(settings, { photos, band, group }, fetchFn) {
+  const r = await call(settings, { task: 'profile', photos: (photos || []).slice(0, SOCIAL_MAX), band, group }, fetchFn, 60000);
+  if (!r.ok) return r;
+  return r.result ? r : { ok: false, reason: 'servidor' };
+}
+
 // Sustituye {n} por el nombre en local.
 export function fillName(text, name) {
   return String(text || '').replaceAll('{n}', name || '').replace(/\s{2,}/g, ' ').trim();

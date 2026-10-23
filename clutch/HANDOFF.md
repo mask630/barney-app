@@ -10,8 +10,9 @@ Dueño: mask. Habla español. Pide respaldos antes de tocar cosas, interfaz simp
 - Copia de Barney v1: rama `backup/barney-v1.0.1` y `backup\v1.0.1` en el PC.
 
 ## Comandos (en la carpeta clutch)
-- `npm install` (una vez), `node --test test/*.test.js` (55 pruebas), `node scripts/build.mjs` (genera `dist/`),
-  `node scripts/e2e.mjs` y `node scripts/e2e-pro.mjs` (prueban la app en un móvil simulado; usan Chromium de Playwright, ruta en el script).
+- `npm install` (una vez), `node --test test/*.test.js`, `node scripts/build.mjs` (genera `dist/`),
+  `node scripts/e2e.mjs` y `node scripts/e2e-pro.mjs` (prueban la app en un móvil simulado; en Windows usan Edge).
+- 105 pruebas desde el 24-oct.
 - Publicar: compilar, copiar `dist/index.html`, `manifest.webmanifest`, `sw.js`, `icon-*.png` a `clutch/` en `main`, commit y push. Pages tarda 1-2 minutos.
 
 ## Reglas de producto (no romper)
@@ -19,7 +20,9 @@ Dueño: mask. Habla español. Pide respaldos antes de tocar cosas, interfaz simp
 - Mensajes solo con datos reales y verificados. Días mundiales: solo los de `js/data/worldDays.js` con `verified:true` y fuentes; los dudosos están en `UNVERIFIED`.
 - Sin datos no se inventa nada: se muestran sugerencias de qué añadir.
 - Astrología siempre como "según los astros", calculada (Luna, signo), nunca inventada.
-- Ciclo: opcional, solo desde Citas, como tendencia, sin lenguaje de "ganas".
+- Ciclo (decidido por mask el 24-oct): opcional, en todas las etapas. Fase calculada con lo que suele pasar según los estudios (ánimo, qué funciona y deseo), siempre como tendencia, con aviso de que cada mujer es distinta y de que no es método anticonceptivo. Nunca para presionar.
+- Avisos: dentro de la app (Hoy > «Te toca» y Ver calendario), no en el calendario del móvil. Sin push real, solo avisa al abrirla (y número en el icono si el móvil lo permite).
+- Mensajes: que suenen a WhatsApp de una persona; sin empezar por su nombre ni frases de tarjeta.
 - Discreción: nombre "Agenda", icono neutro, PIN, avisos neutros.
 - La IA nunca recibe el nombre de ella (va como `{n}`) y se descarta cualquier número que invente.
 

@@ -48,16 +48,15 @@ test('lo usado hoy sigue en la lista de hoy y deshacer lo libera', () => {
   assert.equal(unmarkUsedToday(p, before[1], day(START, 1)).used[before[1]], START, 'solo deshace lo de hoy');
 });
 
-test('etapas: rollo y citas comparten banco; pareja y matrimonio también', () => {
+test('etapas: pareja y matrimonio comparten banco', () => {
   const ids = (stage, group) => genericMessages({ ...mk(stage), id: 'x' }, '25-34', group, START).map((m) => m.id);
-  assert.deepEqual(ids('rollo', 'flirt'), ids('citas', 'flirt'));
   assert.deepEqual(ids('pareja', 'pareja'), ids('matrimonio', 'pareja'));
 });
 
 // Simulación de 6 meses. Realista: copia 1 mensaje y hace 2 gestos al día. Peor caso: usa todo lo que sale.
 function simulate(stage, useMsgs, useGest, seed = 'p1') {
   let p = { ...mk(stage), id: seed }; // id fijo: la simulación es reproducible
-  const group = { rollo: 'flirt', citas: 'flirt', pareja: 'pareja', matrimonio: 'pareja' }[stage];
+  const group = { rollo: 'flirt', pareja: 'pareja', matrimonio: 'pareja' }[stage];
   const byId = Object.fromEntries([...MESSAGES[group], ...GESTURES[group]].map((x) => [x.id, x]));
   const history = {};
   const days = [];
@@ -82,7 +81,7 @@ function simulate(stage, useMsgs, useGest, seed = 'p1') {
   return { byId, days, gaps, early, used: Object.keys(history).length };
 }
 
-for (const stage of ['rollo', 'citas', 'pareja', 'matrimonio']) {
+for (const stage of ['rollo', 'pareja', 'matrimonio']) {
   test(`simulación realista 6 meses (${stage}): nada antes de tiempo, sin patrón fijo, un plan grande al día`, () => {
     // 5 fichas distintas: como mucho un 1 % vuelve antes de tiempo (solo cuando un día no queda nada descansado)
     let early = 0, total = 0;

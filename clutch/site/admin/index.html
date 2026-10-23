@@ -62,7 +62,7 @@
 <body>
 <main id="app"><p class="muted">Cargando…</p></main>
 <script>
-const FEATURE_LABEL = { multi_profile: 'Varias personas', ai_rewrite: 'Reescribir IA', my_style: 'Tu estilo', companions_pro: 'Acompañantes', sos_chat: 'SOS IA', photo_ai: 'Foto IA', plans: 'Planes', encrypted_backup: 'Copia de seguridad' };
+const FEATURE_LABEL = { multi_profile: 'Varias personas', ai_rewrite: 'Reescribir IA', my_style: 'Tu estilo', companions_pro: 'Acompañantes', sos_chat: 'SOS IA', photo_ai: 'Foto IA', profile_ai: 'Perfil IA', plans: 'Planes', encrypted_backup: 'Copia de seguridad' };
 const STATUS_LABEL = { pending: 'Pendiente', active: 'Activo', blocked: 'Bloqueado' };
 const ERRORS = { clave: 'Clave incorrecta.', db: 'La base de datos no responde (¿está conectada Upstash?).', grupo: 'Ese grupo no existe.', grupos: 'Nombre de grupo no válido (minúsculas, números y guiones).' };
 const app = document.getElementById('app');
@@ -71,7 +71,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 let key = '';
 try { key = sessionStorage.getItem('clutch-admin') || ''; } catch {}
 let data = null, tab = 'pending', msg = { text: '', kind: '' }, busy = false, askDelete = null, fbTab = 'feedback';
-const EVENT_LABEL = { open: 'Abrir la app', tab_hoy: 'Pestaña Hoy', tab_ella: 'Pestaña Ella', tab_apuntar: 'Pestaña Apuntar', tab_yo: 'Pestaña Yo', write_open: 'Abrir Escríbele', copy: 'Copiar mensaje', whatsapp: 'Enviar por WhatsApp', style_apply: 'Con mi estilo', ai_rewrite: 'Reescribir con IA', sos_open: 'Abrir SOS', sos_script: 'Ver guion SOS', sos_chat: 'Chat SOS IA', breath: 'Respiración', capture_save: 'Guardar en Apuntar', photo_add: 'Añadir foto', photo_ai: 'Foto con IA', plans_search: 'Buscar planes', profile_create: 'Crear ficha', stage_change: 'Cambiar etapa', gesture_done: 'Gesto hecho', backup_export: 'Copia de seguridad', feedback_send: 'Enviar opinión' };
+const EVENT_LABEL = { open: 'Abrir la app', tab_hoy: 'Pestaña Hoy', tab_ella: 'Pestaña Ella', tab_apuntar: 'Pestaña Apuntar', tab_yo: 'Pestaña Yo', write_open: 'Abrir Escríbele', copy: 'Copiar mensaje', whatsapp: 'Enviar por WhatsApp', style_apply: 'Con mi estilo', ai_rewrite: 'Reescribir con IA', sos_open: 'Abrir SOS', sos_script: 'Ver guion SOS', sos_chat: 'Chat SOS IA', breath: 'Respiración', capture_save: 'Guardar en Apuntar', photo_add: 'Añadir foto', photo_ai: 'Foto con IA', profile_ai: 'Analizar perfil', reminder_done: 'Aviso hecho', agenda_open: 'Ver calendario', section_add: 'Añadir en la ficha', plans_search: 'Buscar planes', profile_create: 'Crear ficha', stage_change: 'Cambiar etapa', gesture_done: 'Gesto hecho', backup_export: 'Copia de seguridad', feedback_send: 'Enviar opinión' };
 const pct = (k, e) => (e ? Math.round((k / e) * 100) + ' %' : '—');
 const shortDay = (iso) => String(+iso.slice(8, 10));
 
