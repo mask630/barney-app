@@ -49,6 +49,13 @@ export function ageBand(age) {
   return '50+';
 }
 
+// Tramo de edad de una ficha: por su fecha de nacimiento si la hay; si no, la edad aproximada que eligió el usuario.
+// null = sin edad válida (o menor de 18): la ficha no se puede usar.
+export function profileBand(profile, todayISO) {
+  if (profile?.birth) { const a = checkAdult(profile.birth, todayISO); return a.ok ? a.band : null; }
+  return AGE_BANDS.includes(profile?.band) ? profile.band : null;
+}
+
 export function isValidStage(stage) {
   return STAGES.includes(stage);
 }

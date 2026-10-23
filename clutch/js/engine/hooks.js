@@ -4,7 +4,7 @@
 // para que ni la luna llena ni el cumpleaños suenen igual cada vez. Lo usado vive en profile.used (en el móvil).
 
 import { parseISO, daysBetween, addDays } from '../core/dates.js';
-import { checkAdult, STAGES_WITH_MILESTONES, isValidStage } from '../core/stages.js';
+import { checkAdult, STAGES_WITH_MILESTONES, isValidStage, profileBand } from '../core/stages.js';
 import { moonSign, moonPhase, sunSignFromBirth, sunTimes, seasonStartingOn, moonLongitude, signName } from '../core/astro.js';
 import { worldDaysOn } from '../data/worldDays.js';
 import { compose, groupOf } from './voice.js';
@@ -73,15 +73,14 @@ function nextBirthday(birthISO, todayISO) {
 }
 
 /**
- * profile: { id?, used?, name, birth, stage, since?, tastes?: string[], location?: {lat,lon,tz,city} }
+ * profile: { id?, used?, name, birth?, band?, stage, since?, tastes?: string[], location?: {lat,lon,tz,city} }
  * Devuelve { ok:false, reason } o { ok:true, band, group, hooks, unlocks }.
  */
 export function generateHooks(profile, todayISO) {
   if (!profile || !isValidStage(profile.stage)) return { ok: false, reason: 'etapa-invalida' };
-  const adult = checkAdult(profile.birth, todayISO);
-  if (!adult.ok) return { ok: false, reason: adult.reason };
+  const band = profileBand(profile, todayISO);
+  if (!band) return { ok: false, reason: profile.birth ? checkAdult(profile.birth, todayISO).reason : 'sin-edad' };
 
-  const { band } = adult;
   const group = groupOf(profile.stage);
   const tastes = (profile.tastes || []).map(norm).filter(Boolean);
   const loc = profile.location && Number.isFinite(profile.location.lat) && Number.isFinite(profile.location.lon) ? profile.location : null;
@@ -104,7 +103,8 @@ export function generateHooks(profile, todayISO) {
   };
 
   // 1. Cumpleaños de ella
-  const bd = nextBirthday(profile.birth, todayISO);
+  const bd = profile.birth ? nextBirthday(profile.birth, todayISO) : null;
+  if (!profile.birth) unlocks.push({ id: 'birth', need: 'birth', text: 'Añade su fecha de nacimiento (en Ella > Editar) para no olvidar su cumpleaños.' });
   if (bd) {
     add(
       {
@@ -181,7 +181,7 @@ export function generateHooks(profile, todayISO) {
   if (!tastes.length) unlocks.push({ id: 'tastes', need: 'tastes', text: 'Añade sus gustos para que los días especiales sean los que a ella le tocan.' });
 
   // 4. Astro: Luna en su signo (según los astros)
-  const her = sunSignFromBirth(profile.birth);
+  const her = profile.birth ? sunSignFromBirth(profile.birth) : null;
   const sign = stableMoonSign(todayISO);
   if (her && !her.cusp && sign && sign === her.sign) {
     add(

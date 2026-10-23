@@ -2,7 +2,7 @@
 
 import es from './i18n/es.js';
 import { localISO, daysBetween, parseISO } from './core/dates.js';
-import { STAGES, STAGE_GROUP, STAGES_WITH_MILESTONES, checkAdult } from './core/stages.js';
+import { STAGES, STAGE_GROUP, STAGES_WITH_MILESTONES, AGE_BANDS, profileBand } from './core/stages.js';
 import * as Store from './core/store.js';
 import { generateHooks } from './engine/hooks.js';
 import { genericMessages, dailyGestures, upcoming, cycleCare, SOS } from './engine/content.js';
@@ -46,7 +46,7 @@ const ACT_EVENT = {
 const ui = {
   tab: 'hoy', screen: null, sheet: null, ask: null, toast: null,
   locked: false, pinEntry: '', pinError: false,
-  form: { name: '', birth: '', stage: 'pareja', since: '', error: '' },
+  form: { name: '', birth: '', band: '', stage: 'pareja', since: '', error: '' },
   edit: {}, draft: '', pending: null, imp: { text: '', msg: '' }, exp: { text: '' }, pin: { value: '', error: '' }, fb: { text: '' },
   open: null, breath: { on: false, phase: 'in' },
   alt: {}, busy: null, chat: [], chatDraft: '', plansMsg: '', pass: { value: '' }, styleDraft: '',
@@ -59,7 +59,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const today = () => localISO();
 const has = (f) => hasFeature(S.settings, f);
 const SOON = '<span class="badge pro">Pronto</span>';
-const bandOf = (p) => checkAdult(p.birth, today()).band;
+const bandOf = (p) => profileBand(p, today());
 const AI_ERR = { 'sin-servidor': 'Apúntate a la beta en Yo para usar la IA.', codigo: 'El código de tester no es válido.', funcion: 'Esta función aún no está abierta para ti.', limite: 'Has llegado al límite de IA de hoy. Mañana más.', red: 'No se pudo conectar con el servidor.', servidor: 'El servidor de IA tuvo un problema.', descartado: 'La IA añadió datos que no estaban. Descartado por seguridad.' };
 const $ = (sel, root = document) => root.querySelector(sel);
 const persist = () => {
@@ -113,7 +113,7 @@ function location() {
   return c && Number.isFinite(c.lat) && Number.isFinite(c.lon) && c.tz ? c : null;
 }
 function hookData(p) {
-  return generateHooks({ id: p.id, used: p.used, name: p.name, birth: p.birth, stage: p.stage, since: p.since, tastes: p.tastes, location: location(), country: S.settings.country }, today());
+  return generateHooks({ id: p.id, used: p.used, name: p.name, birth: p.birth, band: p.band, stage: p.stage, since: p.since, tastes: p.tastes, location: location(), country: S.settings.country }, today());
 }
 function longDate(iso) {
   return new Intl.DateTimeFormat('es', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(parseISO(iso));
@@ -147,6 +147,8 @@ function profileForm() {
       <input id="f-name" class="input" data-bind="form.name" value="${esc(f.name)}" autocomplete="off" maxlength="40"></div>
     <div class="field"><label for="f-birth">${T.profile.birth}</label>
       <input id="f-birth" class="input" type="date" data-bind="form.birth" value="${esc(f.birth)}" max="${today()}"></div>
+    <div class="field"><label>${T.profile.band}</label>
+      <div class="chips">${AGE_BANDS.map((b) => `<button class="chip" aria-pressed="${f.band === b}" data-act="formBand" data-v="${b}">${b === '50+' ? '50 o más' : b}</button>`).join('')}</div></div>
     <div class="field"><label>${T.profile.stage}</label>
       <div class="chips">${STAGES.map((s) => `<button class="chip" aria-pressed="${f.stage === s}" data-act="formStage" data-v="${s}">${T.stages[s]}</button>`).join('')}</div>
       <span class="small muted">${T.stageHint[f.stage]}</span></div>
@@ -171,20 +173,12 @@ function readBarney() {
 }
 
 function viewOnboarding() {
-  const barney = readBarney();
   return `<main class="screen">
     <div class="stack"><span class="badge" style="align-self:flex-start">${T.me.beta}</span>
     <h1>${T.welcome.title}</h1><p class="muted">${T.welcome.body}</p></div>
-    ${barney ? `<div class="card hero"><h3>Encontré tus datos de Barney</h3>
-      <p class="muted">${barney.state.profiles.length} perfil(es) de adultos: ${esc(barney.state.profiles.map((x) => x.name).join(', '))}. Se copian aquí y Barney no se toca.</p>
-      <button class="btn primary block" data-act="importBarney">Traer mis datos de Barney</button></div>` : ''}
     <div class="card">${profileForm()}
       <button class="btn primary block" data-act="createProfile">${T.welcome.cta}</button></div>
-    <div class="card"><h3>${T.me.import}</h3><p class="small muted">${T.me.importHint}</p>
-      <textarea id="imp-text" class="textarea" data-bind="imp.text" placeholder="{ ... }">${esc(ui.imp.text)}</textarea>
-      <input id="pass-in" class="input" type="password" autocomplete="off" data-bind="pass.value" value="${esc(ui.pass.value)}" placeholder="Contraseña (solo si la copia está cifrada)" aria-label="Contraseña de la copia">
-      ${ui.imp.msg ? `<p class="small ${ui.imp.msg.startsWith('Listo') ? 'ok' : 'error'}">${esc(ui.imp.msg)}</p>` : ''}
-      <button class="btn block" data-act="doImport">${T.me.import}</button></div>
+    <button class="btn ghost block small" data-act="restoreSheet">¿Ya usabas Clutch? Restaurar mi copia</button>
   </main>`;
 }
 
@@ -430,18 +424,28 @@ function viewMe() {
       ${[['auto', T.me.themeAuto], ['dark', T.me.themeDark], ['light', T.me.themeLight]].map(([k, l]) => `<button class="chip" aria-pressed="${s.theme === k}" data-act="theme" data-v="${k}">${l}</button>`).join('')}</div></div>
 
     <div class="stack"><span class="label">${T.me.data}</span><div class="card">
+      ${has('encrypted_backup') ? backupTools() : `<div class="row"><span class="grow"><b>Copia de seguridad</b><br><span class="small muted">Guardar y recuperar tus datos si cambias de móvil.</span></span>${SOON}</div>`}
+      <button class="btn danger block" data-act="wipe">${ui.ask === 'wipe' ? '¿Seguro? Toca otra vez para borrar todo' : 'Borrar todos mis datos'}</button>
+    </div></div>
+${meBetaSections()}`;
+}
+
+// Copia de seguridad (función PRO): exportar, cifrar y restaurar.
+function backupTools() {
+  return `
       <button class="btn block" data-act="exportData">${T.me.export}</button>
       <div class="field"><label for="pass-in">Contraseña para copia cifrada (mínimo 6 caracteres)</label><input id="pass-in" class="input" type="password" autocomplete="off" data-bind="pass.value" value="${esc(ui.pass.value)}"></div>
-      <button class="btn block" data-act="exportEnc" ${has('encrypted_backup') ? '' : 'disabled'}>Copia cifrada ${has('encrypted_backup') ? '' : '(pronto)'}</button>
+      <button class="btn block" data-act="exportEnc">Copia cifrada</button>
       ${ui.exp.text ? `<textarea id="exp-text" class="textarea" readonly>${esc(ui.exp.text)}</textarea><button class="btn small" data-act="copy" data-text="${esc(ui.exp.text)}">${T.write.copy}</button>` : `<p class="small muted">${T.me.exportHint}</p>`}
       <hr style="border:0;border-top:1px solid var(--line);width:100%">
       <p class="small muted">${T.me.importHint}</p>
       <textarea id="imp-text" class="textarea" data-bind="imp.text" placeholder="{ ... }">${esc(ui.imp.text)}</textarea>
       ${ui.imp.msg ? `<p class="small ${ui.imp.msg.startsWith('Listo') ? 'ok' : 'error'}">${esc(ui.imp.msg)}</p>` : ''}
-      <button class="btn block" data-act="doImport">${T.me.import}</button>
-      <button class="btn danger block" data-act="wipe">${ui.ask === 'wipe' ? '¿Seguro? Toca otra vez para borrar todo' : 'Borrar todos mis datos'}</button>
-    </div></div>
-
+      <button class="btn block" data-act="doImport">${T.me.import}</button>`;
+}
+// Final de Yo: acceso beta y opiniones.
+function meBetaSections() {
+  return `
     ${betaCard()}
 
     <div class="stack"><span class="label">${T.me.beta}</span><div class="card">
@@ -497,6 +501,8 @@ function sheetHtml() {
   } else if (sh.type === 'edit') {
     body = `<h2>Editar</h2>
       <div class="field"><label for="e-name">${T.profile.name}</label><input id="e-name" class="input" data-bind="edit.name" value="${esc(ui.edit.name ?? p.name)}" maxlength="40"></div>
+      <div class="field"><label for="e-birth">${T.profile.birth}</label><input id="e-birth" class="input" type="date" data-bind="edit.birth" value="${esc(ui.edit.birth ?? p.birth ?? '')}" max="${today()}"></div>
+      ${(ui.edit.birth ?? p.birth) ? '' : `<div class="field"><label>${T.profile.band}</label><div class="chips">${AGE_BANDS.map((b) => `<button class="chip" aria-pressed="${(ui.edit.band ?? p.band) === b}" data-act="editBand" data-v="${b}">${b === '50+' ? '50 o más' : b}</button>`).join('')}</div></div>`}
       <div class="field"><label for="e-since">${T.profile.since}</label><input id="e-since" class="input" type="date" data-bind="edit.since" value="${esc(ui.edit.since ?? p.since ?? '')}" max="${today()}"></div>
       <button class="btn primary block" data-act="saveEdit">${T.profile.save}</button>
       <button class="btn danger block" data-act="deleteProfile">${ui.ask === 'delProfile' ? '¿Seguro? Toca otra vez' : 'Eliminar perfil'}</button>
@@ -512,6 +518,14 @@ function sheetHtml() {
     if (k === 'recordar') rows = p.remember.map((r) => ({ id: r.id, text: r.text, photo: r.photo }));
     body = `<h2>${T.dest[k]}</h2>${rows.length ? `<div class="card flat list">${rows.map((r) => `<div class="item"><div class="grow">${r.photo ? `<img class="thumb" style="max-height:120px;width:auto" src="${r.photo}" alt="">` : ''}${esc(r.text)}</div><button class="btn small ghost" data-act="delItem" data-kind="${k}" data-v="${esc(r.id)}" aria-label="Quitar">✕</button></div>`).join('')}</div>` : '<p class="muted">Aún no hay nada. Usa Apuntar para añadirlo.</p>'}
       <button class="btn ghost block" data-act="closeSheet">Cerrar</button>`;
+  } else if (sh.type === 'restore') {
+    body = has('encrypted_backup')
+      ? `<h2>Restaurar mi copia</h2>${backupTools()}<button class="btn ghost block" data-act="closeSheet">Cerrar</button>`
+      : `<h2>Restaurar mi copia</h2><p class="small muted">La copia de seguridad es una función PRO. Pon tu código de tester para comprobar tu acceso.</p>
+        <div class="field"><label for="r-code">Código de tester</label><input id="r-code" class="input" type="password" autocomplete="off" data-bind="restoreCode" value="${esc(ui.restoreCode || '')}"></div>
+        <button class="btn primary block" data-act="restoreCheck" ${ui.busy === 'access' ? 'disabled' : ''}>${ui.busy === 'access' ? 'Comprobando…' : 'Comprobar'}</button>
+        ${S.settings.testerCode && S.settings.configAt ? '<p class="small error">Ese código no incluye la copia de seguridad.</p>' : ''}
+        <button class="btn ghost block" data-act="closeSheet">Cerrar</button>`;
   } else if (sh.type === 'legal') {
     body = `<h2>Condiciones y privacidad</h2><p class="small muted">Actualizado: ${UPDATED}</p>
       ${LEGAL.map((sec) => `<h3>${esc(sec.h)}</h3>${sec.p.map((x) => `<p class="small">${esc(x)}</p>`).join('')}`).join('')}
@@ -573,7 +587,7 @@ const canAddProfile = () => !S.profiles.length || has('multi_profile');
 function tryCreateProfile() {
   if (!canAddProfile()) { showToast('Tener varias personas llegará pronto'); return; }
   const f = ui.form;
-  const r = Store.newProfile({ name: f.name, birth: f.birth, stage: f.stage, since: STAGES_WITH_MILESTONES.includes(f.stage) ? f.since : null }, today());
+  const r = Store.newProfile({ name: f.name, birth: f.birth || null, band: f.band || null, stage: f.stage, since: STAGES_WITH_MILESTONES.includes(f.stage) ? f.since : null }, today());
   if (!r.ok) {
     f.error = T.profile.errors[r.reason] || 'Revisa los datos.';
     render();
@@ -582,7 +596,7 @@ function tryCreateProfile() {
   S.profiles.push(r.profile);
   S.activeId = r.profile.id;
   persist();
-  ui.form = { name: '', birth: '', stage: 'pareja', since: '', error: '' };
+  ui.form = { name: '', birth: '', band: '', stage: 'pareja', since: '', error: '' };
   ui.sheet = null;
   ui.tab = 'hoy';
   render();
@@ -644,10 +658,12 @@ const ACTS = {
   goWrite() { ui.screen = 'write'; render(); },
   goSos() { ui.screen = 'sos'; render(); },
   formStage(el) { ui.form.stage = el.dataset.v; render(); },
+  formBand(el) { ui.form.band = ui.form.band === el.dataset.v ? '' : el.dataset.v; render(); },
+  editBand(el) { ui.edit.band = el.dataset.v; render(); },
   createProfile() { tryCreateProfile(); },
   newProfileSheet() {
     if (!canAddProfile()) { showToast('Tener varias personas llegará pronto'); return; }
-    ui.form = { name: '', birth: '', stage: 'pareja', since: '', error: '' }; ui.sheet = { type: 'newProfile' }; render();
+    ui.form = { name: '', birth: '', band: '', stage: 'pareja', since: '', error: '' }; ui.sheet = { type: 'newProfile' }; render();
   },
   pickProfile(el) { S.activeId = el.dataset.v; persist(); render(); },
   stageSheet(el) { if (el.dataset.v !== prof().stage) { ui.edit = {}; ui.sheet = { type: 'stage', to: el.dataset.v }; render(); } },
@@ -662,7 +678,11 @@ const ACTS = {
   saveEdit() {
     const name = String(ui.edit.name ?? prof().name).trim();
     if (!name) { showToast(T.profile.errors['nombre-vacio']); return; }
-    updateProfile((p) => ({ ...p, name, since: (ui.edit.since ?? p.since) || null }));
+    const birth = (ui.edit.birth ?? prof().birth) || null;
+    const band = birth ? null : (ui.edit.band ?? prof().band) || null;
+    const check = profileBand({ birth, band }, today());
+    if (!check) { showToast(T.profile.errors[birth ? 'menor-de-edad' : 'sin-edad']); return; }
+    updateProfile((p) => ({ ...p, name, birth, band, since: (ui.edit.since ?? p.since) || null }));
     ui.sheet = null; ui.edit = {}; render();
   },
   deleteProfile() {
@@ -796,6 +816,7 @@ const ACTS = {
       S = r.state;
       ui.imp = { text: '', msg: `Listo: copia restaurada (${S.profiles.length} perfil(es)).` };
     }
+    ui.sheet = null;
     persist(); render(); showToast(ui.imp.msg.replace(/^Listo: /, ''));
   },
   wipe() {
@@ -890,6 +911,14 @@ const ACTS = {
     render();
   },
   refreshAccess() { refreshAccess(true); },
+  restoreSheet() { ui.sheet = { type: 'restore' }; render(); },
+  async restoreCheck() {
+    const code = String(ui.restoreCode || '').trim();
+    if (!code) return;
+    S.settings.testerCode = code; persist();
+    await refreshAccess(true);
+    render();
+  },
   // Archivo .ics con las fechas de todas las fichas; al abrirlo el móvil ofrece añadirlas al calendario.
   exportCalendar() {
     const { text, count } = buildICS(S.profiles, today(), { discreet: S.settings.discreetNotifs });
@@ -1005,7 +1034,6 @@ document.addEventListener('change', (ev) => {
   const el = ev.target;
   if (el.dataset && el.dataset.bind) setPath(ui, el.dataset.bind, el.value);
   if (el.dataset && el.dataset.change && CHANGES[el.dataset.change]) CHANGES[el.dataset.change](el);
-  if (el.type === 'date' && el.dataset.bind && !el.dataset.change) render();
 });
 let hiddenAt = 0;
 document.addEventListener('visibilitychange', () => {

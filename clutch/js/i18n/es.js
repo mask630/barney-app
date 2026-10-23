@@ -14,21 +14,23 @@ export default {
   },
   welcome: {
     title: 'Tu mejor amigo para no fallar',
-    body: 'Clutch te recuerda lo que importa de ella y te ayuda a decirlo bien. Tus datos se quedan en este móvil.',
+    body: 'Clutch te recuerda lo que importa de ella y te ayuda a decirlo bien. Empieza solo con su nombre: lo demás, cuando lo sepas. Tus datos se quedan en este móvil.',
     cta: 'Crear su ficha'
   },
   profile: {
-    name: 'Su nombre',
-    birth: 'Fecha de nacimiento',
+    name: 'Su nombre (o cómo la llamas)',
+    birth: 'Fecha de nacimiento (si la sabes)',
+    band: '¿No sabes su fecha? Elige su edad aproximada',
     stage: 'Etapa',
-    since: 'Desde cuándo',
+    since: 'Desde cuándo (opcional)',
     sinceHint: 'Fecha de la primera cita, de cuando empezasteis o de la boda',
     adultOnly: 'Solo se pueden crear perfiles de personas adultas (18 años o más).',
     errors: {
       'menor-de-edad': 'Solo se admiten perfiles de personas de 18 años o más.',
       'fecha-invalida': 'Escribe una fecha de nacimiento válida.',
       'nombre-vacio': 'Escribe su nombre.',
-      'etapa-invalida': 'Elige una etapa.'
+      'etapa-invalida': 'Elige una etapa.',
+      'sin-edad': 'Pon su fecha de nacimiento o elige su edad aproximada.'
     },
     save: 'Guardar',
     upgrade: 'Cambiar de etapa',

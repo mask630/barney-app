@@ -15,17 +15,31 @@ await page.addInitScript(() => {
     { id: 1, name: 'Marta', stage: 'dating', bday: '1995-06-01', last: '2026-10-01', cycle: 28, cycleEnabled: false, favs: { Café: 'Cortado' }, sizes: { Calzado: '38' }, wish: [], events: [], dates: [] }] }));
 });
 await page.goto(url);
-await page.waitForSelector('text=Encontré tus datos de Barney');
-await page.click('text=Traer mis datos de Barney');
-await page.waitForSelector('h1:has-text("Marta")');
+// Aunque haya datos de Barney, el inicio ya no ofrece importar (decisión 23-oct: fuera de la beta por ahora)
+await page.waitForSelector('text=Crear su ficha');
+assert.equal(await page.locator('text=Encontré tus datos de Barney').count(), 0);
+const txt = () => page.locator('#app').innerText();
+const shot = (n) => process.env.SHOTS ? page.screenshot({ path: `${process.env.SHOTS}/shot-${n}.png` }) : null;
+
+// Onboarding: el año se puede teclear número a número (antes se cortaba en «0001»)
+await page.click('#f-birth');
+await page.keyboard.type('14051997', { delay: 30 });
+assert.equal(await page.inputValue('#f-birth'), '1997-05-14');
+await page.fill('#f-birth', '');
+// Solo con el nombre no basta: pide fecha o edad aproximada; con la edad aproximada vale
+await page.fill('#f-name', 'Sin fecha');
+await page.click('text=Crear su ficha');
+assert.match(await txt(), /edad aproximada/);
+await page.click('button[data-act=formBand][data-v="25-34"]');
+await page.click('text=Crear su ficha');
+await page.waitForSelector('h1:has-text("Sin fecha")');
+assert.match(await txt(), /fecha de nacimiento/i, 'sugiere añadirla');
 await page.click('.nav button:has-text("Ella")');
 await page.click('button:has-text("Editar")');
 await page.click('text=Eliminar perfil');
 await page.click('text=¿Seguro?');
 await page.waitForSelector('text=Crear su ficha');
-const txt = () => page.locator('#app').innerText();
-const shot = (n) => page.screenshot({ path: `/tmp/claude-0/-home-claude/81aedb1f-9ad7-5fb0-af9c-647a397c196d/scratchpad/shot-${n}.png` });
-
+assert.equal(await page.locator('text=Restaurar o importar').count(), 0, 'el inicio ya no pide importar');
 // Onboarding: menor de edad rechazado
 await page.fill('#f-name', 'Lucía');
 await page.fill('#f-birth', '2012-03-03');

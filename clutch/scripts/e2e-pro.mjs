@@ -145,6 +145,11 @@ assert.ok(enc.includes('clutchEnc') && !enc.includes('Lucía'));
 await page.click('text=Borrar todos mis datos');
 await page.click('text=¿Seguro?');
 assert.match(await txt(), /Crear su ficha/);
+// restaurar desde el inicio: es PRO, primero el código de tester
+await page.click('text=¿Ya usabas Clutch? Restaurar mi copia');
+await page.fill('#r-code', 'tester1');
+await page.click('button[data-act=restoreCheck]');
+await page.waitForSelector('#imp-text');
 await page.fill('#imp-text', enc);
 await page.fill('#pass-in', 'mala-clave');
 await page.click('button:has-text("Restaurar o importar")');

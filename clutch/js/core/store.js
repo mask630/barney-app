@@ -1,6 +1,6 @@
 // Datos de Clutch v2. Todo vive en el dispositivo. Sin dependencias del DOM (el almacenamiento se inyecta).
 
-import { checkAdult, STAGES, isValidStage, LEGACY_STAGE } from './stages.js';
+import { checkAdult, STAGES, isValidStage, LEGACY_STAGE, AGE_BANDS } from './stages.js';
 
 export const STORE_KEY = 'clutch_v2';
 export const SCHEMA = 2;
@@ -40,9 +40,12 @@ export function newId(prefix = 'p') {
   return `${prefix}${Date.now().toString(36)}${seq.toString(36)}${Math.random().toString(36).slice(2, 5)}`;
 }
 
-export function newProfile({ name, birth, stage = 'pareja', since = null, tastes = [] }, todayISO) {
-  const adult = checkAdult(birth, todayISO);
-  if (!adult.ok) return { ok: false, reason: adult.reason };
+// La fecha de nacimiento es opcional: sin ella hace falta la edad aproximada (band), que también garantiza 18+.
+export function newProfile({ name, birth = null, band = null, stage = 'pareja', since = null, tastes = [] }, todayISO) {
+  if (birth) {
+    const adult = checkAdult(birth, todayISO);
+    if (!adult.ok) return { ok: false, reason: adult.reason };
+  } else if (!AGE_BANDS.includes(band)) return { ok: false, reason: 'sin-edad' };
   if (!isValidStage(stage)) return { ok: false, reason: 'etapa-invalida' };
   const clean = String(name || '').trim().slice(0, 40);
   if (!clean) return { ok: false, reason: 'nombre-vacio' };
@@ -51,7 +54,8 @@ export function newProfile({ name, birth, stage = 'pareja', since = null, tastes
     profile: {
       id: newId('p'),
       name: clean,
-      birth,
+      birth: birth || null,
+      band: birth ? null : band, // edad aproximada si no se sabe la fecha
       stage,
       since: since || null,
       tastes: [...new Set(tastes.map((t) => String(t).trim().toLowerCase()).filter(Boolean))],

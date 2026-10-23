@@ -10,7 +10,7 @@ export const FEATURES = {
   sos_chat: 'Chat SOS con IA',
   photo_ai: 'Reconocer fotos con IA',
   plans: 'Planes cerca',
-  encrypted_backup: 'Copia cifrada'
+  encrypted_backup: 'Copia de seguridad'
 };
 
 export function has(settings, feature) {
