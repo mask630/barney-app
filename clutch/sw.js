@@ -1,5 +1,5 @@
 // Service worker de Clutch: sin conexión. HTML primero por red; el resto, caché primero.
-const CACHE = 'clutch-v0-1';
+const CACHE = 'clutch-v0-2';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => {
