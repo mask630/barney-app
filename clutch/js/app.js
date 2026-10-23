@@ -223,7 +223,10 @@ function viewHoy(p) {
   const comp = esc(S.settings.companion);
   const msgHooks = r.hooks.filter((h) => h.message);
   const hero = msgHooks.find((h) => h.daysAhead === 0) || null;
-  const gest = dailyGestures(p, today());
+  // Cuatro gestos: el primero es la jugada del día (si no hay dato especial) y los otros tres van a la lista, sin repetirse.
+  const picks = dailyGestures(p, today(), 4);
+  const lead = picks[0];
+  const gest = picks.length > 3 ? picks.slice(1) : picks;
   const done = (p.done && p.done[today()]) || [];
   const care = cycleCare(p, today());
   const dates = upcoming(p, today(), 120, S.settings.country).slice(0, 4);
@@ -241,7 +244,7 @@ function viewHoy(p) {
            <p class="source"><b>${T.write.realData}</b> · ${esc(hero.source.label)}</p>
            <p class="small muted"><b>${comp}</b>: ${esc(companionLine(S.settings.companionStyle, 'hook', today(), has('companions_pro')))}</p>
            <button class="btn primary block" data-act="goWrite">${T.tabs.escribele}</button>`
-        : `<p class="big">${esc(gest[0].t)}</p>
+        : `<p class="big">${esc(lead.t)}</p>
            <p class="source">${T.today.emptyHook}</p>
            <p class="small muted"><b>${comp}</b>: ${esc(companionLine(S.settings.companionStyle, 'nodata', today(), has('companions_pro')))}</p>
            <button class="btn block" data-act="goWrite">${T.tabs.escribele}</button>`}
