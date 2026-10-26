@@ -74,7 +74,7 @@ export default async function handler(req, res) {
     if (body.action === 'delete') {
       const t = await getJson(`tester:${body.code}`);
       if (!t) return res.status(404).json({ error: 'no-existe' });
-      await del(`tester:${t.code}`, `email:${t.email}`);
+      await del(`tester:${t.code}`, `email:${t.email}`, `data:${t.code}`);
       await removeFromSet('testers', t.code);
       return res.status(200).json({ deleted: t.code });
     }

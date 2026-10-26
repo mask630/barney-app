@@ -114,7 +114,7 @@ export default {
     themeLight: 'Claro',
     beta: 'Beta',
     feedback: 'Enviar comentario',
-    version: 'Clutch beta 0.3'
+    version: 'Clutch beta 0.4'
   },
   join: {
     title: 'Únete a la beta',
@@ -136,6 +136,46 @@ export default {
     }
   },
   lock: { title: 'Introduce tu PIN', wrong: 'PIN incorrecto', unlock: 'Entrar' },
+  account: {
+    title: 'Entra o crea tu cuenta',
+    body: 'Con tu cuenta, lo que apuntes se guarda y lo tienes en cualquier móvil.',
+    email: 'Tu email',
+    send: 'Enviarme el código',
+    sent: 'Te hemos enviado un código de 6 cifras a',
+    spam: 'Si no lo ves, mira en spam.',
+    sentToast: 'Código enviado',
+    code: 'Código',
+    enter: 'Entrar',
+    changeEmail: 'Cambiar email',
+    resend: 'Reenviar código',
+    read: 'Leer',
+    or: 'o',
+    skip: 'Seguir sin cuenta',
+    skipNote: 'Sin cuenta, tus datos solo se guardan en este móvil.',
+    section: 'Tu cuenta',
+    synced: 'Tus datos se guardan cifrados en tu cuenta y se sincronizan solos.',
+    local: 'Sin cuenta, tus datos solo están en este móvil: si lo cambias o borras el navegador, se pierden.',
+    cta: 'Crear cuenta o entrar',
+    ctaHint: 'Guarda sus datos y entra en la beta.',
+    betaPitch: 'Con tu cuenta entras en la beta y pruebas las funciones nuevas antes que nadie.',
+    logout: 'Cerrar sesión',
+    logoutAsk: '¿Seguro? Se borra de este móvil (sigue en tu cuenta)',
+    delete: 'Borrar mi cuenta',
+    deleteAsk: '¿Seguro? Se borra tu cuenta y todo lo guardado en ella',
+    deleted: 'Cuenta borrada',
+    bye: 'Sesión cerrada',
+    welcome: 'Has entrado. Tus datos ya están aquí.',
+    created: 'Cuenta creada. Lo que apuntes se guardará en ella.',
+    lost: 'Tu sesión ha caducado. Vuelve a entrar desde Yo.',
+    tooBig: 'Tus datos ocupan demasiado para guardarlos en la cuenta.',
+    errors: {
+      email: 'Revisa el email.', codigo: 'Código incorrecto. Revísalo.', caducado: 'El código ha caducado. Pide otro.',
+      condiciones: 'Tienes que aceptar las condiciones.', limite: 'Demasiados intentos. Prueba dentro de un rato.',
+      'sin-correo': 'El acceso por email aún no está activado. Prueba en un rato.', 'sin-google': 'El acceso con Google aún no está activado.',
+      google: 'No se pudo entrar con Google.', correo: 'No se pudo enviar el correo. Prueba otra vez.',
+      red: 'No se pudo conectar. Revisa tu conexión.', servidor: 'El servidor tuvo un problema. Prueba más tarde.'
+    }
+  },
   cycle: {
     title: 'Su ciclo',
     off: 'Apunta cuándo le viene la regla y Clutch te dice en qué fase está y qué suele funcionar: chocolate antes de la regla, una cita especial en sus mejores días…',

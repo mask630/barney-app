@@ -14,6 +14,7 @@ let granted = ALL;
 const json = (route, out, status = 200) => route.fulfill({ status, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(out) });
 let newStatus = 'pending';
 const events = [], feedback = [];
+await page.route('https://clutch-ia.vercel.app/api/auth', (route) => json(route, { email: true, google: null }));
 await page.route('https://clutch-ia.vercel.app/api/event', (route) => { events.push(JSON.parse(route.request().postData())); json(route, { ok: true }); });
 await page.route('https://clutch-ia.vercel.app/api/feedback', (route) => { feedback.push(JSON.parse(route.request().postData())); json(route, { ok: true }); });
 const registrations = [];
@@ -42,6 +43,7 @@ await page.route('https://clutch-ia.vercel.app/api/plans', async (route) => {
 });
 await page.goto(pathToFileURL(resolve('dist/index.html')).href);
 const txt = () => page.locator('#app').innerText();
+await page.click('text=Seguir sin cuenta');
 
 await page.fill('#f-name', 'Lucía');
 await page.fill('#f-birth', '1997-05-14');
@@ -54,22 +56,14 @@ await page.fill('#e-since', await page.evaluate(() => { const d = new Date(); d.
 await page.click('.sheet button:has-text("Guardar")');
 await page.click('.nav button:has-text("Hoy")');
 
-// Hoy invita a apuntarse; el alta exige aceptar condiciones y queda pendiente hasta que el dueño apruebe
-assert.match(await txt(), /Únete a la beta/);
-await page.click('button:has-text("Únete a la beta")');
-assert.equal(await page.locator('text=Aprender mi estilo').count(), 0);
-await page.fill('#j-alias', 'Pepe');
-await page.fill('#j-email', 'pepe@mail.es');
-await page.click('text=Apuntarme');
-await page.waitForSelector('text=Tienes que aceptar las condiciones');
-await page.click('text=Leer condiciones y privacidad');
-await page.waitForSelector('text=Condiciones y privacidad');
-assert.match(await txt(), /Qué se queda en tu móvil/);
-await page.click('.sheet button:has-text("Cerrar")');
-await page.check('input[data-v=terms]');
-await page.click('text=Apuntarme');
+// Sin cuenta: Hoy invita a crearla. Un tester antiguo puede seguir poniendo su código en Yo (pendiente hasta que el dueño apruebe)
+assert.match(await txt(), /Crear cuenta o entrar/);
+await page.click('.nav button:has-text("Yo")');
+assert.match(await txt(), /Sin cuenta, tus datos solo están en este móvil/);
+await page.fill('#ai-code', 'nuevo1');
+await page.dispatchEvent('#ai-code', 'change');
 await page.waitForSelector('text=Solicitud enviada');
-assert.deepEqual(registrations[0], { alias: 'Pepe', email: 'pepe@mail.es', terms: true, metrics: false });
+assert.equal(await page.locator('text=Aprender mi estilo').count(), 0);
 newStatus = 'active';
 await page.click('text=Comprobar acceso');
 await page.waitForSelector('text=¡Ya estás dentro de la beta!');
@@ -216,7 +210,7 @@ await page.click('.nav button:has-text("Yo")');
 await page.fill('#fb', 'Me gusta mucho la pantalla Hoy');
 await page.click('button[data-act=sendFeedback]');
 await page.waitForSelector('text=¡Gracias!');
-assert.deepEqual(feedback.at(-1), { kind: 'opinion', text: 'Me gusta mucho la pantalla Hoy', screen: 'yo', version: 'Clutch beta 0.3' });
+assert.deepEqual(feedback.at(-1), { kind: 'opinion', text: 'Me gusta mucho la pantalla Hoy', screen: 'yo', version: 'Clutch beta 0.4' });
 
 // El servidor cierra funciones (grupo base): la app las muestra como "Pronto" sin romperse
 granted = [];

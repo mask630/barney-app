@@ -118,6 +118,10 @@ Plan original:
 - Mensajes reescritos para que suenen a persona: sin «Raquel, …» delante, jóvenes en minúscula y sin punto final, emojis solo a veces.
 - 👤 Pendiente: avisos push reales (que avise con la app cerrada). Requiere servidor de avisos.
 
+## Cuentas de usuario (26-oct) ✅ código · 👤 activar
+- Entrar con email + código o con Google; cada uno con sus chicas y su ficha, en cualquier móvil (cifrado en el servidor).
+- 👤 Ejecutar `configurar-cuentas.ps1` con la contraseña de aplicación de Gmail (y el ID de Google si quieres el botón).
+
 ## Fase 6 · Después de la beta (ya en HANDOFF.md)
 - Cuentas, copia en la nube cifrada y avisos push reales.
 - Más días mundiales y santos por país (solo con fuente verificada).

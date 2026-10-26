@@ -30,6 +30,12 @@ export async function setJson(key, value) {
   await redis(['SET', key, JSON.stringify(value)]);
 }
 
+// Guarda con caducidad (sesiones, códigos de acceso). En memoria no caduca: solo es para pruebas.
+export async function setJsonEx(key, value, ttlSec) {
+  if (!hasDb()) { mem.set(key, structuredClone(value)); return; }
+  await redis(['SET', key, JSON.stringify(value), 'EX', String(ttlSec)]);
+}
+
 // Suma 1 y devuelve el total; la clave caduca a los `ttlSec` segundos de crearse (contadores por día u hora).
 export async function incr(key, ttlSec) {
   if (!hasDb()) {

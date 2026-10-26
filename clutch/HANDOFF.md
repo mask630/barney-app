@@ -32,11 +32,19 @@ Dueño: mask. Habla español. Pide respaldos antes de tocar cosas, interfaz simp
 - La clave de Anthropic caduca (la actual, el 2026-11-21): crear otra y ejecutar `desplegar-ia.ps1`; conserva el código de dueño. El panel avisa 14 días antes.
 - Hoja de ruta y estado detallado: `ROADMAP.md`.
 
+## Cuentas (26-oct-2026)
+- Entrar con email + código de 6 cifras (Gmail de Clutch por SMTP) o con Google. Cada cuenta es a la vez un tester (mismo código); el formulario antiguo de la beta ya no sale.
+- Datos de cada usuario cifrados en el servidor (`data:<código>`, AES-256-GCM con `CLUTCH_DATA_KEY`). **CLUTCH_DATA_KEY no se cambia nunca**: los datos guardados dejarían de poder leerse. Las fotos no se suben.
+- Sincroniza sola: al abrir, al volver a la app y 2,5 s después de cada cambio. Conflictos entre móviles: gana la ficha cambiada más tarde; lo borrado no vuelve.
+- Cerrar sesión borra el móvil (los datos siguen en la cuenta). «Borrar mi cuenta» lo borra todo. Borrar un tester en el panel borra también sus datos.
+- Variables: `CLUTCH_DATA_KEY`, `GMAIL_APP_PASSWORD`, `GMAIL_USER`, `GOOGLE_CLIENT_ID` (opcional). Las pone `configurar-cuentas.ps1`. Sin correo ni Google, la app no ofrece cuentas (funciona como antes).
+- Prueba en móvil simulado: `node scripts/e2e-account.mjs`.
+
 ## Pendiente
 1. ~~Desplegar la IA~~ Hecho. La app ya trae el servidor integrado: el tester solo pone su código (o se apunta en Yo > Beta).
 2. Pasar la nueva app al dominio definitivo y comprobar instalación en iPhone (Safari > Añadir a pantalla de inicio).
 3. Más días mundiales y santos por país (solo con fuente verificada).
 4. Planes locales de agendas (p. ej. Malagueando): requiere acuerdo/API; hoy solo hay lugares de OpenStreetMap (no probado contra el servicio real).
-5. Cuentas, copia en la nube cifrada y avisos push reales (fase final).
+5. ~~Cuentas y copia en la nube cifrada~~ Hecho el 26-oct. Falta: avisos push reales.
 6. Comprobar disponibilidad del nombre Clutch (marca, dominio, tiendas) antes de lanzar.
 7. Textos de la app en `js/i18n/es.js`: copiar con las mismas claves para otros idiomas.

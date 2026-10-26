@@ -17,6 +17,7 @@ import { FEATURES, has as hasFeature, fetchConfig, registerBeta } from './engine
 import { LEGAL, UPDATED } from './i18n/legal.js';
 import { createMetrics, sendFeedback } from './engine/metrics.js';
 import { markUsed, unmarkUsedToday } from './engine/rotation.js';
+import { authInfo, authStart, authVerify, authGoogle, authLogout, pullData, pushData, deleteAccount, syncable, mergeStates } from './engine/account.js';
 
 const T = es;
 
@@ -52,7 +53,8 @@ const ui = {
   edit: {}, draft: '', pending: null, imp: { text: '', msg: '' }, exp: { text: '' }, pin: { value: '', error: '' }, fb: { text: '' },
   open: null, breath: { on: false, phase: 'in' },
   alt: {}, busy: null, chat: [], chatDraft: '', plansMsg: '', pass: { value: '' }, styleDraft: '',
-  join: { alias: '', email: '', terms: false, metrics: false, error: '' }
+  join: { alias: '', email: '', terms: false, metrics: false, error: '' },
+  login: { step: 'email', email: '', code: '', terms: false, metrics: false, error: '' }, authInfo: S.settings.authInfo || null
 };
 ui.locked = !!S.settings.pinHash;
 
@@ -66,6 +68,7 @@ const AI_ERR = { 'sin-servidor': 'Apúntate a la beta en Yo para usar la IA.', c
 const $ = (sel, root = document) => root.querySelector(sel);
 const persist = () => {
   if (!Store.save(storage, S)) showToast('No se pudo guardar. Descarga una copia en Yo > Copia de seguridad.');
+  schedulePush();
 };
 function setPath(obj, path, value) {
   const keys = path.split('.');
@@ -79,7 +82,7 @@ function prof() {
 function updateProfile(fn) {
   const p = prof();
   if (!p) return;
-  const next = fn(p);
+  const next = { ...fn(p), updatedAt: Date.now() };
   S.profiles = S.profiles.map((x) => (x.id === p.id ? next : x));
   persist();
 }
@@ -140,6 +143,132 @@ const ICON = {
 };
 
 // ---------- vistas ----------
+// ---------- cuenta: entrar o crear cuenta ----------
+// asScreen: abierta desde Yo (con «Volver»); si no, es la primera pantalla de la app.
+function viewLogin(asScreen) {
+  const L = ui.login;
+  const info = ui.authInfo;
+  return `<main class="screen">
+    ${asScreen ? `<div class="row"><button class="btn small ghost" data-act="back" aria-label="Volver">‹</button></div>` : ''}
+    <div class="row" style="gap:10px"><span style="width:40px;height:40px;display:block">${LOGO}</span><b style="font-family:var(--font-display);font-size:26px;letter-spacing:-0.5px" class="grow">Clutch</b><span class="badge">${T.me.beta}</span></div>
+    <div class="stack" style="gap:6px"><h1>${T.account.title}</h1><p class="muted">${T.account.body}</p></div>
+    <div class="card">
+    ${L.step === 'code' ? `
+      <p>${T.account.sent} <b>${esc(L.email)}</b>. ${T.account.spam}</p>
+      <div class="field"><label for="l-code">${T.account.code}</label><input id="l-code" class="input" data-bind="login.code" value="${esc(L.code)}" inputmode="numeric" autocomplete="one-time-code" maxlength="6" style="font-size:24px;letter-spacing:6px;text-align:center"></div>
+      ${L.error ? `<p class="error" role="alert">${esc(L.error)}</p>` : ''}
+      <button class="btn primary block" data-act="loginVerify" ${ui.busy === 'login' ? 'disabled' : ''}>${ui.busy === 'login' ? 'Entrando…' : T.account.enter}</button>
+      <div class="row wrap"><button class="btn small ghost" data-act="loginBack">${T.account.changeEmail}</button><button class="btn small ghost" data-act="loginStart" ${ui.busy === 'login' ? 'disabled' : ''}>${T.account.resend}</button></div>`
+    : `
+      <div class="field"><label for="l-email">${T.account.email}</label><input id="l-email" class="input" type="email" data-bind="login.email" value="${esc(L.email)}" autocomplete="email" inputmode="email"></div>
+      <label class="row small" style="align-items:flex-start;gap:10px"><input type="checkbox" data-act="loginCheck" data-v="terms" ${L.terms ? 'checked' : ''} style="margin-top:3px"><span>${T.join.terms} <button class="chip" style="min-height:28px" data-act="legalSheet">${T.account.read}</button></span></label>
+      ${L.error ? `<p class="error" role="alert">${esc(L.error)}</p>` : ''}
+      <button class="btn primary block" data-act="loginStart" ${ui.busy === 'login' ? 'disabled' : ''}>${ui.busy === 'login' ? 'Enviando…' : T.account.send}</button>
+      ${info?.google ? `<p class="small muted" style="text-align:center">${T.account.or}</p><div id="gbtn" style="display:flex;justify-content:center;min-height:44px"></div>` : ''}`}
+    </div>
+    ${asScreen ? '' : `<button class="btn ghost block small" data-act="noAccount">${T.account.skip}</button><p class="small muted" style="text-align:center">${T.account.skipNote}</p>`}
+  </main>`;
+}
+
+// Botón oficial de Google (solo si el servidor tiene GOOGLE_CLIENT_ID). El script se carga la primera vez que hace falta.
+let googleReady = null;
+function mountGoogle() {
+  const el = document.getElementById('gbtn');
+  const id = ui.authInfo?.google;
+  if (!el || !id || el.childElementCount) return;
+  googleReady ||= new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true;
+    s.onload = () => { globalThis.google.accounts.id.initialize({ client_id: id, callback: (r) => ACTS.googleLogin(r.credential) }); resolve(); };
+    s.onerror = () => { googleReady = null; reject(new Error('google')); };
+    document.head.appendChild(s);
+  });
+  googleReady.then(() => {
+    const target = document.getElementById('gbtn');
+    if (target && !target.childElementCount) globalThis.google.accounts.id.renderButton(target, { theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill', locale: 'es' });
+  }).catch(() => {});
+}
+
+// Qué formas de entrar tiene listas el servidor. Se recuerda en el móvil; mientras no haya ninguna, la app no ofrece cuentas.
+let authAsked = false;
+async function loadAuthInfo() {
+  if (authAsked) return;
+  authAsked = true;
+  const r = await authInfo();
+  if (!r.ok) return;
+  const info = { email: !!r.email, google: r.google || null };
+  const changed = JSON.stringify(info) !== JSON.stringify(S.settings.authInfo);
+  ui.authInfo = S.settings.authInfo = info;
+  saveLocal();
+  if (changed) render();
+}
+// null = aún no se sabe (se trata como activas); false = el servidor no tiene ninguna forma de entrar todavía.
+const accountsOn = () => (ui.authInfo ? !!(ui.authInfo.email || ui.authInfo.google) : null);
+
+// ---------- cuenta: sincronizar datos ----------
+let pushTimer = null, syncing = false, lastPull = 0;
+const session = () => S.settings.session;
+const saveLocal = () => Store.save(storage, S);
+
+function schedulePush(ms = 2500) {
+  if (!session()) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(pushNow, ms);
+}
+
+function sessionLost() {
+  S.settings.session = null;
+  saveLocal();
+  showToast(T.account.lost);
+}
+
+async function pushNow() {
+  const s = session();
+  if (!s || syncing) return;
+  syncing = true;
+  try {
+    for (let i = 0; i < 3; i++) {
+      const r = await pushData(s.token, syncable(S), S.settings.syncRev || 0);
+      if (r.ok) { S.settings.syncRev = r.rev; saveLocal(); return; }
+      if (r.status === 409) { S = mergeStates(S, r.state); S.settings.syncRev = r.rev; saveLocal(); render(); continue; }
+      if (r.status === 401) { sessionLost(); return; }
+      if (r.status === 413) showToast(T.account.tooBig);
+      return;
+    }
+  } finally {
+    syncing = false;
+  }
+}
+
+// Trae la copia de la cuenta y la mezcla con la del móvil; si el móvil tenía algo nuevo, lo sube.
+async function pullNow(force = false) {
+  const s = session();
+  if (!s || (!force && Date.now() - lastPull < 60000)) return;
+  lastPull = Date.now();
+  const r = await pullData(s.token);
+  if (r.status === 401) { sessionLost(); render(); return; }
+  if (!r.ok) return;
+  const before = JSON.stringify(syncable(S));
+  if (r.state) S = mergeStates(S, r.state);
+  S.settings.syncRev = r.rev;
+  saveLocal();
+  if (JSON.stringify(syncable(S)) !== before) render();
+  if (JSON.stringify(syncable(S)) !== JSON.stringify(r.state)) schedulePush(0);
+}
+
+async function afterLogin(r) {
+  Object.assign(S.settings, { session: { token: r.token, email: r.email }, testerCode: r.code, betaStatus: r.status, noAccount: false, configAt: null, syncRev: 0 });
+  if (ui.login.metrics) { S.settings.metrics = true; metrics.consent(S.settings, true); }
+  saveLocal();
+  ui.login = { step: 'email', email: '', code: '', terms: false, metrics: false, error: '' };
+  ui.screen = null;
+  await pullNow(true);
+  render();
+  showToast(r.created ? T.account.created : T.account.welcome);
+  refreshAccess(true, true);
+}
+
 function switchHtml(on, act, extra = '') {
   return `<button class="switch" role="switch" aria-checked="${on}" data-act="${act}" ${extra}></button>`;
 }
@@ -259,7 +388,7 @@ function viewHoy(p) {
     ${plansCard(p)}
 
     <button class="card row" style="text-align:left" data-act="goSos"><span class="grow"><b>${T.today.sosRow}</b></span><span aria-hidden="true">›</span></button>
-    ${!aiConfigured(S.settings) ? `<button class="card row" style="text-align:left" data-act="goJoin"><span class="grow"><b>${T.join.title}</b></span><span aria-hidden="true">›</span></button>` : ''}
+    ${!session() && accountsOn() !== false ? `<button class="card row" style="text-align:left" data-act="goLogin"><span class="grow"><b>${T.account.cta}</b><br><span class="small muted">${T.account.ctaHint}</span></span><span aria-hidden="true">›</span></button>` : ''}
   </main>`;
 }
 
@@ -447,6 +576,11 @@ function viewMe() {
   const s = S.settings;
   return `<main class="screen">
     <h1>${T.me.title}</h1>
+    ${session() || accountsOn() !== false ? `<div class="stack"><span class="label">${T.account.section}</span><div class="card">
+      ${session() ? `<div><b>${esc(session().email)}</b><br><span class="small muted">${T.account.synced}</span></div>
+        <button class="btn block" data-act="logout">${ui.ask === 'logout' ? T.account.logoutAsk : T.account.logout}</button>`
+      : `<p class="small muted">${T.account.local}</p><button class="btn primary block" data-act="goLogin">${T.account.cta}</button>`}
+    </div></div>` : ''}
     <div class="card"><div class="row"><b class="grow">${T.me.plan}</b><span class="badge">${T.me.beta}</span></div><p class="small muted">${T.me.planBody}</p></div>
 
     <div class="stack"><span class="label">${T.me.discretion}</span><div class="card flat list">
@@ -477,6 +611,7 @@ function viewMe() {
     <div class="stack"><span class="label">${T.me.data}</span><div class="card">
       ${has('encrypted_backup') ? backupTools() : `<div class="row"><span class="grow"><b>Copia de seguridad</b><br><span class="small muted">Guardar y recuperar tus datos si cambias de móvil.</span></span>${SOON}</div>`}
       <button class="btn danger block" data-act="wipe">${ui.ask === 'wipe' ? '¿Seguro? Toca otra vez para borrar todo' : 'Borrar todos mis datos'}</button>
+      ${session() ? `<button class="btn danger block" data-act="deleteAccount" ${ui.busy === 'delacc' ? 'disabled' : ''}>${ui.ask === 'delacc' ? T.account.deleteAsk : T.account.delete}</button>` : ''}
     </div></div>
 ${meBetaSections()}`;
 }
@@ -527,13 +662,14 @@ function betaCard() {
   const featureList = `<div class="list">${Object.entries(FEATURES).map(([f, label]) => `<div class="item" style="min-height:36px;padding:4px 0"><span class="grow small">${esc(label)}</span>${has(f) ? '<span class="small ok">Activa</span>' : SOON}</div>`).join('')}</div>`;
   const check = `<button class="btn small" data-act="refreshAccess" ${ui.busy === 'access' ? 'disabled' : ''}>${ui.busy === 'access' ? 'Comprobando…' : 'Comprobar acceso'}</button>`;
   let body;
-  if (!st) body = `${joinForm()}<div class="card">${codeField}<p class="small muted">Sin apuntarte la app funciona igual, con lo básico.</p></div>`;
-  else if (st === 'pending') body = `<div class="card"><p class="small">${T.join.pending}</p>${check}${codeField}</div>`;
-  else if (st === 'blocked') body = `<div class="card"><p class="small error">${T.join.blocked}</p>${codeField}</div>`;
-  else if (st === 'anon') body = `<div class="card"><p class="small error">Código no reconocido. Revísalo o apúntate de nuevo.</p>${codeField}${check}</div>${joinForm()}`;
+  const toLogin = accountsOn() !== false ? `<div class="card"><p class="small">${T.account.betaPitch}</p><button class="btn primary block" data-act="goLogin">${T.account.cta}</button></div>` : '';
+  if (!st) body = `${toLogin}<div class="card">${codeField}</div>`;
+  else if (st === 'pending') body = `<div class="card"><p class="small">${T.join.pending}</p>${check}${session() ? '' : codeField}</div>`;
+  else if (st === 'blocked') body = `<div class="card"><p class="small error">${T.join.blocked}</p>${session() ? '' : codeField}</div>`;
+  else if (st === 'anon') body = `<div class="card"><p class="small error">Código no reconocido.</p>${session() ? '' : codeField}${check}</div>${session() ? '' : toLogin}`;
   else body = `<div class="card"><p class="small ok">Acceso activo. Funciones abiertas para ti:</p>${featureList}${check}
     <div class="row"><div class="grow small"><b>Estadísticas anónimas</b><br><span class="muted">Qué funciones usas; nunca textos ni datos de ella.</span></div>${switchHtml(!!s.metrics, 'toggleSetting', 'data-v="metrics"')}</div>
-    ${codeField}<p class="small muted">Las funciones nuevas se irán abriendo durante la beta. Lo que escribes de ella nunca sale del móvil.</p></div>`;
+    ${session() ? '' : codeField}<p class="small muted">Las funciones nuevas se irán abriendo durante la beta.</p></div>`;
   return `<div class="stack"><span class="label">Beta</span>${body}</div>`;
 }
 
@@ -622,6 +758,8 @@ function render() {
   const sel = document.activeElement && 'selectionStart' in document.activeElement ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
   let html;
   if (ui.locked) html = viewLock();
+  else if (ui.screen === 'login') html = viewLogin(true);
+  else if (!S.profiles.length && !session() && !S.settings.noAccount && accountsOn() !== false) html = viewLogin(false);
   else if (!S.profiles.length) html = viewOnboarding();
   else {
     const p = prof();
@@ -638,6 +776,8 @@ function render() {
   }
   app.innerHTML = html + sheetHtml() + (ui.toast ? `<div class="toast" role="status">${esc(ui.toast)}</div>` : '');
   updateBadge();
+  mountGoogle();
+  loadAuthInfo();
   if (focusId) {
     const el = document.getElementById(focusId);
     if (el) {
@@ -668,7 +808,7 @@ function tryCreateProfile() {
     render();
     return;
   }
-  S.profiles.push(r.profile);
+  S.profiles.push({ ...r.profile, updatedAt: Date.now() });
   S.activeId = r.profile.id;
   persist();
   ui.form = { name: '', birth: '', band: '', stage: 'pareja', since: '', error: '' };
@@ -719,7 +859,7 @@ function savePending() {
     });
     showToast(`${T.capture.saved} ${T.dest[c.dest]}`);
   }
-  if (pend.fromInbox) S.inbox = S.inbox.filter((i) => i.id !== pend.fromInbox);
+  if (pend.fromInbox) { S.inbox = S.inbox.filter((i) => i.id !== pend.fromInbox); S.deleted = [...(S.deleted || []), pend.fromInbox]; }
   persist();
   ui.pending = null;
   ui.draft = '';
@@ -808,6 +948,7 @@ const ACTS = {
     if (ui.ask !== 'delProfile') { ui.ask = 'delProfile'; render(); return; }
     const id = prof().id;
     S.profiles = S.profiles.filter((p) => p.id !== id);
+    S.deleted = [...(S.deleted || []), id];
     S.activeId = S.profiles[0]?.id || null;
     persist(); ui.sheet = null; ui.ask = null; render();
   },
@@ -863,7 +1004,7 @@ const ACTS = {
     ui.pending = { c, raw: it.text, photo: it.photo, fromInbox: it.id, dateISO: '' };
     render();
   },
-  inboxDiscard(el) { S.inbox = S.inbox.filter((i) => i.id !== el.dataset.v); persist(); render(); },
+  inboxDiscard(el) { S.inbox = S.inbox.filter((i) => i.id !== el.dataset.v); S.deleted = [...(S.deleted || []), el.dataset.v]; persist(); render(); },
   toggleBreath() { ui.breath.on ? stopBreath() : startBreath(); render(); },
   openSos(el) { ui.open = ui.open === el.dataset.v ? null : el.dataset.v; render(); },
   toggleSetting(el) {
@@ -922,14 +1063,20 @@ const ACTS = {
     }
     const r = Store.importBackup(text);
     if (!r.ok) { ui.imp.msg = r.reason === 'no-es-json' ? 'Eso no parece una copia válida.' : 'Eso no es una copia de Clutch.'; render(); return; }
+    const keep = { session: S.settings.session, testerCode: S.settings.testerCode, syncRev: S.settings.syncRev };
     S = r.state;
+    Object.assign(S.settings, keep);
     ui.imp = { text: '', msg: `Listo: copia restaurada (${S.profiles.length} perfil(es)).` };
     ui.sheet = null;
     persist(); render(); showToast(ui.imp.msg.replace(/^Listo: /, ''));
   },
   wipe() {
     if (ui.ask !== 'wipe') { ui.ask = 'wipe'; render(); return; }
-    S = Store.emptyState(); persist();
+    if (session()) {
+      S.deleted = [...(S.deleted || []), ...S.profiles.map((p) => p.id), ...S.inbox.map((i) => i.id)];
+      Object.assign(S, { profiles: [], inbox: [], activeId: null });
+    } else { S = Store.emptyState(); S.settings.noAccount = true; }
+    persist();
     Object.assign(ui, { ask: null, tab: 'hoy', screen: null, locked: false, exp: { text: '' } });
     render();
   },
@@ -1018,6 +1165,70 @@ const ACTS = {
     await refreshAccess(true);
     render();
   },
+  goLogin() { ui.screen = 'login'; ui.login.error = ''; render(); setTimeout(() => window.scrollTo(0, 0), 0); },
+  noAccount() { S.settings.noAccount = true; saveLocal(); render(); },
+  loginCheck(el) { ui.login[el.dataset.v] = el.checked; },
+  loginBack() { ui.login.step = 'email'; ui.login.code = ''; ui.login.error = ''; render(); },
+  async loginStart() {
+    const L = ui.login;
+    L.email = String(L.email || '').trim().toLowerCase();
+    L.error = '';
+    if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(L.email)) { L.error = T.account.errors.email; render(); return; }
+    if (!L.terms && L.step === 'email') { L.error = T.join.errors.condiciones; render(); return; }
+    ui.busy = 'login'; render();
+    const r = await authStart(L.email);
+    ui.busy = null;
+    if (r.ok) { L.step = 'code'; L.code = ''; showToast(T.account.sentToast); }
+    else L.error = T.account.errors[r.error] || T.account.errors.servidor;
+    render();
+    setTimeout(() => document.getElementById('l-code')?.focus(), 0);
+  },
+  async loginVerify() {
+    const L = ui.login;
+    L.error = '';
+    if (!/^\d{6}$/.test(String(L.code || '').trim())) { L.error = T.account.errors.codigo; render(); return; }
+    ui.busy = 'login'; render();
+    const r = await authVerify(L.email, L.code.trim(), { terms: L.terms, metrics: L.metrics });
+    ui.busy = null;
+    if (r.ok) await afterLogin(r);
+    else { L.error = T.account.errors[r.error] || T.account.errors.servidor; if (r.error === 'caducado') L.step = 'email'; render(); }
+  },
+  async googleLogin(credential) {
+    const L = ui.login;
+    if (!L.terms) { L.error = T.join.errors.condiciones; render(); return; }
+    ui.busy = 'login'; render();
+    const r = await authGoogle(credential, { terms: L.terms, metrics: L.metrics });
+    ui.busy = null;
+    if (r.ok) await afterLogin(r);
+    else { L.error = T.account.errors[r.error] || T.account.errors.servidor; render(); }
+  },
+  async logout() {
+    if (ui.ask !== 'logout') { ui.ask = 'logout'; render(); return; }
+    const s = session();
+    clearTimeout(pushTimer);
+    await pushNow();
+    authLogout(s.token);
+    const theme = S.settings.theme;
+    S = Store.emptyState();
+    S.settings.theme = theme;
+    saveLocal();
+    Object.assign(ui, { ask: null, tab: 'hoy', screen: null, locked: false, exp: { text: '' }, chat: [], social: { photos: [], result: null, pick: {} } });
+    render();
+    showToast(T.account.bye);
+  },
+  async deleteAccount() {
+    if (ui.ask !== 'delacc') { ui.ask = 'delacc'; render(); return; }
+    ui.busy = 'delacc'; render();
+    const r = await deleteAccount(session().token);
+    ui.busy = null;
+    if (!r.ok && r.status !== 401) { ui.ask = null; showToast(T.account.errors.servidor); render(); return; }
+    clearTimeout(pushTimer);
+    S = Store.emptyState();
+    saveLocal();
+    Object.assign(ui, { ask: null, tab: 'hoy', screen: null, locked: false });
+    render();
+    showToast(T.account.deleted);
+  },
   goJoin() { ui.tab = 'yo'; ui.screen = null; render(); setTimeout(() => document.getElementById('join')?.scrollIntoView({ behavior: 'smooth' }), 0); },
   legalSheet(el, ev) { ev?.preventDefault(); ui.sheet = { type: 'legal' }; render(); },
   joinCheck(el) { ui.join[el.dataset.v] = el.checked; },
@@ -1038,7 +1249,7 @@ const ACTS = {
 
 // ---------- acceso beta: funciones abiertas para este tester ----------
 // Se consulta al arrancar y al volver a la app (como mucho una vez por hora); sin red se usa lo último guardado.
-async function refreshAccess(force = false) {
+async function refreshAccess(force = false, quiet = false) {
   const s = S.settings;
   if (!aiConfigured(s)) {
     if (s.features.length || s.group || s.betaStatus) { Object.assign(s, { features: [], group: null, betaStatus: null, configAt: null }); persist(); render(); }
@@ -1048,12 +1259,12 @@ async function refreshAccess(force = false) {
   ui.busy = 'access'; if (force) render();
   const r = await fetchConfig(s);
   ui.busy = null;
-  if (!r.ok) { if (force) showToast('No se pudo comprobar el acceso. Sigues con lo último guardado.'); else render(); return; }
+  if (!r.ok) { if (force && !quiet) showToast('No se pudo comprobar el acceso. Sigues con lo último guardado.'); else render(); return; }
   const was = S.settings.betaStatus;
   Object.assign(S.settings, { features: r.features, group: r.group, betaStatus: r.status, configAt: Date.now() });
   persist(); render();
   if (was === 'pending' && r.status === 'active') showToast('¡Ya estás dentro de la beta!');
-  else if (force) showToast({ active: 'Acceso actualizado', pending: 'Aún pendiente de aprobación', blocked: 'Acceso desactivado' }[r.status] || 'Código no reconocido');
+  else if (force && !quiet) showToast({ active: 'Acceso actualizado', pending: 'Aún pendiente de aprobación', blocked: 'Acceso desactivado' }[r.status] || 'Código no reconocido');
 }
 
 const CHANGES = {
@@ -1130,8 +1341,9 @@ document.addEventListener('change', (ev) => {
 });
 let hiddenAt = 0;
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) { hiddenAt = Date.now(); metrics.flush(S.settings, { keepalive: true }); return; }
+  if (document.hidden) { hiddenAt = Date.now(); metrics.flush(S.settings, { keepalive: true }); if (pushTimer) { clearTimeout(pushTimer); pushNow(); } return; }
   refreshAccess();
+  pullNow();
   if (S.settings.pinHash && S.settings.lockOnLeave && hiddenAt && Date.now() - hiddenAt > 60000) {
     ui.locked = true; ui.pinEntry = ''; render();
   }
@@ -1149,6 +1361,7 @@ if (!S.settings.country) {
 if (globalThis.CLUTCH_SW && 'serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
 render();
 refreshAccess().then(() => { track('open'); metrics.flush(S.settings); });
+pullNow(true);
 setInterval(() => metrics.flush(S.settings), 60000);
 // Avisos de error técnicos (solo con permiso de estadísticas; sin datos personales).
 const reportError = (message, where) => metrics.error(S.settings, { message, where, screen: ui.screen || ui.tab, version: T.me.version });

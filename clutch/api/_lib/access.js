@@ -81,7 +81,7 @@ export function cors(req, res, methods = 'POST, OPTIONS') {
   const allowed = (process.env.CLUTCH_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
   const origin = req.headers.origin || '';
   res.setHeader('Access-Control-Allow-Origin', allowed.length ? (allowed.includes(origin) ? origin : allowed[0]) : '*');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Clutch-Code');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Clutch-Code, Authorization');
   res.setHeader('Access-Control-Allow-Methods', methods);
   res.setHeader('Vary', 'Origin');
 }

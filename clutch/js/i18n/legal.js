@@ -3,7 +3,7 @@
 
 export const OWNER = 'Isaac Briales';
 export const CONTACT = 'clutch.app.2026@gmail.com';
-export const UPDATED = '23 de octubre de 2026';
+export const UPDATED = '26 de octubre de 2026';
 
 export const LEGAL = [
   { h: 'Condiciones de la beta', p: [
@@ -14,18 +14,20 @@ export const LEGAL = [
     'Puedes dejar la beta cuando quieras escribiendo al contacto de abajo.'
   ] },
   { h: 'Quién es el responsable', p: [`${OWNER}. Contacto: ${CONTACT}.`] },
-  { h: 'Qué se queda en tu móvil', p: [
-    'Todo lo que apuntas de ella (nombre, fechas, gustos, tallas, regalos, fotos) vive solo en este móvil. No lo guardamos en ningún servidor.'
+  { h: 'Dónde se guarda lo que apuntas', p: [
+    'Sin cuenta, todo lo que apuntas de ella (nombre, fechas, gustos, tallas, regalos, fotos) vive solo en este móvil.',
+    'Con cuenta, se guarda además cifrado en nuestro servidor para que lo tengas en cualquier móvil (las fotos se quedan en el móvil). No lo leemos ni lo usamos para nada más.',
+    'Puedes borrar tu cuenta y todo lo guardado en ella desde Yo > Borrar mi cuenta.'
   ] },
-  { h: 'Qué guardamos al apuntarte', p: [
-    'Tu alias, tu email, tu código de tester, la fecha de alta, los días en que abres la app (se borran a los 120 días), tu grupo de la beta y si aceptas las estadísticas.',
+  { h: 'Qué guardamos de tu cuenta', p: [
+    'Tu email (para entrar te enviamos un código, o entras con Google), tu código de tester, la fecha de alta, los días en que abres la app (se borran a los 120 días), tu grupo de la beta y si aceptas las estadísticas.',
     'Si nos envías una opinión, la guardamos con tu alias para poder responderte.',
     'Para qué: gestionar la beta (aprobarte, abrirte funciones) y escribirte sobre ella. Base legal: tu consentimiento al apuntarte.',
     'No lo usamos para publicidad ni lo vendemos.'
   ] },
   { h: 'Cuando usas la IA', p: [
-    'Se envía el texto que pides reescribir o lo que cuentas en el SOS, sin su nombre (va como {n}) y sin su fecha de nacimiento; solo el tramo de edad y el tipo de relación. Las fotos solo se envían si pulsas «Reconocer con IA».',
-    'Proveedores: Anthropic (la IA), Vercel (el servidor) y Upstash (la base de datos de la beta).'
+    'Se envía el texto que pides reescribir o lo que cuentas en el SOS, sin su nombre (va como {n}) y sin su fecha de nacimiento; solo el tramo de edad y el tipo de relación. Las fotos solo se envían si pulsas «Reconocer con IA», y las capturas de su perfil solo si pulsas «Analizar con IA» (no se guardan).',
+    'Proveedores: Anthropic (la IA), Vercel (el servidor), Upstash (la base de datos), Google (el correo con el código y, si lo eliges, entrar con Google).'
   ] },
   { h: 'Estadísticas (solo si las aceptas)', p: [
     'Recuentos por día de qué funciones se usan (por ejemplo, «copiar mensaje: 12 veces»), sin saber quién las usó. Nunca textos, nombres ni datos de ella.',
@@ -33,7 +35,7 @@ export const LEGAL = [
     'Puedes desactivarlas en Yo cuando quieras.'
   ] },
   { h: 'Cuánto tiempo y tus derechos', p: [
-    'Guardamos tus datos de la beta hasta que termine o pidas la baja.',
+    'Guardamos tus datos hasta que borres tu cuenta, pidas la baja o termine la beta.',
     `Puedes pedir acceso, corrección o borrado de tus datos, u oponerte a su uso, escribiendo a ${CONTACT}. También puedes reclamar ante la Agencia Española de Protección de Datos (aepd.es).`
   ] }
 ];

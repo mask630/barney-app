@@ -10,7 +10,12 @@ const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => { if (m.type() === 'error' && !/fonts\.g|ERR_|Failed to load resource/.test(m.text())) errors.push(m.text()); });
+// Sin servidor: esta prueba es sin cuenta y sin red (las de servidor van en e2e-pro y e2e-account)
+await page.route('https://clutch-ia.vercel.app/**', (r) => r.abort());
 await page.goto(url);
+// Primera pantalla: entrar o crear cuenta; aquí se prueba sin cuenta (la cuenta, en e2e-account.mjs)
+await page.waitForSelector('text=Entra o crea tu cuenta');
+await page.click('text=Seguir sin cuenta');
 await page.waitForSelector('text=Crear su ficha');
 assert.ok(!/barney/i.test(await page.locator('#app').innerText()), 'el inicio no menciona Barney');
 const txt = () => page.locator('#app').innerText();
