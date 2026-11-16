@@ -71,7 +71,7 @@ test('cuenta: 5 fallos invalidan el código; sin correo configurado avisa', asyn
   delete process.env.GMAIL_APP_PASSWORD;
   assert.equal((await auth({ action: 'start', email: 'x@mail.es' })).body.error, 'sin-correo');
   const info = await call(authHandler, { method: 'GET' });
-  assert.deepEqual(info.body, { email: false, google: null });
+  assert.deepEqual(info.body, { email: false, google: null, push: null });
 });
 
 test('datos: cifrados en el servidor, con versión, conflicto entre móviles y borrado de cuenta', async () => {
@@ -156,4 +156,48 @@ test('sincronizar: sin fotos ni ajustes del móvil; gana lo último cambiado; lo
   assert.equal(fresh.profiles.length, 2);
   assert.equal(fresh.settings.city.name, 'Madrid');
   assert.ok(fresh.activeId);
+});
+
+test('avisos: firma VAPID válida, alta con sesión y aviso diario solo si hay algo pendiente', async () => {
+  const { generateKeyPairSync, createPublicKey, verify } = await import('node:crypto');
+  const { vapidAuth, sendPush } = await import('../api/_lib/push.js');
+  const pushHandler = (await import('../api/push.js')).default;
+  const cron = (await import('../api/cron-avisos.js')).default;
+  setup();
+  const { publicKey, privateKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+  const jwk = publicKey.export({ format: 'jwk' });
+  process.env.VAPID_PUBLIC = Buffer.concat([Buffer.from([4]), Buffer.from(jwk.x, 'base64url'), Buffer.from(jwk.y, 'base64url')]).toString('base64url');
+  process.env.VAPID_PRIVATE = Buffer.from(privateKey.export({ format: 'pem', type: 'pkcs8' })).toString('base64');
+  process.env.CRON_SECRET = 'cron-secreto';
+  // La firma la verifica la clave pública
+  const h = vapidAuth('https://fcm.googleapis.com/fcm/send/abc', 1_800_000_000);
+  const [, jwt, k] = /^vapid t=([^,]+), k=(.+)$/.exec(h);
+  const [a, b, sig] = jwt.split('.');
+  assert.equal(JSON.parse(Buffer.from(b, 'base64url')).aud, 'https://fcm.googleapis.com');
+  assert.ok(verify('sha256', Buffer.from(`${a}.${b}`), { key: createPublicKey(publicKey.export({ format: 'pem', type: 'spki' })), dsaEncoding: 'ieee-p1363' }, Buffer.from(sig, 'base64url')));
+  assert.equal(k, process.env.VAPID_PUBLIC);
+  assert.equal(await sendPush({ endpoint: 'https://x.es/1' }, async () => ({ status: 410, ok: false })), 'gone');
+  // Alta del móvil: solo con sesión
+  const { body: s } = await loginAs('ava@mail.es');
+  const sub = { endpoint: 'https://fcm.googleapis.com/fcm/send/movil1', keys: { p256dh: 'x', auth: 'y' } };
+  assert.equal((await call(pushHandler, { method: 'POST', headers: {}, body: { subscription: sub } })).code, 401);
+  assert.equal((await call(pushHandler, { method: 'POST', headers: { authorization: `Bearer ${s.token}` }, body: { subscription: sub } })).code, 200);
+  assert.deepEqual(await getJson(`push:${s.code}`), [{ endpoint: sub.endpoint }], 'solo se guarda la dirección');
+  // Ficha con cumpleaños dentro de 20 días: toca «Piensa qué regalarle»
+  const profile = { id: 'p1', name: 'Ava', birth: '1995-12-06', stage: 'pareja', tastes: [], sizes: {}, gifts: [], events: [], remember: [], avoid: [], cycle: { enabled: false } };
+  await data('PUT', s.token, { state: { profiles: [profile], inbox: [], deleted: [], settings: {} }, baseRev: 0 });
+  const runCron = async (now, auth = 'Bearer cron-secreto') => { const sends = []; const r = mkRes(); await cron({ headers: { authorization: auth } }, r, { now, send: async (x) => { sends.push(x.endpoint); return 'ok'; } }); return { r, sends }; };
+  assert.equal((await runCron(new Date('2026-11-16T07:30:00Z'), 'Bearer mal')).r.code, 401);
+  const first = await runCron(new Date('2026-11-16T07:30:00Z'));
+  assert.deepEqual(first.sends, [sub.endpoint]);
+  assert.equal((await runCron(new Date('2026-11-16T09:00:00Z'))).sends.length, 0, 'una vez al día');
+  // Sin nada pendiente (cumpleaños a 2 meses) no se avisa
+  await data('PUT', s.token, { state: { profiles: [{ ...profile, birth: '1995-01-20' }], inbox: [], deleted: [], settings: {} }, baseRev: 1 });
+  assert.equal((await runCron(new Date('2026-11-17T07:30:00Z'))).sends.length, 0);
+  // Dirección que ya no existe: se borra
+  await data('PUT', s.token, { state: { profiles: [profile], inbox: [], deleted: [], settings: {} }, baseRev: 2 });
+  const r = mkRes();
+  await cron({ headers: { authorization: 'Bearer cron-secreto' } }, r, { now: new Date('2026-11-18T07:30:00Z'), send: async () => 'gone' });
+  assert.deepEqual(await getJson(`push:${s.code}`), []);
+  for (const k of ['VAPID_PUBLIC', 'VAPID_PRIVATE', 'CRON_SECRET']) delete process.env[k];
 });

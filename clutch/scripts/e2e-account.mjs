@@ -17,7 +17,7 @@ let server = { rev: 3, state: { profiles: [{ id: 'pX', name: 'Raquel', birth: '1
 const puts = [], authCalls = [];
 await page.route('https://clutch-ia.vercel.app/api/auth', (route) => {
   const r = route.request();
-  if (r.method() === 'GET') return json(route, { email: true, google: null });
+  if (r.method() === 'GET') return json(route, { email: true, google: null, push: 'BPLyoBaZ' });
   const b = JSON.parse(r.postData());
   authCalls.push({ ...b, authorization: r.headers().authorization });
   if (b.action === 'start') return json(route, { ok: true });
@@ -89,6 +89,11 @@ assert.deepEqual(server.state.profiles.find((p) => p.id === 'pX').avoid, ['el ci
 await page.click('.nav button:has-text("Yo")');
 assert.match(await txt(), /pepe@mail\.es/);
 assert.equal(await page.locator('#ai-code').count(), 0, 'con cuenta no se pide código');
+// Avisos en el móvil: aquí (sin app instalada) el móvil no los permite y lo explica
+assert.match(await txt(), /Avisarme en el móvil/);
+await page.click('button[data-act=togglePush]');
+await page.waitForSelector('text=Este navegador no permite avisos', { timeout: 15000 });
+assert.equal(await page.locator('button[data-act=togglePush][aria-checked=true]').count(), 0);
 await page.click('text=Cerrar sesión');
 await page.click('text=¿Seguro?');
 await page.waitForSelector('text=Entra o crea tu cuenta');

@@ -122,6 +122,9 @@ Plan original:
 - Entrar con email + código o con Google; cada uno con sus chicas y su ficha, en cualquier móvil (cifrado en el servidor).
 - 👤 Ejecutar `configurar-cuentas.ps1` con la contraseña de aplicación de Gmail (y el ID de Google si quieres el botón).
 
+## Avisos en el móvil (16-nov) ✅ código · 👤 activar
+- Cada mañana con algo pendiente: «Agenda: tienes algo pendiente hoy» (sin nombres), aunque la app esté cerrada. Se activa en Yo. Lo activa el mismo `configurar-cuentas.ps1`.
+
 ## Fase 6 · Después de la beta (ya en HANDOFF.md)
 - Cuentas, copia en la nube cifrada y avisos push reales.
 - Más días mundiales y santos por país (solo con fuente verificada).

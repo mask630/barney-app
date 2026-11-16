@@ -17,6 +17,7 @@ export const LEGAL = [
   { h: 'Dónde se guarda lo que apuntas', p: [
     'Sin cuenta, todo lo que apuntas de ella (nombre, fechas, gustos, tallas, regalos, fotos) vive solo en este móvil.',
     'Con cuenta, se guarda además cifrado en nuestro servidor para que lo tengas en cualquier móvil (las fotos se quedan en el móvil). No lo leemos ni lo usamos para nada más.',
+    'Si activas los avisos en el móvil, cada mañana el servidor mira si tienes algo pendiente ese día para avisarte. El aviso no lleva ningún dato: solo «Agenda: tienes algo pendiente hoy».',
     'Puedes borrar tu cuenta y todo lo guardado en ella desde Yo > Borrar mi cuenta.'
   ] },
   { h: 'Qué guardamos de tu cuenta', p: [

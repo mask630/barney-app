@@ -39,12 +39,14 @@ Dueño: mask. Habla español. Pide respaldos antes de tocar cosas, interfaz simp
 - Cerrar sesión borra el móvil (los datos siguen en la cuenta). «Borrar mi cuenta» lo borra todo. Borrar un tester en el panel borra también sus datos.
 - Variables: `CLUTCH_DATA_KEY`, `GMAIL_APP_PASSWORD`, `GMAIL_USER`, `GOOGLE_CLIENT_ID` (opcional). Las pone `configurar-cuentas.ps1`. Sin correo ni Google, la app no ofrece cuentas (funciona como antes).
 - Prueba en móvil simulado: `node scripts/e2e-account.mjs`.
+- Avisos push (16-nov): sin contenido (el móvil siempre muestra «Agenda: tienes algo pendiente hoy»), firma VAPID propia sin librerías. `api/push.js` guarda la dirección de cada móvil; `api/cron-avisos.js` lo lanza Vercel cada día a las 7:30 UTC (vercel.json) con `CRON_SECRET`. Variables: `VAPID_PUBLIC`, `VAPID_PRIVATE`, `CRON_SECRET` (las crea el script). Solo con cuenta; en iPhone, con la app instalada.
+- Resumen para mask: `RESUMEN.md`.
 
 ## Pendiente
 1. ~~Desplegar la IA~~ Hecho. La app ya trae el servidor integrado: el tester solo pone su código (o se apunta en Yo > Beta).
 2. Pasar la nueva app al dominio definitivo y comprobar instalación en iPhone (Safari > Añadir a pantalla de inicio).
 3. Más días mundiales y santos por país (solo con fuente verificada).
 4. Planes locales de agendas (p. ej. Malagueando): requiere acuerdo/API; hoy solo hay lugares de OpenStreetMap (no probado contra el servicio real).
-5. ~~Cuentas y copia en la nube cifrada~~ Hecho el 26-oct. Falta: avisos push reales.
+5. ~~Cuentas, copia en la nube cifrada y avisos push~~ Hechos (26-oct y 16-nov); se activan con configurar-cuentas.ps1.
 6. Comprobar disponibilidad del nombre Clutch (marca, dominio, tiendas) antes de lanzar.
 7. Textos de la app en `js/i18n/es.js`: copiar con las mismas claves para otros idiomas.

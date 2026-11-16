@@ -28,7 +28,8 @@ export function emptyState() {
       session: null, // { token, email } con cuenta; null = datos solo en este móvil
       noAccount: false, // eligió «Seguir sin cuenta»
       syncRev: 0, // versión de la copia de la cuenta que tiene este móvil
-      authInfo: null // formas de entrar listas en el servidor: { email, google }
+      authInfo: null, // lo que tiene listo el servidor: { email, google, push }
+      pushOn: false // avisos activados en este móvil
     },
     profiles: [],
     activeId: null,

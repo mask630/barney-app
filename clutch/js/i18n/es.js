@@ -114,7 +114,7 @@ export default {
     themeLight: 'Claro',
     beta: 'Beta',
     feedback: 'Enviar comentario',
-    version: 'Clutch beta 0.4'
+    version: 'Clutch beta 0.5'
   },
   join: {
     title: 'Únete a la beta',
@@ -174,6 +174,18 @@ export default {
       'sin-correo': 'El acceso por email aún no está activado. Prueba en un rato.', 'sin-google': 'El acceso con Google aún no está activado.',
       google: 'No se pudo entrar con Google.', correo: 'No se pudo enviar el correo. Prueba otra vez.',
       red: 'No se pudo conectar. Revisa tu conexión.', servidor: 'El servidor tuvo un problema. Prueba más tarde.'
+    }
+  },
+  push: {
+    title: 'Avisarme en el móvil',
+    hint: 'Cada mañana que tengas algo pendiente te llega «Agenda: tienes algo pendiente hoy», sin nombres. En iPhone, con la app añadida a la pantalla de inicio.',
+    on: 'Avisos activados',
+    off: 'Avisos desactivados',
+    errors: {
+      'sin-soporte': 'Este navegador no permite avisos. En iPhone: Compartir > Añadir a pantalla de inicio, y abre la app desde el icono.',
+      permiso: 'Has bloqueado los avisos. Actívalos en los ajustes del móvil para esta app.',
+      servidor: 'No se pudo activar ahora. Prueba más tarde.',
+      fallo: 'No se pudieron activar los avisos en este móvil.'
     }
   },
   cycle: {

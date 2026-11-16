@@ -3,10 +3,32 @@
   "buildCommand": "true",
   "outputDirectory": "site",
   "functions": {
-    "api/ai.js": { "maxDuration": 60 },
-    "api/plans.js": { "maxDuration": 30 }
+    "api/ai.js": {
+      "maxDuration": 60
+    },
+    "api/plans.js": {
+      "maxDuration": 30
+    }
   },
   "headers": [
-    { "source": "/admin/(.*)", "headers": [{ "key": "X-Frame-Options", "value": "DENY" }, { "key": "Referrer-Policy", "value": "no-referrer" }] }
+    {
+      "source": "/admin/(.*)",
+      "headers": [
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
+      ]
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron-avisos",
+      "schedule": "30 7 * * *"
+    }
   ]
 }

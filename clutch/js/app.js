@@ -17,7 +17,7 @@ import { FEATURES, has as hasFeature, fetchConfig, registerBeta } from './engine
 import { LEGAL, UPDATED } from './i18n/legal.js';
 import { createMetrics, sendFeedback } from './engine/metrics.js';
 import { markUsed, unmarkUsedToday } from './engine/rotation.js';
-import { authInfo, authStart, authVerify, authGoogle, authLogout, pullData, pushData, deleteAccount, syncable, mergeStates } from './engine/account.js';
+import { authInfo, authStart, authVerify, authGoogle, authLogout, pullData, pushData, deleteAccount, pushOn, pushOff, syncable, mergeStates } from './engine/account.js';
 
 const T = es;
 
@@ -197,7 +197,7 @@ async function loadAuthInfo() {
   authAsked = true;
   const r = await authInfo();
   if (!r.ok) return;
-  const info = { email: !!r.email, google: r.google || null };
+  const info = { email: !!r.email, google: r.google || null, push: r.push || null };
   const changed = JSON.stringify(info) !== JSON.stringify(S.settings.authInfo);
   ui.authInfo = S.settings.authInfo = info;
   saveLocal();
@@ -205,6 +205,26 @@ async function loadAuthInfo() {
 }
 // null = aún no se sabe (se trata como activas); false = el servidor no tiene ninguna forma de entrar todavía.
 const accountsOn = () => (ui.authInfo ? !!(ui.authInfo.email || ui.authInfo.google) : null);
+
+// ---------- avisos en el móvil (push) ----------
+// El aviso llega sin contenido y el móvil muestra siempre el mismo texto discreto (sw.js). En iPhone solo con la app instalada.
+const keyBytes = (b64) => Uint8Array.from(atob(b64.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+async function setPush(on) {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) throw new Error('sin-soporte');
+  // Sin service worker activo (p. ej. sin instalar) ready no llega nunca: a los 8 s se da por no compatible.
+  const reg = await Promise.race([navigator.serviceWorker.ready, new Promise((_, no) => setTimeout(() => no(new Error('sin-soporte')), 8000))]);
+  if (on) {
+    if ((await Notification.requestPermission()) !== 'granted') throw new Error('permiso');
+    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(ui.authInfo.push) });
+    const r = await pushOn(session().token, sub.toJSON());
+    if (!r.ok) throw new Error('servidor');
+  } else {
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) { await pushOff(session().token, sub.endpoint); await sub.unsubscribe(); }
+  }
+  S.settings.pushOn = on;
+  saveLocal();
+}
 
 // ---------- cuenta: sincronizar datos ----------
 let pushTimer = null, syncing = false, lastPull = 0;
@@ -581,6 +601,7 @@ function viewMe() {
         <button class="btn block" data-act="logout">${ui.ask === 'logout' ? T.account.logoutAsk : T.account.logout}</button>`
       : `<p class="small muted">${T.account.local}</p><button class="btn primary block" data-act="goLogin">${T.account.cta}</button>`}
     </div></div>` : ''}
+    ${session() && ui.authInfo?.push ? `<div class="card"><div class="row"><div class="grow"><b>${T.push.title}</b><br><span class="small muted">${T.push.hint}</span></div>${switchHtml(!!s.pushOn, 'togglePush', ui.busy === 'push' ? 'disabled' : '')}</div></div>` : ''}
     <div class="card"><div class="row"><b class="grow">${T.me.plan}</b><span class="badge">${T.me.beta}</span></div><p class="small muted">${T.me.planBody}</p></div>
 
     <div class="stack"><span class="label">${T.me.discretion}</span><div class="card flat list">
@@ -1165,6 +1186,17 @@ const ACTS = {
     await refreshAccess(true);
     render();
   },
+  async togglePush() {
+    if (ui.busy === 'push') return;
+    ui.busy = 'push'; render();
+    try {
+      await setPush(!S.settings.pushOn);
+      showToast(S.settings.pushOn ? T.push.on : T.push.off);
+    } catch (e) {
+      showToast(T.push.errors[e.message] || T.push.errors.fallo);
+    }
+    ui.busy = null; render();
+  },
   goLogin() { ui.screen = 'login'; ui.login.error = ''; render(); setTimeout(() => window.scrollTo(0, 0), 0); },
   noAccount() { S.settings.noAccount = true; saveLocal(); render(); },
   loginCheck(el) { ui.login[el.dataset.v] = el.checked; },
@@ -1205,6 +1237,7 @@ const ACTS = {
   async logout() {
     if (ui.ask !== 'logout') { ui.ask = 'logout'; render(); return; }
     const s = session();
+    if (S.settings.pushOn) await setPush(false).catch(() => {});
     clearTimeout(pushTimer);
     await pushNow();
     authLogout(s.token);

@@ -1,5 +1,5 @@
 // Entrar o crear cuenta: con email + código de 6 cifras, o con Google. Devuelve una sesión y el código de tester.
-// GET  → { email: bool, google: clientId|null } (qué formas de entrar están listas)
+// GET  → { email: bool, google: clientId|null, push: clave pública de avisos|null } (qué está listo)
 // POST { action: 'start', email }                          → envía el código
 // POST { action: 'verify', email, code, terms, metrics }   → { token, code, status, email }
 // POST { action: 'google', credential, terms, metrics }    → { token, code, status, email }
@@ -10,6 +10,7 @@ import { randomInt, timingSafeEqual } from 'node:crypto';
 import { cors, readBody } from './_lib/access.js';
 import { hasDb, getJson, setJsonEx, incr, del } from './_lib/db.js';
 import { mailConfigured, sendMail } from './_lib/mail.js';
+import { vapidPublic } from './_lib/push.js';
 import { EMAIL, normEmail, sha, accountFor, newSession, sessionFrom, endSession } from './_lib/account.js';
 
 const CODE_MIN = 10;
@@ -43,7 +44,7 @@ export async function verifyGoogle(credential, fetchFn = globalThis.fetch) {
 export default async function handler(req, res) {
   cors(req, res, 'GET, POST, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(204).end();
-  if (req.method === 'GET') return res.status(200).json({ email: mailConfigured(), google: googleId() || null });
+  if (req.method === 'GET') return res.status(200).json({ email: mailConfigured(), google: googleId() || null, push: vapidPublic() });
   if (req.method !== 'POST') return res.status(405).json({ error: 'metodo' });
   if (process.env.VERCEL && !hasDb()) return res.status(503).json({ error: 'sin-db' });
   const body = readBody(req);

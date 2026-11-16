@@ -31,6 +31,8 @@ export const authLogout = (token, f) => req('/api/auth', { method: 'POST', body:
 export const pullData = (token, f) => req('/api/data', { token }, f);
 export const pushData = (token, state, baseRev, f) => req('/api/data', { method: 'PUT', body: { state, baseRev }, token, timeoutMs: 25000 }, f);
 export const deleteAccount = (token, f) => req('/api/data', { method: 'DELETE', token }, f);
+export const pushOn = (token, subscription, f) => req('/api/push', { method: 'POST', body: { subscription }, token }, f);
+export const pushOff = (token, endpoint, f) => req('/api/push', { method: 'DELETE', body: { endpoint }, token }, f);
 
 // ---------- qué se sube y cómo se mezclan dos copias ----------
 // Se suben las fichas y la bandeja (sin fotos: se quedan en el móvil) y unos pocos ajustes de la persona.

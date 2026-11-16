@@ -1,4 +1,4 @@
-﻿# Activa las cuentas de Clutch (entrar con email + código y, si quieres, con Google). Ejecútalo una vez.
+﻿# Activa las cuentas de Clutch (entrar con email + código y, si quieres, con Google) y los avisos en el móvil. Ejecútalo una vez.
 # Te pide la contraseña de aplicación de Gmail de la cuenta de Clutch (oculta, va directa a Vercel y no se guarda en ningún archivo)
 # y, opcionalmente, el ID de cliente de Google. La clave que cifra los datos se crea sola la primera vez y NUNCA se cambia.
 $ErrorActionPreference = 'Stop'
@@ -31,6 +31,16 @@ else {
   Poner-Variable 'CLUTCH_DATA_KEY' ([Convert]::ToBase64String($bytes))
   Write-Host 'Creada.'
 }
+
+Write-Host "`nAvisos en el móvil (claves propias de Clutch)" -ForegroundColor Cyan
+if ($hay -match 'VAPID_PRIVATE') { Write-Host 'Ya existen: se mantienen (si cambiaran, cada móvil tendría que volver a activar los avisos).' }
+else {
+  $par = node -e "const c=require('crypto');const k=c.generateKeyPairSync('ec',{namedCurve:'prime256v1'});const j=k.publicKey.export({format:'jwk'});console.log(Buffer.concat([Buffer.from([4]),Buffer.from(j.x,'base64url'),Buffer.from(j.y,'base64url')]).toString('base64url'));console.log(Buffer.from(k.privateKey.export({format:'pem',type:'pkcs8'})).toString('base64'))"
+  Poner-Variable 'VAPID_PUBLIC' $par[0]
+  Poner-Variable 'VAPID_PRIVATE' $par[1]
+  Write-Host 'Creadas.'
+}
+if ($hay -notmatch 'CRON_SECRET') { Poner-Variable 'CRON_SECRET' ([guid]::NewGuid().ToString('N')) }
 
 Write-Host "`n3/4 Correo para enviar los códigos (Gmail de Clutch)" -ForegroundColor Cyan
 Write-Host 'Es la "contraseña de aplicación" de 16 letras de clutch.app.2026@gmail.com (no la contraseña normal).'
