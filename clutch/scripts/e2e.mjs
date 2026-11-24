@@ -116,7 +116,7 @@ assert.match(await txt(), /anillo 14/);
 // SOS
 await page.click('.nav button:has-text("Hoy")');
 assert.match(await txt(), /Chocolate/, 'el ciclo sale en Hoy');
-await page.click('text=Ver calendario');
+await page.click('button[data-act=goAgenda]');
 assert.match(await txt(), /Le puede venir la regla/);
 assert.match(await txt(), /Concierto/);
 await shot('calendario');

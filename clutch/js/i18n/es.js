@@ -42,7 +42,7 @@ export default {
     dates: 'Próximas fechas',
     noDates: 'Aún no hay fechas. Pon su cumpleaños en Ella > Editar.',
     todo: 'Te toca',
-    calendar: 'Ver calendario',
+    calendar: 'Calendario',
     calendarHint: 'Clutch te avisa aquí, en Hoy, de lo que toca hacer antes de cada fecha: pensar el regalo, comprarlo y preparar el plan.',
     sosRow: '¿La has liado? Ve a SOS',
     days: (n) => (n === 0 ? 'hoy' : n === 1 ? 'mañana' : `en ${n} días`)
@@ -59,7 +59,7 @@ export default {
   },
   capture: {
     title: 'Apuntar',
-    placeholder: 'Escribe lo que has visto o escuchado. Ej.: su anillo es una talla 14',
+    placeholder: 'Lo que has visto u oído. Varias cosas, una por línea. Ej.:\nle encanta el sushi\nodia el cilantro\nel viernes tiene una entrevista',
     camera: 'Hacer foto',
     gallery: 'Galería',
     classify: 'Clasificar',
@@ -71,7 +71,10 @@ export default {
     classifyLater: 'Clasificar',
     discard: 'Descartar',
     saved: 'Guardado en',
-    photoNote: 'La foto se guarda en este móvil. Elige dónde va.'
+    photoNote: 'La foto se guarda en este móvil. Elige dónde va.',
+    batch: (n) => `${n} cosas · revisa dónde va cada una`,
+    saveAll: 'Guardar todo',
+    batchSaved: (n, b) => `Guardadas ${n}${b ? ` · ${b} a la Bandeja` : ''}`
   },
   sos: {
     title: 'SOS',
@@ -113,8 +116,9 @@ export default {
     themeDark: 'Oscuro',
     themeLight: 'Claro',
     beta: 'Beta',
+    opinions: 'Tu opinión',
     feedback: 'Enviar comentario',
-    version: 'Clutch beta 0.5'
+    version: 'Clutch beta 0.6'
   },
   join: {
     title: 'Únete a la beta',
@@ -194,6 +198,8 @@ export default {
     startedToday: 'Le ha venido hoy',
     last: 'Primer día de la última regla',
     length: 'Días del ciclo',
+    dayOf: (d, n) => `día ${d} de ${n}`,
+    adapts: 'La jugada del día, los gestos y los mensajes de Escríbele se adaptan a su fase.',
     note: 'Son tendencias de los estudios, no reglas: cada mujer es distinta (y con anticonceptivos hormonales se notan menos). No sirve como método anticonceptivo.'
   },
   social: {

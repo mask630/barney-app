@@ -16,11 +16,11 @@
 ## Qué es Clutch
 App para el móvil que ayuda a un hombre a cuidar su relación (Rollo, Pareja o Matrimonio): recordar lo que importa de ella y saber qué hacer o decir. En la pantalla de inicio del móvil se llama «Agenda» (discreción).
 
-## Qué hace hoy (beta 0.5)
+## Qué hace hoy (beta 0.6)
 - **Hoy**: qué te toca (pensar el regalo, comprarlo, preparar el plan), la jugada del día con mensaje listo, gestos, próximas fechas y calendario de todo el año.
 - **Ella**: su ficha (gustos, tallas, evitar, regalos, eventos, recordar; se añade tocando cada apartado), su ciclo con tendencias y su etapa.
-- **Apuntar**: escribes o haces una foto y lo clasifica solo.
-- **Escríbele**: mensajes que no se repiten y suenan a WhatsApp de verdad.
+- **Apuntar**: escribes (varias cosas a la vez, una por línea) o haces una foto y cada cosa va sola a su lista.
+- **Escríbele**: mensajes que no se repiten, suenan a WhatsApp de verdad y tiran de lo que sabes de ella (sus eventos, sus gustos, su ciclo, la hora).
 - **SOS**: qué ha pasado → consejo de una línea + mensaje listo.
 - **Cuentas**: entrar con email + código (o con Google); cada usuario tiene sus datos, cifrados en el servidor, en cualquier móvil. *Se activan al ejecutar `configurar-cuentas.ps1`.*
 - **Avisos en el móvil**: cada mañana con algo pendiente, «Agenda: tienes algo pendiente hoy», sin nombres. *Se activan con el mismo script.*

@@ -125,6 +125,12 @@ Plan original:
 ## Avisos en el móvil (16-nov) ✅ código · 👤 activar
 - Cada mañana con algo pendiente: «Agenda: tienes algo pendiente hoy» (sin nombres), aunque la app esté cerrada. Se activa en Yo. Lo activa el mismo `configurar-cuentas.ps1`.
 
+## Beta 0.6 (24-nov) ✅
+- Apuntar entiende muchas más frases («su serie favorita es…», «pie 38», «el viernes tiene una entrevista», «le hace ilusión ir a París») y deja el texto limpio en cada lista. Varias cosas a la vez, una por línea.
+- El ciclo cambia la jugada del día, los gestos y los mensajes según su fase (con su dulce favorito si está apuntado). Los mensajes nunca mencionan la regla.
+- Mensajes más humanos: siguen sus eventos (suerte antes, «¿qué tal fue?» después), proponen planes con lo que le gusta y respetan la hora (nada de «buenos días» por la noche). La IA reescribe con reglas anti-frase-de-tarjeta.
+- Ella muestra lo que hay en cada apartado sin abrirlo; Hoy no repite fechas de la regla; Yo más claro.
+
 ## Fase 6 · Después de la beta (ya en HANDOFF.md)
 - Cuentas, copia en la nube cifrada y avisos push reales.
 - Más días mundiales y santos por país (solo con fuente verificada).

@@ -4,13 +4,14 @@
 // Los días de descanso de cada esfuerzo están en engine/rotation.js. Los ids no se cambian: identifican lo ya usado.
 // Los mensajes van sin saludo: voice.js añade el saludo y la despedida según edad y registro.
 // st (opcional): etapas concretas en las que sale; sin st, sale en todas las del registro.
+// tod (opcional): m = solo por la mañana, n = solo por la noche (engine/moments.js).
 
 // Escritos como se escribe por WhatsApp (24-oct-2026): frases cortas, coloquiales, con algo de humor o de verdad;
 // nada de frases de tarjeta («tan bonito como tu sonrisa») ni de empezar con su nombre.
 export const MESSAGES = {
   flirt: [
     { id: 'fl-dia', e: 'ligero', t: '¿qué tal el día? Cuéntame lo mejor que te haya pasado.' },
-    { id: 'fl-desperte', e: 'ligero', t: 'me acabo de despertar y ya estaba pensando en ti. Vaya plan.' },
+    { id: 'fl-desperte', tod: 'm', e: 'ligero', t: 'me acabo de despertar y ya estaba pensando en ti. Vaya plan.' },
     { id: 'fl-gracia', e: 'ligero', t: 'me ha pasado una cosa que te va a hacer mucha gracia. Luego te cuento.' },
     { id: 'fl-alegrado', e: 'ligero', t: 'no has hecho nada y aun así me has alegrado el día. No sé cómo lo haces.' },
     { id: 'fl-ahora', e: 'ligero', t: '¿qué haces? Yo aquí, haciendo como que trabajo.' },
@@ -22,12 +23,15 @@ export const MESSAGES = {
     { id: 'fl-cancion', e: 'ligero', t: 'acabo de escuchar una canción que me ha recordado a ti. ¿Te la paso?' },
     { id: 'fl-adivina', e: 'ligero', t: 'adivina quién se ha acordado de ti hoy.' },
     { id: 'fl-risa', e: 'ligero', t: 'que lo sepas: me encanta cómo te ríes.' },
-    { id: 'fl-buen-dia', e: 'ligero', t: 'que tengas buen día. Y si no, me escribes y lo arreglamos.' },
-    { id: 'fl-empieza', e: 'ligero', t: '¿qué tal has dormido?' },
+    { id: 'fl-buen-dia', tod: 'm', e: 'ligero', t: 'que tengas buen día. Y si no, me escribes y lo arreglamos.' },
+    { id: 'fl-empieza', tod: 'm', e: 'ligero', t: '¿qué tal has dormido?' },
     { id: 'fl-mejor-hoy', e: 'ligero', t: 'dime una cosa buena de tu día. Solo una.' },
     { id: 'fl-ilusion', e: 'ligero', t: 'pregunta random: ¿qué te hace ilusión últimamente?' },
     { id: 'fl-mas-de-una', e: 'ligero', t: 'hoy me he acordado de ti más veces de las que te voy a reconocer.' },
     { id: 'fl-sonado', e: 'ligero', t: 'anoche soñé contigo. Luego te cuento, que es largo.' },
+    { id: 'fl-noche', tod: 'n', e: 'ligero', t: '¿ya en la cama? Yo aquí, sin sueño y pensando tonterías. Sobre todo en ti.' },
+    { id: 'fl-noche-2', tod: 'n', e: 'ligero', t: 'me voy a dormir. Me lo he pasado bien hablando contigo hoy.' },
+    { id: 'fl-tarde', e: 'ligero', t: '¿sobrevives al día o te mando refuerzos?' },
     { id: 'fl-quedamos', e: 'medio', t: '¿te apetece que nos veamos esta semana? Dime qué día te va mejor.' },
     { id: 'fl-plan', e: 'medio', t: 'tengo un plan. No te digo más hasta que nos veamos.' },
     { id: 'fl-repetimos', e: 'medio', t: 'me lo pasé muy bien la última vez. ¿Repetimos pronto?' },
@@ -42,7 +46,7 @@ export const MESSAGES = {
   pareja: [
     { id: 'pa-como-vas', e: 'ligero', t: '¿cómo lo llevas hoy?' },
     { id: 'pa-tenerte', e: 'ligero', t: 'nada, que me alegro mucho de tenerte. Eso era.' },
-    { id: 'pa-desperte', e: 'ligero', t: 'me he despertado y lo primero en lo que he pensado has sido tú.' },
+    { id: 'pa-desperte', tod: 'm', e: 'ligero', t: 'me he despertado y lo primero en lo que he pensado has sido tú.' },
     { id: 'pa-ganas', e: 'ligero', t: 'tengo unas ganas de verte luego…' },
     { id: 'pa-suerte', e: 'ligero', t: 'qué suerte tengo contigo, de verdad.' },
     { id: 'pa-abrazo', e: 'ligero', t: 'si el día se pone pesado, que sepas que luego hay abrazo largo esperándote.' },
@@ -53,13 +57,17 @@ export const MESSAGES = {
     { id: 'pa-cancion', e: 'ligero', t: 'ha sonado una canción que me ha recordado a nosotros. Luego te la pongo.' },
     { id: 'pa-encantas', e: 'ligero', t: 'te lo digo poco: me encantas.' },
     { id: 'pa-equipo', e: 'ligero', t: 'qué buen equipo hacemos, ¿eh?' },
-    { id: 'pa-calma', e: 'ligero', t: 'hoy tómatelo con calma, que yo me encargo de lo que haga falta.' },
+    { id: 'pa-calma', tod: 'm', e: 'ligero', t: 'hoy tómatelo con calma, que yo me encargo de lo que haga falta.' },
     { id: 'pa-empieza', e: 'ligero', t: '¿qué tal va el día?' },
     { id: 'pa-echo-menos', e: 'ligero', t: 'te echo de menos. Así de simple.' },
     { id: 'pa-aguantarme', e: 'ligero', t: 'gracias por aguantarme, que ya sé que no siempre es fácil.' },
     { id: 'pa-bien-estamos', e: 'ligero', t: 'estaba pensando en lo bien que estamos últimamente.' },
-    { id: 'pa-mejor-dia', e: 'ligero', t: 'lo mejor de mi día sigues siendo tú.' },
+    { id: 'pa-mejor-dia', e: 'ligero', t: 'lo mejor del día va a ser llegar a casa y verte.' },
     { id: 'pa-sonado', e: 'ligero', t: 'anoche soñé contigo. Luego te cuento.' },
+    { id: 'pa-noche', tod: 'n', st: ['matrimonio'], e: 'ligero', t: 'ven ya a la cama, que se está mejor contigo.' },
+    { id: 'pa-noche-2', tod: 'n', e: 'ligero', t: 'me voy a dormir ya. Hoy te he echado de menos más de la cuenta.' },
+    { id: 'pa-buenos-dias', tod: 'm', e: 'ligero', t: 'buenos días. Hoy tengo el día tonto y solo pienso en verte.' },
+    { id: 'pa-vuelta', e: 'ligero', t: '¿a qué hora sales? Así voy calculando el abrazo.' },
     { id: 'pa-cena-hoy', e: 'medio', t: '¿qué te apetece cenar? Hoy me encargo yo.' },
     { id: 'pa-sin-moviles', e: 'medio', t: 'esta noche nada de móviles: tú, yo y lo que te apetezca ver.' },
     { id: 'pa-recoger', e: 'medio', t: 'avísame cuando salgas y te paso a buscar.' },
@@ -110,7 +118,7 @@ export const GESTURES = {
     { id: 'gp-media-tarde', e: 'micro', t: 'Mándale un mensaje a media tarde solo para decirle que piensas en ella.' },
     { id: 'gp-lo-mejor', e: 'micro', t: 'Pregúntale qué es lo que más le ha gustado de su día.' },
     { id: 'gp-movil', e: 'micro', t: 'Cuando te hable, deja el móvil boca abajo.' },
-    { id: 'gp-nota-nevera', e: 'micro', t: 'Déjale una nota en la nevera: «Que tengas un día tan bonito como tú».' },
+    { id: 'gp-nota-nevera', e: 'micro', t: 'Déjale una nota en la nevera: «Que tengas buen día. Te quiero».' },
     { id: 'gp-nota-bolso', e: 'micro', t: 'Déjale una nota en el coche o en el bolso: «Te quiero. Así, sin más».' },
     { id: 'gp-espejo', e: 'micro', t: 'Escribe «te quiero» en el espejo empañado del baño para que lo vea al ducharse.' },
     { id: 'gp-tarea', e: 'cuidado', t: 'Encárgate de una tarea que le pese esta semana.' },

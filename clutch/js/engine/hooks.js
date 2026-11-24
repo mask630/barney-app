@@ -72,8 +72,54 @@ function nextBirthday(birthISO, todayISO) {
   return null;
 }
 
+// ---------- seguimiento de sus eventos ----------
+const LUCK = /examen|entrevista|medic|dentista|operacion|presentacion|oposicion|prueba|juicio|analisis|revision|selectividad|evau|ebau|defensa|tfg|tfm/;
+const FUN = /concierto|viaje|boda|fiesta|festival|despedida|partido|escapada|vacaciones|cena|comida|bautizo|comunion|cumple/;
+
+// «Entrevista» → «la entrevista»; «Viaje a Roma» → «el viaje a Roma»; «Boda de su prima» → «la boda de tu prima».
+export function eventPhrase(text) {
+  let s = String(text || '').trim().replace(/[.!]+$/, '');
+  if (!s) return null;
+  s = s.replace(/\bsus\b/gi, 'tus').replace(/\bsu\b/gi, 'tu');
+  if (/^(el|la|los|las|tu|tus|mi|mis)\s/i.test(s)) return s.charAt(0).toLowerCase() + s.slice(1);
+  const first = norm(s.split(/\s+/)[0]);
+  const fem = /(a|cion|sion|dad|tud)$/.test(first) && !/^(dia|mapa|planeta|tema|problema|programa|sistema)$/.test(first);
+  const plural = /s$/.test(first) && !/^(analisis|tfgs?|tesis|crisis)$/.test(first);
+  const art = plural ? (fem || /as$/.test(first) ? 'las' : 'los') : fem ? 'la' : 'el';
+  return `${art} ${s.charAt(0).toLowerCase()}${s.slice(1)}`;
+}
+const loDe = (ph) => (ph.startsWith('el ') ? `lo del ${ph.slice(3)}` : `lo de ${ph}`);
+
+// Para un evento apuntado: ayer → «¿qué tal…?», hoy → suerte o que disfrute, mañana → suerte (solo si es algo que da nervios).
+function eventFollowUp(ev, todayISO) {
+  if (!ev || !ev.month || !ev.day) return null;
+  const t = norm(ev.text || '');
+  if (/^(su |tu )?(cumple|cumpleanos|aniversario)\b/.test(t)) return null; // los de ella ya salen por su lado
+  const years = ev.year && !ev.yearly ? [ev.year] : [+todayISO.slice(0, 4) - 1, +todayISO.slice(0, 4), +todayISO.slice(0, 4) + 1];
+  let diff = null;
+  for (const y of years) {
+    const iso = `${y}-${String(ev.month).padStart(2, '0')}-${String(ev.day).padStart(2, '0')}`;
+    if (!parseISO(iso)) continue;
+    const d = daysBetween(todayISO, iso);
+    if (d >= -1 && d <= 1) { diff = d; break; }
+  }
+  if (diff == null) return null;
+  const ph = eventPhrase(ev.text);
+  if (!ph) return null;
+  const luck = LUCK.test(t), fun = FUN.test(t);
+  if (diff === -1) {
+    return { when: 'ayer', texts: fun
+      ? [`¿qué tal ayer ${loDe(ph)}? Quiero detalles.`, `bueno, cuéntame qué tal ${loDe(ph)}.`]
+      : [`¿qué tal fue ${loDe(ph)}?`, `oye, al final ¿qué tal ${loDe(ph)}?`] };
+  }
+  if (diff === 0 && luck) return { when: 'hoy', texts: [`mucha suerte hoy con ${ph}. Vas a ir genial.`, `hoy es ${ph}, ¿no? Mucha suerte. Luego me cuentas.`] };
+  if (diff === 0 && fun) return { when: 'hoy', texts: [`disfruta mucho hoy ${loDe(ph)}.`, `¡pásalo genial hoy! Y luego me cuentas qué tal ${loDe(ph)}.`] };
+  if (diff === 1 && luck) return { when: 'manana', texts: [`mañana es ${ph}, ¿no? Lo vas a hacer genial.`, `mucho ánimo para mañana con ${ph}. Cualquier cosa, aquí estoy.`] };
+  return null;
+}
+
 /**
- * profile: { id?, used?, name, birth?, band?, stage, since?, tastes?: string[], location?: {lat,lon,tz,city} }
+ * profile: { id?, used?, name, birth?, band?, stage, since?, tastes?: string[], events?: [], location?: {lat,lon,tz,city} }
  * Devuelve { ok:false, reason } o { ok:true, band, group, hooks, unlocks }.
  */
 export function generateHooks(profile, todayISO) {
@@ -180,6 +226,17 @@ export function generateHooks(profile, todayISO) {
   }
   if (!tastes.length) unlocks.push({ id: 'tastes', need: 'tastes', text: 'Añade sus gustos para que los días especiales sean los que a ella le tocan.' });
 
+  // 3b. Sus planes y citas apuntados: suerte el día antes y el mismo día, y preguntar qué tal al día siguiente.
+  //     Es lo que más humano suena, porque demuestra que él se acuerda de lo que ella le contó.
+  for (const ev of profile.events || []) {
+    const f = eventFollowUp(ev, todayISO);
+    if (!f) continue;
+    add(
+      { id: `ev-${ev.id}-${f.when}`, kind: 'event', priority: f.when === 'hoy' ? 92 : f.when === 'ayer' ? 88 : 72, usedData: ['events'], source: { label: SRC_USER } },
+      { flirt: f.texts, pareja: f.texts }
+    );
+  }
+
   // 4. Astro: Luna en su signo (según los astros)
   const her = profile.birth ? sunSignFromBirth(profile.birth) : null;
   const sign = stableMoonSign(todayISO);
@@ -200,7 +257,7 @@ export function generateHooks(profile, todayISO) {
       { id: 'full-moon', kind: 'astro', priority: 45, usedData: [], source: { label: SRC_ASTRO } },
       {
         flirt: ['hay luna llena esta noche. Mírala un momento y me cuentas.', 'esta noche hay luna llena. Te reto a asomarte y decirme si la ves.', 'luna llena esta noche. Buena excusa para dar un paseo, ¿no?'],
-        pareja: ['hay luna llena esta noche. Salimos un momento a mirarla.', 'esta noche hay luna llena. ¿Paseo después de cenar?', 'luna llena esta noche. Te espero en la ventana.']
+        pareja: ['hay luna llena esta noche. Salimos un momento a mirarla.', 'esta noche hay luna llena. ¿Paseo después de cenar?', 'luna llena esta noche. Asómate un momento, que merece la pena.']
       }
     );
   } else if (phase.name === 'nueva') {

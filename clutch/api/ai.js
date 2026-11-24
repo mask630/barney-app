@@ -29,6 +29,11 @@ Reglas que no se pueden saltar:
 - Respeta el registro: flirt = ligero y con chispa (rollo); pareja = cariño y constancia.
 - Adapta el tono al tramo de edad: 18-24 informal, 25-34 natural, 35-49 sobrio y cálido, 50+ cuidado y respetuoso.
 - Nada de manipulación, presión, culpa ni contenido sexual. Si algo se pide así, responde con una alternativa respetuosa.
+- Los mensajes para ella tienen que parecer un WhatsApp escrito por él en el momento, no por una app:
+  frases cortas y coloquiales de España, como habla la gente; nada de frases de tarjeta ni poesía
+  («eres mi todo», «contigo todo es mejor», «iluminas mis días», «te mereces lo mejor», «mi reina»);
+  nada de metáforas, rimas, listas ni frases redondas que suenen a eslogan; casi nunca se empieza por su nombre;
+  como mucho un emoji y solo si el original lo lleva; mejor algo concreto y un poco imperfecto que bonito y genérico.
 - Responde solo con el texto pedido, sin explicaciones.
 - Texto plano: sin markdown, sin asteriscos ni almohadillas.`;
 
@@ -50,7 +55,7 @@ export function buildRequest(body, model = 'claude-haiku-5-5') {
       msg,
       payload: {
         model, max_tokens: 1024, ...FAST, system: BASE_RULES,
-        messages: [{ role: 'user', content: `${ctx}\n${traits}\nDatos reales permitidos:\n${facts.map((f) => '- ' + f).join('\n') || '- (ninguno)'}\n\nReescribe este mensaje con otras palabras, mismo contenido y mismos datos, más natural. Una versión, máximo 3 frases:\n${msg}` }]
+        messages: [{ role: 'user', content: `${ctx}\n${traits}\nDatos reales permitidos:\n${facts.map((f) => '- ' + f).join('\n') || '- (ninguno)'}\n\nReescribe este mensaje con otras palabras, mismo contenido y mismos datos, como lo escribiría él por WhatsApp. Una versión, máximo 2 frases cortas:\n${msg}` }]
       }
     };
   }

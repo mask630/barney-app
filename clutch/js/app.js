@@ -7,7 +7,7 @@ import * as Store from './core/store.js';
 import { generateHooks } from './engine/hooks.js';
 import { genericMessages, dailyGestures, cycleInfo, cycleLength, CYCLE_MIN, CYCLE_MAX, SOS } from './engine/content.js';
 import { agenda, reminders, markDone, when } from './engine/agenda.js';
-import { classify, applyToProfile, DESTINATIONS } from './engine/capture.js';
+import { classify, applyToProfile, splitNotes, DESTINATIONS } from './engine/capture.js';
 import { CITIES, countryFromTimezone, detectTimezone, nearestCity } from './core/geo.js';
 import { COMPANIONS, COMPANION_IDS, isAvailable, companionLine } from './engine/companions.js';
 import { analyzeStyle, applyStyle, describeStyle } from './engine/style.js';
@@ -50,7 +50,7 @@ const ui = {
   locked: false, pinEntry: '', pinError: false,
   form: { name: '', birth: '', band: '', stage: 'pareja', since: '', error: '' },
   add: { text: '', field: '', date: '' }, social: { photos: [], result: null, pick: {} },
-  edit: {}, draft: '', pending: null, imp: { text: '', msg: '' }, exp: { text: '' }, pin: { value: '', error: '' }, fb: { text: '' },
+  edit: {}, draft: '', pending: null, batch: null, imp: { text: '', msg: '' }, exp: { text: '' }, pin: { value: '', error: '' }, fb: { text: '' },
   open: null, breath: { on: false, phase: 'in' },
   alt: {}, busy: null, chat: [], chatDraft: '', plansMsg: '', pass: { value: '' }, styleDraft: '',
   join: { alias: '', email: '', terms: false, metrics: false, error: '' },
@@ -118,7 +118,7 @@ function location() {
   return c && Number.isFinite(c.lat) && Number.isFinite(c.lon) && c.tz ? c : null;
 }
 function hookData(p) {
-  return generateHooks({ id: p.id, used: p.used, name: p.name, birth: p.birth, band: p.band, stage: p.stage, since: p.since, tastes: p.tastes, location: location(), country: S.settings.country }, today());
+  return generateHooks({ id: p.id, used: p.used, name: p.name, birth: p.birth, band: p.band, stage: p.stage, since: p.since, tastes: p.tastes, events: p.events, location: location(), country: S.settings.country }, today());
 }
 function longDate(iso) {
   return new Intl.DateTimeFormat('es', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(parseISO(iso));
@@ -351,6 +351,14 @@ function plansCard(p) {
 }
 
 const agendaOpts = () => ({ country: S.settings.country });
+// Fecha de Apuntar en AAAA-MM-DD; sin año, la próxima vez que caiga.
+function dateFor(d) {
+  if (!d) return '';
+  const md = `${String(d.month).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`;
+  if (d.year) return `${d.year}-${md}`;
+  const y = +today().slice(0, 4);
+  return `${y}-${md}` >= today() ? `${y}-${md}` : `${y + 1}-${md}`;
+}
 
 function remindersCard(p) {
   const list = reminders(p, today(), agendaOpts()).slice(0, 3);
@@ -371,10 +379,10 @@ function viewHoy(p) {
   // Cuatro gestos: el primero es la jugada del día (si no hay dato especial) y los otros tres van a la lista, sin repetirse.
   const picks = dailyGestures(p, today(), 4);
   const lead = picks[0];
-  const gest = picks.length > 3 ? picks.slice(1) : picks;
+  const gest = hero ? picks.slice(0, 3) : picks.length > 3 ? picks.slice(1) : picks;
   const done = (p.done && p.done[today()]) || [];
   const cyc = cycleInfo(p, today());
-  const dates = agenda(p, today(), agendaOpts()).slice(0, 3);
+  const dates = agenda(p, today(), agendaOpts()).filter((d) => d.kind !== 'period').slice(0, 3);
 
   return `<main class="screen">
     <div><span class="small muted">${esc(cap(longDate(today())))}</span>
@@ -394,7 +402,7 @@ function viewHoy(p) {
            <button class="btn block" data-act="goWrite">${T.tabs.escribele}</button>`}
     </section>
 
-    ${cyc ? `<button class="card" style="text-align:left" data-act="tab" data-v="ella"><span class="label" style="padding:0">${esc(cyc.name)}</span><p>${esc(cyc.tip)}</p></button>` : ''}
+    ${cyc ? `<button class="card" style="text-align:left" data-act="tab" data-v="ella"><span class="label" style="padding:0">${esc(cyc.name)} · ${T.cycle.dayOf(cyc.day, cyc.len)}</span><p class="small">${esc(cyc.mood)}${lead && lead.id.startsWith('cg-') && !hero ? '' : ` ${esc(cyc.tip)}`}</p></button>` : ''}
 
     <div class="stack"><span class="label">${T.today.gestures}</span>
       <div class="card flat list">${gest.map((g) => `<button class="gesture" aria-pressed="${done.includes(g.id)}" data-act="toggleGesture" data-v="${g.id}"><span class="tick">${done.includes(g.id) ? '✓' : ''}</span><span>${esc(g.t)}</span></button>`).join('')}</div></div>
@@ -434,7 +442,7 @@ function viewAgenda(p) {
 function viewWrite(p) {
   const r = hookData(p);
   const hooks = r.hooks.filter((h) => h.message);
-  const basics = genericMessages(p, r.band, r.group, today());
+  const basics = genericMessages(p, r.band, r.group, today(), 3, { hour: new Date().getHours() });
   const traits = S.settings.style?.traits;
   // mid: id del banco (solo mensajes sencillos) para que descansen tras usarlos.
   const card = (msg, src, mid = '') => {
@@ -465,6 +473,14 @@ function sizeLine(p) {
   return e.length ? e.map(([k, v]) => `${esc(k)} ${esc(v)}`).join(' · ') : '';
 }
 
+// Lo primero de cada apartado, para verlo sin abrirlo.
+function preview(p, k) {
+  if (k === 'tallas') return sizeLine(p);
+  const list = { gustos: p.tastes, evitar: p.avoid, regalos: p.gifts.map((g) => g.text), eventos: p.events.map((e) => e.text), recordar: p.remember.map((r) => r.text) }[k] || [];
+  const s = list.slice(-3).reverse().join(' · ');
+  return s.length > 60 ? s.slice(0, 58) + '…' : s;
+}
+
 function viewElla(p) {
   const pct = Store.completeness(p);
   const tiles = [
@@ -481,7 +497,7 @@ function viewElla(p) {
     <div class="card"><div class="row"><h3 class="grow">Ficha</h3><b>${pct}%</b></div>
       <div class="bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div></div>
 
-    <div class="card flat list">${tiles.map(([k, n]) => `<button class="item" data-act="openSection" data-v="${k}"><span class="grow"><b>${T.dest[k]}</b>${k === 'tallas' && n ? `<br><span class="small muted">${sizeLine(p)}</span>` : ''}</span><span class="badge">${n || '+'}</span></button>`).join('')}</div>
+    <div class="card flat list">${tiles.map(([k, n]) => `<button class="item" data-act="openSection" data-v="${k}"><span class="grow"><b>${T.dest[k]}</b>${n ? `<br><span class="small muted">${esc(preview(p, k))}</span>` : ''}</span><span class="badge">${n || '+'}</span></button>`).join('')}</div>
 
     ${cycleCard(p)}
 
@@ -500,7 +516,7 @@ function cycleCard(p) {
       <button class="btn small" data-act="cycleStart">${T.cycle.startedToday}</button>
       <div class="row"><div class="field grow"><label for="c-last">${T.cycle.last}</label><input id="c-last" class="input" type="date" data-change="cycleLast" value="${esc(c.lastStart || '')}" max="${today()}"></div>
         <div class="field"><label for="c-len">${T.cycle.length}</label><select id="c-len" class="select" data-change="cycleLen">${lens.map((n) => `<option ${cycleLength(c) === n ? 'selected' : ''}>${n}</option>`).join('')}</select></div></div>
-      <p class="small muted">${T.cycle.note}</p>`}
+      <p class="small muted">${T.cycle.adapts} ${T.cycle.note}</p>`}
   </div>`;
 }
 
@@ -533,6 +549,18 @@ function viewSocial(p) {
   </main>`;
 }
 
+// Varias notas a la vez: cada una con su destino, que se puede cambiar antes de guardar.
+function batchCard() {
+  return `<div class="card"><span class="label" style="padding:0">${T.capture.batch(ui.batch.length)}</span>
+    ${ui.batch.map((b, i) => `<div class="stack" style="gap:6px;padding-top:10px;border-top:1px solid var(--line)">
+      <div class="row"><select class="select" style="width:auto;flex:none" data-change="batchDest" data-i="${i}" aria-label="Destino">${DESTINATIONS.map((d) => `<option value="${d}" ${b.c.dest === d ? 'selected' : ''}>${T.dest[d]}</option>`).join('')}</select>
+        <input class="input grow" style="min-width:0" data-bind="batch.${i}.c.value" value="${esc(b.c.dest === 'bandeja' ? b.raw : b.c.value)}" aria-label="Texto"></div>
+      ${b.c.dest === 'tallas' ? `<input class="input" data-bind="batch.${i}.c.field" value="${esc(b.c.field || '')}" placeholder="¿De qué prenda? anillo, calzado…" aria-label="Prenda">` : ''}
+      ${b.c.dest === 'eventos' ? `<input class="input" type="date" data-bind="batch.${i}.dateISO" value="${esc(b.dateISO || '')}" aria-label="Fecha">` : ''}
+    </div>`).join('')}
+    <div class="row wrap"><button class="btn primary" data-act="saveBatch">${T.capture.saveAll}</button><button class="btn ghost" data-act="cancelBatch">Cancelar</button></div></div>`;
+}
+
 function viewCapture(p) {
   const pend = ui.pending;
   const inbox = S.inbox;
@@ -540,7 +568,7 @@ function viewCapture(p) {
   const allowed = photo ? ['regalos', 'recordar', 'bandeja'] : DESTINATIONS;
   return `<main class="screen">
     <h1>${T.capture.title}</h1>
-    ${pend ? `<div class="card">
+    ${ui.batch ? batchCard() : pend ? `<div class="card">
         ${photo ? `<img class="thumb" src="${photo}" alt="Foto a clasificar"><p class="small muted">${T.capture.photoNote}</p>
           ${has('photo_ai') ? `<button class="btn small" data-act="aiPhoto" ${ui.busy === 'photo' ? 'disabled' : ''}>${ui.busy === 'photo' ? 'Mirando…' : 'Reconocer con IA'}</button>` : `<p class="small muted">Reconocer fotos con IA ${SOON}</p>`}` : ''}
         <span class="label" style="padding:0">${T.capture.sendTo}</span>
@@ -602,7 +630,7 @@ function viewMe() {
       : `<p class="small muted">${T.account.local}</p><button class="btn primary block" data-act="goLogin">${T.account.cta}</button>`}
     </div></div>` : ''}
     ${session() && ui.authInfo?.push ? `<div class="card"><div class="row"><div class="grow"><b>${T.push.title}</b><br><span class="small muted">${T.push.hint}</span></div>${switchHtml(!!s.pushOn, 'togglePush', ui.busy === 'push' ? 'disabled' : '')}</div></div>` : ''}
-    <div class="card"><div class="row"><b class="grow">${T.me.plan}</b><span class="badge">${T.me.beta}</span></div><p class="small muted">${T.me.planBody}</p></div>
+    ${(s.features || []).length ? '' : `<div class="card"><div class="row"><b class="grow">${T.me.plan}</b><span class="badge">${T.me.beta}</span></div><p class="small muted">${T.me.planBody}</p></div>`}
 
     <div class="stack"><span class="label">${T.me.discretion}</span><div class="card flat list">
       <div class="item"><div class="grow"><b>${T.me.pin}</b><br><span class="small muted">${T.me.pinHint}</span></div>${switchHtml(!!s.pinHash, 'togglePin')}</div>
@@ -655,7 +683,7 @@ function meBetaSections() {
   return `
     ${betaCard()}
 
-    <div class="stack"><span class="label">${T.me.beta}</span><div class="card">
+    <div class="stack"><span class="label">${T.me.opinions}</span><div class="card">
       <div class="field"><label for="fb">${T.me.feedback}</label><textarea id="fb" class="textarea" data-bind="fb.text" placeholder="Qué falla, qué falta, qué te gustó…">${esc(ui.fb.text)}</textarea></div>
       <p class="small muted">${aiConfigured(S.settings) ? 'Se envía con tu alias para poder responderte.' : 'Se envía sin nombre.'} No pongas datos de ella.</p>
       <button class="btn small" data-act="sendFeedback" ${ui.busy === 'fb' ? 'disabled' : ''}>${ui.busy === 'fb' ? 'Enviando…' : 'Enviar'}</button>
@@ -864,7 +892,8 @@ function savePending() {
     S.inbox.unshift({ id, text: pend.raw, photo: pend.photo || null, at: today() });
     showToast(`${T.capture.saved} ${T.dest.bandeja}`);
   } else {
-    if (c.dest === 'eventos' && !c.date) {
+    // La fecha que se ve es la que vale (antes, si se cambiaba a mano, se ignoraba)
+    if (c.dest === 'eventos' && (!c.date || pend.dateISO !== pend.dateAuto)) {
       const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(pend.dateISO || '');
       if (!m) { showToast('Elige una fecha para el evento'); return; }
       c.date = { year: +m[1], month: +m[2], day: +m[3] };
@@ -1006,10 +1035,35 @@ const ACTS = {
   classify() {
     const text = ui.draft.trim();
     if (!text) { showToast('Escribe algo o haz una foto'); return; }
-    const c = classify(text);
-    ui.pending = { c, raw: text, photo: null, dateISO: c.date ? `${c.date.year || new Date().getFullYear()}-${String(c.date.month).padStart(2, '0')}-${String(c.date.day).padStart(2, '0')}` : '' };
+    const notes = splitNotes(text);
+    if (notes.length > 1) {
+      ui.batch = notes.slice(0, 12).map((raw) => { const c = classify(raw, today()); return { c, raw, dateISO: dateFor(c.date) }; });
+      render();
+      return;
+    }
+    const c = classify(text, today());
+    const dateISO = dateFor(c.date);
+    ui.pending = { c, raw: text, photo: null, dateISO, dateAuto: dateISO };
     render();
   },
+  saveBatch() {
+    const items = ui.batch;
+    const noDate = items.find((b) => b.c.dest === 'eventos' && !/^\d{4}-\d{2}-\d{2}$/.test(b.dateISO || ''));
+    if (noDate) { showToast(`Elige la fecha de «${noDate.c.value || noDate.raw}»`); return; }
+    let saved = 0, inbox = 0;
+    for (const b of items) {
+      const c = { ...b.c };
+      if (c.dest === 'bandeja' || !String(c.value || '').trim()) { S.inbox.unshift({ id: Store.newId('x'), text: b.raw, photo: null, at: today() }); inbox++; continue; }
+      if (c.dest === 'eventos' && b.dateISO !== dateFor(b.c.date)) { const [y, mo, d] = b.dateISO.split('-').map(Number); c.date = { year: y, month: mo, day: d }; }
+      updateProfile((p) => applyToProfile(p, c, Store.newId('x'), today()));
+      saved++;
+    }
+    persist();
+    ui.batch = null;
+    ui.draft = '';
+    showToast(T.capture.batchSaved(saved, inbox));
+  },
+  cancelBatch() { ui.batch = null; render(); },
   pickDest(el) {
     const d = el.dataset.v;
     ui.pending.c = { ...ui.pending.c, dest: d, value: ui.pending.c.value || ui.pending.raw || '' };
@@ -1020,9 +1074,11 @@ const ACTS = {
   inboxClassify(el) {
     const it = S.inbox.find((i) => i.id === el.dataset.v);
     if (!it) return;
-    const c = it.text ? classify(it.text) : { dest: 'recordar', value: '', confidence: 'baja' };
+    // «mañana», «el viernes»… cuentan desde el día en que se apuntó
+    const c = it.text ? classify(it.text, it.at || today()) : { dest: 'recordar', value: '', confidence: 'baja' };
     if (it.photo && !['regalos', 'recordar', 'bandeja'].includes(c.dest)) c.dest = 'recordar';
-    ui.pending = { c, raw: it.text, photo: it.photo, fromInbox: it.id, dateISO: '' };
+    const dateISO = dateFor(c.date);
+    ui.pending = { c, raw: it.text, photo: it.photo, fromInbox: it.id, dateISO, dateAuto: dateISO };
     render();
   },
   inboxDiscard(el) { S.inbox = S.inbox.filter((i) => i.id !== el.dataset.v); S.deleted = [...(S.deleted || []), el.dataset.v]; persist(); render(); },
@@ -1301,6 +1357,12 @@ async function refreshAccess(force = false, quiet = false) {
 }
 
 const CHANGES = {
+  batchDest(el) {
+    const b = ui.batch?.[+el.dataset.i];
+    if (!b) return;
+    b.c = { ...b.c, dest: el.value, value: b.c.value || b.raw };
+    render();
+  },
   async photo(el) {
     const f = el.files && el.files[0];
     if (!f) return;

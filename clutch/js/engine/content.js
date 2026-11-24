@@ -6,20 +6,33 @@ import { compose } from './voice.js';
 import { mothersDay } from '../data/worldDays.js';
 import { MESSAGES, GESTURES } from '../data/bank.js';
 import { pickRotating } from './rotation.js';
+import { cycleGestures, cycleMessages, tasteMessages, fitsHour } from './moments.js';
 
 // Gestos y mensajes sencillos salen del banco y rotan con descanso según su esfuerzo (engine/rotation.js).
 
 // Un elemento con `st` solo sale en esas etapas; sin `st`, en todas las de su registro.
 const forStage = (pool, stage) => pool.filter((it) => !it.st || it.st.includes(stage));
 
-// Tres gestos para hoy, estables durante el día. Devuelve elementos del banco: { id, e, t }.
+// Gestos para hoy, estables durante el día. Devuelve elementos del banco: { id, e, t }.
+// Si se lleva su ciclo, el primero es de su fase (y en Hoy pasa a ser la jugada del día).
 export function dailyGestures(profile, todayISO, count = 3) {
-  return pickRotating(forStage(GESTURES[STAGE_GROUP[profile.stage]], profile.stage), profile, todayISO, count, 'g');
+  const phase = cycleInfo(profile, todayISO)?.phase;
+  const first = phase ? pickRotating(cycleGestures(profile, phase, STAGE_GROUP[profile.stage]), profile, todayISO, 1, 'gc', 0) : [];
+  const rest = pickRotating(forStage(GESTURES[STAGE_GROUP[profile.stage]], profile.stage), profile, todayISO, count - first.length, 'g');
+  return [...first, ...rest];
 }
 
-// Tres mensajes sencillos para hoy, ya con saludo y despedida. Devuelve { id, text }.
-export function genericMessages(profile, band, group, todayISO, count = 3) {
-  return pickRotating(forStage(MESSAGES[group], profile.stage), profile, todayISO, count, 'm')
+// Mensajes sencillos para hoy, ya con saludo y despedida. Devuelve { id, text }.
+// Primero uno de su fase del ciclo (si se lleva) y uno con algo que le gusta (si hay); el resto, del banco.
+// hour: hora del móvil, para no proponer «buenos días» por la noche.
+export function genericMessages(profile, band, group, todayISO, count = 3, { hour = null } = {}) {
+  const phase = cycleInfo(profile, todayISO)?.phase;
+  const extra = [
+    ...(phase ? pickRotating(cycleMessages(profile, phase, group), profile, todayISO, 1, 'mc', 0) : []),
+    ...pickRotating(tasteMessages(profile, group), profile, todayISO, 1, 'mt', 0)
+  ].slice(0, Math.max(0, count - 1));
+  const pool = forStage(MESSAGES[group], profile.stage).filter((it) => fitsHour(it, hour));
+  return [...extra, ...pickRotating(pool, profile, todayISO, count - extra.length, 'm')]
     .map((it) => ({ id: it.id, text: compose({ text: it.t, name: profile.name, band, group }) }))
     .filter((m) => m.text);
 }

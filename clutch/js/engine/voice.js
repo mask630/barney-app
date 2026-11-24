@@ -13,7 +13,7 @@ const OPENERS = {
 };
 
 const CLOSERS = {
-  '18-24': { flirt: ['', '', ' 😏', ' jaja'], pareja: ['', '', ' ❤️', ' 🥰'] },
+  '18-24': { flirt: ['', '', '', ' jaja', ' 😊'], pareja: ['', '', ' ❤️', ' 🥰'] },
   '25-34': { flirt: ['', '', ' 😉', ' 😊'], pareja: ['', '', ' ❤️', ' 🤍'] },
   '35-49': { flirt: ['', '', ' 😊'], pareja: ['', '', ' Un beso.'] },
   '50+': { flirt: ['', ' Un beso.'], pareja: [' Un beso.', '', ' Un beso grande.'] }
