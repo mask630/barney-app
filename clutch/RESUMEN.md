@@ -28,8 +28,8 @@ App para el móvil que ayuda a un hombre a cuidar su relación (Rollo, Pareja o 
 - **Panel**: aprobar, bloquear o borrar testers, grupos y funciones, plazas, límite diario de IA, estadísticas, opiniones, errores y aviso de caducidad de la clave de IA.
 
 ## Lo que te toca a ti (por orden)
-1. ⚠️ **URGENTE: renovar la clave de la IA antes del 21-nov-2026.** Crea una clave nueva en https://console.anthropic.com y ejecuta `desplegar-ia.ps1` (en la carpeta de Clutch). Si caduca, la IA deja de funcionar; el resto de la app sigue igual.
-2. **Activar cuentas y avisos** (unos 5 minutos):
+1. ✅ Clave de la IA renovada (16-nov). El panel avisa 14 días antes de que caduque la nueva; para renovarla, `desplegar-ia.ps1`.
+2. ✅ **Cuentas y avisos activados (24-nov).** Si un día hay que cambiar la contraseña de Gmail, se vuelve a ejecutar `configurar-cuentas.ps1`. Pasos que se siguieron:
    - Con la cuenta clutch.app.2026@gmail.com, entra en https://myaccount.google.com/apppasswords (si lo pide, activa antes la verificación en dos pasos), crea una contraseña «Clutch» y copia las 16 letras. No se la pases a nadie.
    - Ejecuta `configurar-cuentas.ps1` y pégala cuando te la pida. Al terminar debe decir «Listo».
 3. En el panel: borra el tester «Prueba Claude (borrar)» y marca «Perfil IA» en los grupos que quieras.
@@ -41,8 +41,8 @@ App para el móvil que ayuda a un hombre a cuidar su relación (Rollo, Pareja o 
 | Paso | Quién | Estado |
 |---|---|---|
 | App, servidor, IA, panel, cuentas, avisos | Claude | ✅ hecho y probado (113 pruebas + 3 recorridos en móvil simulado) |
-| Renovar clave de IA | 👤 tú | ⚠️ antes del 21-nov |
-| Activar cuentas y avisos | 👤 tú | pendiente (script) |
+| Renovar clave de IA | 👤 tú | ✅ hecho (16-nov) |
+| Activar cuentas y avisos | 👤 tú | ✅ hecho (24-nov) |
 | Prueba en móviles reales | 👤 tú + Claude arregla lo que salga | pendiente |
 | Beta con testers (2-4 semanas): leer métricas y opiniones, pulir | los dos | pendiente |
 | Nombre definitivo: comprobar marca «Clutch» y comprar dominio | 👤 tú decides, Claude lo configura | pendiente |
