@@ -117,8 +117,9 @@ export default {
     themeLight: 'Claro',
     beta: 'Beta',
     opinions: 'Tu opinión',
+    more: 'Más ajustes',
     feedback: 'Enviar comentario',
-    version: 'Clutch beta 0.6'
+    version: 'Clutch beta 0.7'
   },
   join: {
     title: 'Únete a la beta',

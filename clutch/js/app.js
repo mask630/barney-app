@@ -51,7 +51,7 @@ const ui = {
   form: { name: '', birth: '', band: '', stage: 'pareja', since: '', error: '' },
   add: { text: '', field: '', date: '' }, social: { photos: [], result: null, pick: {} },
   edit: {}, draft: '', pending: null, batch: null, imp: { text: '', msg: '' }, exp: { text: '' }, pin: { value: '', error: '' }, fb: { text: '' },
-  open: null, breath: { on: false, phase: 'in' },
+  open: null, fold: {}, breath: { on: false, phase: 'in' },
   alt: {}, busy: null, chat: [], chatDraft: '', plansMsg: '', pass: { value: '' }, styleDraft: '',
   join: { alias: '', email: '', terms: false, metrics: false, error: '' },
   login: { step: 'email', email: '', code: '', terms: false, metrics: false, error: '' }, authInfo: S.settings.authInfo || null
@@ -620,8 +620,16 @@ function viewSos(p) {
   </main>`;
 }
 
+// Apartado plegable de Yo. Lo que está abierto se recuerda en ui.fold para que no se cierre al redibujar.
+function fold(id, title, hint, body) {
+  return `<details class="card fold" id="fold-${id}" data-fold="${id}" ${ui.fold[id] ? 'open' : ''}>
+    <summary><span class="grow"><b>${title}</b><br><span class="small muted">${hint}</span></span><span class="chev" aria-hidden="true"></span></summary>
+    <div class="fold-body">${body}</div></details>`;
+}
+
 function viewMe() {
   const s = S.settings;
+  const styleHint = !has('my_style') ? 'Pronto' : s.style?.traits ? `Aprendido: ${esc(describeStyle(s.style.traits))}` : 'Para que la IA escriba como tú';
   return `<main class="screen">
     <h1>${T.me.title}</h1>
     ${session() || accountsOn() !== false ? `<div class="stack"><span class="label">${T.account.section}</span><div class="card">
@@ -637,32 +645,40 @@ function viewMe() {
       <div class="item"><div class="grow"><b>${T.me.lockLeave}</b><br><span class="small muted">${T.me.lockLeaveHint}</span></div>${switchHtml(s.lockOnLeave, 'toggleSetting', `data-v="lockOnLeave" ${s.pinHash ? '' : 'disabled'}`)}</div>
     </div></div>
 
-
-    <div class="stack"><span class="label">${T.me.where}</span><div class="card flat list">
-      <div class="item"><div class="grow"><b>${T.me.country}: ${esc(s.country || '—')}</b><br><span class="small muted">Se detecta por la zona horaria.</span></div></div>
-      <div class="item"><div class="grow"><b>${T.me.city}: ${esc(s.city?.name || '—')}</b><br><span class="small muted">Para la hora del atardecer y el inicio de estación.</span></div><button class="btn small" data-act="gps">${T.me.useGps}</button></div>
-      <div class="item"><select id="city-sel" class="select" data-change="city" aria-label="${T.me.city}"><option value="">Elegir ciudad…</option>${CITIES.map((c) => `<option value="${esc(c.name)}" ${s.city?.name === c.name ? 'selected' : ''}>${esc(c.name)} (${esc(c.country)})</option>`).join('')}</select></div>
-    </div></div>
-
-    <div class="stack"><span class="label">${T.me.companion}</span><div class="card">
-      <p class="small muted">${T.me.companionHint}</p>
-      <div class="chips">${COMPANION_IDS.map((id) => `<button class="chip" aria-pressed="${s.companionStyle === id}" data-act="companionStyle" data-v="${id}" ${isAvailable(id, has('companions_pro')) ? '' : 'style="opacity:.55"'}>${esc(COMPANIONS[id].label)}${isAvailable(id, has('companions_pro')) ? '' : ' <span class="badge pro" style="padding:1px 5px">Pronto</span>'}</button>`).join('')}</div></div></div>
-
-    <div class="stack"><span class="label">Tu estilo</span><div class="card">
-      <p class="small muted">Pega 3 o más mensajes que hayas escrito tú (uno por línea). Se analiza en este móvil y no se envía a ningún sitio.</p>
-      <textarea id="style-in" class="textarea" data-bind="styleDraft" ${has('my_style') ? '' : 'disabled'} placeholder="jaja vale, nos vemos luego&#10;oye q tal el finde">${esc(ui.styleDraft || (s.style?.samples || []).join('\n'))}</textarea>
-      ${s.style?.traits ? `<p class="small ok">Aprendido: ${esc(describeStyle(s.style.traits))}</p>` : ''}
-      ${has('my_style') ? '<button class="btn small" data-act="saveStyle">Aprender mi estilo</button>' : '<span class="badge pro" style="align-self:flex-start">Pronto</span>'}</div></div>
-
     <div class="stack"><span class="label">${T.me.theme}</span><div class="chips">
       ${[['auto', T.me.themeAuto], ['dark', T.me.themeDark], ['light', T.me.themeLight]].map(([k, l]) => `<button class="chip" aria-pressed="${s.theme === k}" data-act="theme" data-v="${k}">${l}</button>`).join('')}</div></div>
 
-    <div class="stack"><span class="label">${T.me.data}</span><div class="card">
+    <div class="stack"><span class="label">${T.me.more}</span>
+    ${fold('where', T.me.where, esc(s.city?.name || 'Elige tu ciudad'), `<div class="list">
+      <div class="item"><div class="grow"><b>${T.me.country}: ${esc(s.country || '—')}</b><br><span class="small muted">Se detecta por la zona horaria.</span></div></div>
+      <div class="item"><div class="grow"><b>${T.me.city}: ${esc(s.city?.name || '—')}</b><br><span class="small muted">Para la hora del atardecer y el inicio de estación.</span></div><button class="btn small" data-act="gps">${T.me.useGps}</button></div>
+      <div class="item"><select id="city-sel" class="select" data-change="city" aria-label="${T.me.city}"><option value="">Elegir ciudad…</option>${CITIES.map((c) => `<option value="${esc(c.name)}" ${s.city?.name === c.name ? 'selected' : ''}>${esc(c.name)} (${esc(c.country)})</option>`).join('')}</select></div>
+    </div>`)}
+
+    ${fold('companion', T.me.companion, esc(COMPANIONS[s.companionStyle]?.label || COMPANIONS[COMPANION_IDS[0]].label), `
+      <p class="small muted">${T.me.companionHint}</p>
+      <div class="chips">${COMPANION_IDS.map((id) => `<button class="chip" aria-pressed="${s.companionStyle === id}" data-act="companionStyle" data-v="${id}" ${isAvailable(id, has('companions_pro')) ? '' : 'style="opacity:.55"'}>${esc(COMPANIONS[id].label)}${isAvailable(id, has('companions_pro')) ? '' : ' <span class="badge pro" style="padding:1px 5px">Pronto</span>'}</button>`).join('')}</div>`)}
+
+    ${fold('style', 'Tu estilo', styleHint, `
+      <p class="small muted">Pega 3 o más mensajes que hayas escrito tú (uno por línea). Se analiza en este móvil y no se envía a ningún sitio.</p>
+      <textarea id="style-in" class="textarea" data-bind="styleDraft" ${has('my_style') ? '' : 'disabled'} placeholder="jaja vale, nos vemos luego&#10;oye q tal el finde">${esc(ui.styleDraft || (s.style?.samples || []).join('\n'))}</textarea>
+      ${s.style?.traits ? `<p class="small ok">Aprendido: ${esc(describeStyle(s.style.traits))}</p>` : ''}
+      ${has('my_style') ? '<button class="btn small" data-act="saveStyle">Aprender mi estilo</button>' : '<span class="badge pro" style="align-self:flex-start">Pronto</span>'}`)}
+
+    ${fold('data', T.me.data, 'Copia de seguridad y borrar datos', `
       ${has('encrypted_backup') ? backupTools() : `<div class="row"><span class="grow"><b>Copia de seguridad</b><br><span class="small muted">Guardar y recuperar tus datos si cambias de móvil.</span></span>${SOON}</div>`}
       <button class="btn danger block" data-act="wipe">${ui.ask === 'wipe' ? '¿Seguro? Toca otra vez para borrar todo' : 'Borrar todos mis datos'}</button>
-      ${session() ? `<button class="btn danger block" data-act="deleteAccount" ${ui.busy === 'delacc' ? 'disabled' : ''}>${ui.ask === 'delacc' ? T.account.deleteAsk : T.account.delete}</button>` : ''}
-    </div></div>
-${meBetaSections()}`;
+      ${session() ? `<button class="btn danger block" data-act="deleteAccount" ${ui.busy === 'delacc' ? 'disabled' : ''}>${ui.ask === 'delacc' ? T.account.deleteAsk : T.account.delete}</button>` : ''}`)}
+
+    ${fold('beta', T.me.beta, betaHint(), betaCard())}
+
+    ${fold('opinion', T.me.opinions, 'Qué falla, qué falta, qué te gustó', `
+      <div class="field"><label for="fb">${T.me.feedback}</label><textarea id="fb" class="textarea" data-bind="fb.text" placeholder="Qué falla, qué falta, qué te gustó…">${esc(ui.fb.text)}</textarea></div>
+      <p class="small muted">${aiConfigured(S.settings) ? 'Se envía con tu alias para poder responderte.' : 'Se envía sin nombre.'} No pongas datos de ella.</p>
+      <button class="btn small" data-act="sendFeedback" ${ui.busy === 'fb' ? 'disabled' : ''}>${ui.busy === 'fb' ? 'Enviando…' : 'Enviar'}</button>`)}
+    </div>
+    <p class="small muted" style="text-align:center">${T.me.version}</p>
+  </main>`;
 }
 
 // Copia de seguridad (función PRO): exportar, cifrar y restaurar.
@@ -678,20 +694,6 @@ function backupTools() {
       ${ui.imp.msg ? `<p class="small ${ui.imp.msg.startsWith('Listo') ? 'ok' : 'error'}">${esc(ui.imp.msg)}</p>` : ''}
       <button class="btn block" data-act="doImport">${T.me.import}</button>`;
 }
-// Final de Yo: acceso beta y opiniones.
-function meBetaSections() {
-  return `
-    ${betaCard()}
-
-    <div class="stack"><span class="label">${T.me.opinions}</span><div class="card">
-      <div class="field"><label for="fb">${T.me.feedback}</label><textarea id="fb" class="textarea" data-bind="fb.text" placeholder="Qué falla, qué falta, qué te gustó…">${esc(ui.fb.text)}</textarea></div>
-      <p class="small muted">${aiConfigured(S.settings) ? 'Se envía con tu alias para poder responderte.' : 'Se envía sin nombre.'} No pongas datos de ella.</p>
-      <button class="btn small" data-act="sendFeedback" ${ui.busy === 'fb' ? 'disabled' : ''}>${ui.busy === 'fb' ? 'Enviando…' : 'Enviar'}</button>
-      <p class="small muted">${T.me.version}</p></div></div>
-  </main>`;
-}
-
-
 // ---------- beta: alta, estado y funciones abiertas ----------
 function joinForm() {
   const j = ui.join;
@@ -719,7 +721,16 @@ function betaCard() {
   else body = `<div class="card"><p class="small ok">Acceso activo. Funciones abiertas para ti:</p>${featureList}${check}
     <div class="row"><div class="grow small"><b>Estadísticas anónimas</b><br><span class="muted">Qué funciones usas; nunca textos ni datos de ella.</span></div>${switchHtml(!!s.metrics, 'toggleSetting', 'data-v="metrics"')}</div>
     ${session() ? '' : codeField}<p class="small muted">Las funciones nuevas se irán abriendo durante la beta.</p></div>`;
-  return `<div class="stack"><span class="label">Beta</span>${body}</div>`;
+  return body;
+}
+// Resumen del estado de la beta para el apartado plegado.
+function betaHint() {
+  const st = aiConfigured(S.settings) ? S.settings.betaStatus : null;
+  if (!st) return 'Prueba las funciones nuevas antes que nadie';
+  if (st === 'pending') return 'Solicitud enviada, pendiente de aprobar';
+  if (st === 'blocked') return 'Acceso desactivado';
+  if (st === 'anon') return 'Código no reconocido';
+  return `Acceso activo · ${(S.settings.features || []).length} funciones abiertas`;
 }
 
 // ---------- hojas modales ----------
@@ -1318,7 +1329,7 @@ const ACTS = {
     render();
     showToast(T.account.deleted);
   },
-  goJoin() { ui.tab = 'yo'; ui.screen = null; render(); setTimeout(() => document.getElementById('join')?.scrollIntoView({ behavior: 'smooth' }), 0); },
+  goJoin() { ui.tab = 'yo'; ui.screen = null; ui.fold.beta = true; render(); setTimeout(() => document.getElementById('fold-beta')?.scrollIntoView({ behavior: 'smooth' }), 0); },
   legalSheet(el, ev) { ev?.preventDefault(); ui.sheet = { type: 'legal' }; render(); },
   joinCheck(el) { ui.join[el.dataset.v] = el.checked; },
   async joinBeta() {
@@ -1425,6 +1436,11 @@ document.addEventListener('click', (ev) => {
   else if (ACT_EVENT[el.dataset.act]) track(ACT_EVENT[el.dataset.act]);
   fn(el, ev);
 });
+// Los <details> de Yo: recordar cuáles están abiertos (el evento toggle no burbujea, por eso va en captura).
+document.addEventListener('toggle', (ev) => {
+  const d = ev.target;
+  if (d.dataset && d.dataset.fold) ui.fold[d.dataset.fold] = d.open;
+}, true);
 document.addEventListener('input', (ev) => {
   const el = ev.target;
   if (el.dataset && el.dataset.bind) setPath(ui, el.dataset.bind, el.value);

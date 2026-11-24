@@ -6,6 +6,8 @@ import assert from 'node:assert/strict';
 const url = pathToFileURL(resolve('dist/index.html')).href;
 const browser = await chromium.launch({ ...(process.platform === 'win32' ? { channel: 'msedge' } : { executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' }), args: ['--no-sandbox'] });
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: 'dark', serviceWorkers: 'block' });
+// En Yo los apartados están plegados: las pruebas los abren todos (se quedan abiertos al volver).
+const openFolds = async (pg) => { await pg.evaluate(() => document.querySelectorAll('details[data-fold]').forEach((d) => { d.open = true; })); await pg.waitForTimeout(30); };
 const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
@@ -127,8 +129,16 @@ assert.match(await txt(), /Reconócelo pronto/);
 assert.equal(await page.locator('main button:has-text("Copiar")').count(), 1);
 await shot('sos');
 await page.click('button[aria-label=Volver]');
-// Yo + PIN
+// Yo: los apartados empiezan plegados y, al abrir uno, sigue abierto aunque la pantalla se redibuje
 await page.click('.nav button:has-text("Yo")');
+assert.equal(await page.locator('details[data-fold][open]').count(), 0, 'Yo empieza plegado');
+assert.equal(await page.locator('#fb').isVisible(), false);
+await page.click('#fold-opinion > summary');
+await page.waitForSelector('#fb', { state: 'visible' });
+await page.click('.chip:has-text("Oscuro")'); // redibuja
+assert.equal(await page.locator('#fold-opinion[open]').count(), 1, 'sigue abierto tras redibujar');
+// Yo + PIN
+await openFolds(page);
 await page.click('button[role=switch][data-act=togglePin]');
 await page.fill('#pin-new', '1234');
 await page.click('button:has-text("Guardar")');
@@ -143,7 +153,7 @@ for (const k of ['1', '2', '3', '4']) await page.click(`.keypad button:text-is("
 await page.waitForTimeout(200);
 assert.match(await txt(), /Lucía/);
 // tema claro
-await page.click('.nav button:has-text("Yo")');
+await page.click('.nav button:has-text("Yo")'); await openFolds(page);
 await page.click('.chip:has-text("Claro")');
 await shot('claro');
 const navOn = await page.evaluate(() => getComputedStyle(document.querySelector('.nav button[aria-current=page]')).backgroundColor);

@@ -12,6 +12,8 @@ const issues = [];
 
 for (const [mode, scheme] of [['pro', 'light'], ['pro', 'dark'], ['base', 'light']]) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, serviceWorkers: 'block', colorScheme: scheme });
+// En Yo los apartados están plegados: las pruebas los abren todos (se quedan abiertos al volver).
+const openFolds = async (pg) => { await pg.evaluate(() => document.querySelectorAll('details[data-fold]').forEach((d) => { d.open = true; })); await pg.waitForTimeout(30); };
   const page = await ctx.newPage();
   page.on('pageerror', (e) => issues.push(`${mode}/${scheme} error: ${e}`));
   page.on('console', (m) => { if (m.type() === 'error') issues.push(`${mode}/${scheme} console: ${m.text()}`); });
@@ -37,7 +39,7 @@ for (const [mode, scheme] of [['pro', 'light'], ['pro', 'dark'], ['base', 'light
   await page.click('button:has-text("Pareja")');
   await page.click('text=Crear su ficha');
   if (mode === 'pro') {
-    await page.click('.nav button:has-text("Yo")');
+    await page.click('.nav button:has-text("Yo")'); await openFolds(page);
     await page.fill('#ai-code', 'tester1');
     await page.dispatchEvent('#ai-code', 'change');
     await page.waitForSelector('text=Acceso activo');
@@ -79,7 +81,7 @@ for (const [mode, scheme] of [['pro', 'light'], ['pro', 'dark'], ['base', 'light
   await page.click('button[data-act=goSocial]');
   await shot('10-social');
   await page.click('button[data-act=back]');
-  await page.click('.nav button:has-text("Yo")');
+  await page.click('.nav button:has-text("Yo")'); await openFolds(page);
   await shot('11-yo');
   await overflow('yo');
   await ctx.close();

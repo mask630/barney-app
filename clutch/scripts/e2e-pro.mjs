@@ -2,9 +2,13 @@ import { chromium } from 'playwright-core';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
+import T from '../js/i18n/es.js';
+const T_VERSION = T.me.version;
 
 const browser = await chromium.launch({ ...(process.platform === 'win32' ? { channel: 'msedge' } : { executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' }), args: ['--no-sandbox'] });
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+// En Yo los apartados están plegados: las pruebas los abren todos (se quedan abiertos al volver).
+const openFolds = async (pg) => { await pg.evaluate(() => document.querySelectorAll('details[data-fold]').forEach((d) => { d.open = true; })); await pg.waitForTimeout(30); };
 const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
@@ -58,7 +62,7 @@ await page.click('.nav button:has-text("Hoy")');
 
 // Sin cuenta: Hoy invita a crearla. Un tester antiguo puede seguir poniendo su código en Yo (pendiente hasta que el dueño apruebe)
 assert.match(await txt(), /Crear cuenta o entrar/);
-await page.click('.nav button:has-text("Yo")');
+await page.click('.nav button:has-text("Yo")'); await openFolds(page);
 assert.match(await txt(), /Sin cuenta, tus datos solo están en este móvil/);
 await page.fill('#ai-code', 'nuevo1');
 await page.dispatchEvent('#ai-code', 'change');
@@ -74,7 +78,7 @@ await page.click('.nav button:has-text("Ella")');
 await page.click('button[data-act=newProfileSheet]');
 await page.waitForSelector('text=Tener varias personas llegará pronto');
 assert.equal(await page.locator('#f-name').count(), 0, 'no se abre el formulario');
-await page.click('.nav button:has-text("Yo")');
+await page.click('.nav button:has-text("Yo")'); await openFolds(page);
 await page.fill('#ai-code', 'tester1');
 await page.dispatchEvent('#ai-code', 'change');
 await page.waitForSelector('text=Acceso activo');
@@ -83,7 +87,7 @@ await page.click('.nav button:has-text("Ella")');
 await page.click('button[data-act=newProfileSheet]');
 await page.waitForSelector('#f-name');
 await page.click('.sheet button:has-text("Cancelar")');
-await page.click('.nav button:has-text("Yo")');
+await page.click('.nav button:has-text("Yo")'); await openFolds(page);
 await page.selectOption('#city-sel', 'Málaga');
 await page.click('.chip:has-text("Mentor tranquilo")');
 await page.fill('#style-in', 'jaja vale, nos vemos 😂\noye q tal el finde 😂\nva, luego te escribo jaja\nok 😂');
@@ -136,7 +140,7 @@ assert.equal(await page.locator('.sheet img.thumb').count(), 1);
 await page.click('text=Cerrar');
 
 // Copia cifrada ida y vuelta
-await page.click('.nav button:has-text("Yo")');
+await page.click('.nav button:has-text("Yo")'); await openFolds(page);
 await page.fill('#pass-in', 'clave-secreta-1');
 await page.click('button:has-text("Copia cifrada")');
 const enc = await page.inputValue('#exp-text');
@@ -163,7 +167,7 @@ const hide = () => page.evaluate(() => { Object.defineProperty(document, 'hidden
 await hide();
 await page.waitForTimeout(300);
 assert.equal(events.filter((e) => e.events).length, 0, 'sin permiso no se envía nada');
-await page.click('.nav button:has-text("Yo")');
+await page.click('.nav button:has-text("Yo")'); await openFolds(page);
 await page.click('button[role=switch][data-v=metrics]');
 await page.waitForTimeout(200);
 assert.deepEqual(events.at(-1), { consent: true });
@@ -206,15 +210,15 @@ await page.click('.sheet button:has-text("Cerrar")');
 assert.ok(!(await page.evaluate(() => localStorage.getItem('clutch_v2'))).includes('Captura'), 'las capturas no se guardan');
 
 // Opinión: llega al servidor con la pantalla y la versión
-await page.click('.nav button:has-text("Yo")');
+await page.click('.nav button:has-text("Yo")'); await openFolds(page);
 await page.fill('#fb', 'Me gusta mucho la pantalla Hoy');
 await page.click('button[data-act=sendFeedback]');
 await page.waitForSelector('text=¡Gracias!');
-assert.deepEqual(feedback.at(-1), { kind: 'opinion', text: 'Me gusta mucho la pantalla Hoy', screen: 'yo', version: 'Clutch beta 0.5' });
+assert.deepEqual(feedback.at(-1), { kind: 'opinion', text: 'Me gusta mucho la pantalla Hoy', screen: 'yo', version: T_VERSION });
 
 // El servidor cierra funciones (grupo base): la app las muestra como "Pronto" sin romperse
 granted = [];
-await page.click('.nav button:has-text("Yo")');
+await page.click('.nav button:has-text("Yo")'); await openFolds(page);
 await page.fill('#ai-code', 'tester1');
 await page.click('text=Comprobar acceso');
 await page.waitForSelector('text=Acceso actualizado');

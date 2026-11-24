@@ -131,6 +131,9 @@ Plan original:
 - Mensajes más humanos: siguen sus eventos (suerte antes, «¿qué tal fue?» después), proponen planes con lo que le gusta y respetan la hora (nada de «buenos días» por la noche). La IA reescribe con reglas anti-frase-de-tarjeta.
 - Ella muestra lo que hay en cada apartado sin abrirlo; Hoy no repite fechas de la regla; Yo más claro.
 
+## Beta 0.7 (24-nov) ✅
+- Yo más corta: cuenta, discreción y aspecto a la vista; ciudad, acompañante, tu estilo, tus datos, beta y opinión en apartados plegables con un resumen de su estado. Lo abierto se queda abierto al volver.
+
 ## Fase 6 · Después de la beta (ya en HANDOFF.md)
 - Cuentas, copia en la nube cifrada y avisos push reales.
 - Más días mundiales y santos por país (solo con fuente verificada).

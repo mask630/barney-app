@@ -16,7 +16,7 @@
 ## Qué es Clutch
 App para el móvil que ayuda a un hombre a cuidar su relación (Rollo, Pareja o Matrimonio): recordar lo que importa de ella y saber qué hacer o decir. En la pantalla de inicio del móvil se llama «Agenda» (discreción).
 
-## Qué hace hoy (beta 0.6)
+## Qué hace hoy (beta 0.7)
 - **Hoy**: qué te toca (pensar el regalo, comprarlo, preparar el plan), la jugada del día con mensaje listo, gestos, próximas fechas y calendario de todo el año.
 - **Ella**: su ficha (gustos, tallas, evitar, regalos, eventos, recordar; se añade tocando cada apartado), su ciclo con tendencias y su etapa.
 - **Apuntar**: escribes (varias cosas a la vez, una por línea) o haces una foto y cada cosa va sola a su lista.

@@ -7,6 +7,8 @@ import assert from 'node:assert/strict';
 
 const browser = await chromium.launch({ ...(process.platform === 'win32' ? { channel: 'msedge' } : { executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' }), args: ['--no-sandbox'] });
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+// En Yo los apartados están plegados: las pruebas los abren todos (se quedan abiertos al volver).
+const openFolds = async (pg) => { await pg.evaluate(() => document.querySelectorAll('details[data-fold]').forEach((d) => { d.open = true; })); await pg.waitForTimeout(30); };
 const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
@@ -86,7 +88,7 @@ assert.deepEqual(server.state.profiles.map((p) => p.name).sort(), ['Otra', 'Raqu
 assert.deepEqual(server.state.profiles.find((p) => p.id === 'pX').avoid, ['el cilantro']);
 
 // Yo: cuenta visible; cerrar sesión borra el móvil
-await page.click('.nav button:has-text("Yo")');
+await page.click('.nav button:has-text("Yo")'); await openFolds(page);
 assert.match(await txt(), /pepe@mail\.es/);
 assert.equal(await page.locator('#ai-code').count(), 0, 'con cuenta no se pide código');
 // Avisos en el móvil: aquí (sin app instalada) el móvil no los permite y lo explica
