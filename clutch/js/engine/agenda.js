@@ -3,6 +3,7 @@
 // Los avisos marcados como hechos se guardan en la ficha (`agendaDone: { id: 'AAAA-MM-DD' }`), solo en el móvil.
 
 import { upcoming, nextPeriods } from './content.js';
+import { sweetTaste } from './moments.js';
 import { addDays, daysBetween, parseISO } from '../core/dates.js';
 import { STAGES_WITH_MILESTONES } from '../core/stages.js';
 
@@ -23,7 +24,7 @@ export function agenda(profile, todayISO, { country = null, horizon = 366 } = {}
   }
   for (const iso of nextPeriods(profile, todayISO)) {
     const ahead = daysBetween(todayISO, iso);
-    if (ahead >= 0 && ahead <= horizon) out.push({ key: `period-${iso}`, iso, daysAhead: ahead, label: 'Le puede venir la regla (aprox.)', kind: 'period' });
+    if (ahead >= 0 && ahead <= horizon) out.push({ key: `period-${iso}`, iso, daysAhead: ahead, label: profile.cycle?.mode === 'irregular' ? 'Le puede venir la regla (muy aprox.)' : 'Le puede venir la regla (aprox.)', kind: 'period' });
   }
   return out.sort((a, b) => a.daysAhead - b.daysAhead);
 }
@@ -48,7 +49,7 @@ export function reminders(profile, todayISO, opts = {}) {
       else if (n > 3) step = { k: 'comprar', title: 'Compra el regalo', ideas };
       else if (n > 0) step = { k: 'preparar', title: 'Prepara el plan y escribe la tarjeta' };
       // El mismo día ya sale en «La jugada de hoy» con el mensaje listo.
-    } else if (d.kind === 'period' && n <= 2) step = { k: 'aviso', title: 'Ten chocolate a mano' };
+    } else if (d.kind === 'period' && n <= 2) step = { k: 'aviso', title: `Ten ${sweetTaste(profile) || 'chocolate'} a mano` };
     else if (d.kind === 'mothers' && n <= 3) step = { k: 'aviso', title: 'Felicita a tu madre y a la suya' };
     else if (d.kind === 'milestone' && n <= 3 && n > 0) step = { k: 'aviso', title: 'Prepara un detalle' };
     else if (d.kind === 'event' && n <= 2) step = { k: 'aviso', title: n ? 'Pregúntale o deséale suerte' : 'Escríbele hoy por esto' };

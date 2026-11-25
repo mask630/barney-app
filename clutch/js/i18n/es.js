@@ -45,6 +45,7 @@ export default {
     calendar: 'Calendario',
     calendarHint: 'Clutch te avisa aquí, en Hoy, de lo que toca hacer antes de cada fecha: pensar el regalo, comprarlo y preparar el plan.',
     sosRow: '¿La has liado? Ve a SOS',
+    weekHint: 'Marca los que hagas y verás tu semana aquí.',
     days: (n) => (n === 0 ? 'hoy' : n === 1 ? 'mañana' : `en ${n} días`)
   },
   write: {
@@ -55,6 +56,7 @@ export default {
     copied: 'Copiado',
     whatsapp: 'WhatsApp',
     proRewrite: 'Reescribir con tu estilo',
+    other: 'Otro',
     pro: 'Pronto'
   },
   capture: {
@@ -71,6 +73,9 @@ export default {
     classifyLater: 'Clasificar',
     discard: 'Descartar',
     saved: 'Guardado en',
+    dictate: '🎤 Dictar',
+    listening: '● Escuchando…',
+    micDenied: 'Permite el micrófono para dictar.',
     photoNote: 'La foto se guarda en este móvil. Elige dónde va.',
     batch: (n) => `${n} cosas · revisa dónde va cada una`,
     saveAll: 'Guardar todo',
@@ -119,7 +124,7 @@ export default {
     opinions: 'Tu opinión',
     more: 'Más ajustes',
     feedback: 'Enviar comentario',
-    version: 'Clutch beta 0.7'
+    version: 'Clutch beta 0.8'
   },
   join: {
     title: 'Únete a la beta',
@@ -200,8 +205,25 @@ export default {
     last: 'Primer día de la última regla',
     length: 'Días del ciclo',
     dayOf: (d, n) => `día ${d} de ${n}`,
+    noDate: 'Apunta cuándo le vino la última regla para saber en qué fase está.',
+    markedToday: 'Apuntado: hoy le ha venido ✓',
+    sure: '¿Seguro? Toca otra vez',
+    see: 'Su ciclo',
+    mode: 'Cómo lo lleva',
+    modes: { natural: 'Natural', hormonal: 'Con anticonceptivos hormonales', irregular: 'Irregular' },
     adapts: 'La jugada del día, los gestos y los mensajes de Escríbele se adaptan a su fase.',
     note: 'Son tendencias de los estudios, no reglas: cada mujer es distinta (y con anticonceptivos hormonales se notan menos). No sirve como método anticonceptivo.'
+  },
+  ella: { search: 'Buscar en su ficha (talla, pie, sushi…)', noResults: 'Nada apuntado con eso.' },
+  quiz: {
+    title: 'Su ficha en 2 minutos',
+    row: (n) => `${n} preguntas rápidas. Lo que no sepas, te lo saltas.`,
+    next: 'Siguiente',
+    skip: 'No lo sé',
+    hint: 'Se guarda en su ficha. Puedes cambiarlo cuando quieras en Ella.',
+    done: '¡Ficha lista!',
+    doneHint: 'Con esto, los gestos, mensajes e ideas de regalo ya usan lo que sabes de ella.',
+    seeFicha: 'Ver su ficha'
   },
   social: {
     title: 'Analizar su perfil',

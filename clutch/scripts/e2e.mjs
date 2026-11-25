@@ -66,11 +66,17 @@ await shot('hoy');
 // Gesto
 await page.click('.gesture >> nth=0');
 assert.equal(await page.locator('.gesture[aria-pressed=true]').count(), 1);
+assert.match(await txt(), /Esta semana: 1 detalle/);
 // Escríbele
 await page.click('text=Escríbele >> nth=0');
 t = await txt();
 assert.match(t, /Dato real/);
 await shot('escribele');
+// «Otro» cambia ese mensaje por uno distinto
+const firstBasic = await page.locator('button[data-act=otherMsg] >> nth=0').getAttribute('data-v');
+await page.click('button[data-act=otherMsg] >> nth=0');
+assert.equal(await page.locator(`button[data-act=otherMsg][data-v="${firstBasic}"]`).count(), 0, 'el mensaje cambiado ya no sale');
+assert.equal(await page.locator('button[data-act=otherMsg]').count(), 3);
 await page.click('button[aria-label=Volver]');
 // Apuntar
 await page.click('.nav button:has-text("Apuntar")');
@@ -92,6 +98,22 @@ t = await txt();
 assert.match(t, /Tallas/);
 assert.match(t, /anillo 14/);
 await shot('ella');
+// Buscar en su ficha
+await page.fill('#ella-q', 'anil');
+await page.waitForSelector('button.item:has-text("anillo: 14")');
+await page.fill('#ella-q', '');
+await page.dispatchEvent('#ella-q', 'input');
+// Su ficha en 2 minutos
+await page.click('text=Su ficha en 2 minutos');
+await page.waitForSelector('text=¿Cuál es su comida favorita?');
+await page.fill('#quiz-a', 'la pasta');
+await page.press('#quiz-a', 'Enter');
+await page.waitForSelector('text=¿Y su dulce o capricho favorito?');
+await page.click('button:has-text("No lo sé")');
+await page.waitForSelector('text=3 de 10');
+await page.click('button[aria-label=Volver]');
+assert.match(await txt(), /comida favorita: la pasta/);
+assert.match(await txt(), /8 preguntas rápidas/);
 // Añadir directamente desde la ficha
 await page.click('button.item:has-text("Gustos")');
 await page.fill('#add-text', 'sushi');
@@ -109,6 +131,9 @@ await page.click('.sheet button:has-text("Cerrar")');
 await page.click('button[role=switch][data-act=toggleCycle]');
 await page.click('text=Le ha venido hoy');
 assert.match(await txt(), /Tiene la regla · día 1/);
+await page.selectOption('#c-mode', 'hormonal');
+assert.match(await txt(), /notarse menos/);
+await page.selectOption('#c-mode', 'natural');
 assert.match(await txt(), /Analizar su perfil/);
 await shot('ciclo');
 // Cambiar etapa conserva datos
@@ -118,6 +143,7 @@ assert.match(await txt(), /anillo 14/);
 // SOS
 await page.click('.nav button:has-text("Hoy")');
 assert.match(await txt(), /Chocolate/, 'el ciclo sale en Hoy');
+assert.match(await txt(), /Apuntado: hoy le ha venido/, 'ya marcado hoy desde Ella');
 await page.click('button[data-act=goAgenda]');
 assert.match(await txt(), /Le puede venir la regla/);
 assert.match(await txt(), /Concierto/);
@@ -158,6 +184,15 @@ await page.click('.chip:has-text("Claro")');
 await shot('claro');
 const navOn = await page.evaluate(() => getComputedStyle(document.querySelector('.nav button[aria-current=page]')).backgroundColor);
 assert.notEqual(navOn, 'rgba(0, 0, 0, 0)', 'la pestaña activa se distingue en claro');
+// Compartir con Clutch desde otra app y atajos del icono
+await page.goto(url + '?text=' + encodeURIComponent('le encanta el sushi'));
+for (const k of ['1', '2', '3', '4']) await page.click(`.keypad button:text-is("${k}")`);
+await page.waitForSelector('#cap-text');
+assert.equal(await page.inputValue('#cap-text'), 'le encanta el sushi');
+assert.ok(!page.url().includes('?'), 'la dirección queda limpia');
+await page.goto(url + '?go=escribele');
+for (const k of ['1', '2', '3', '4']) await page.click(`.keypad button:text-is("${k}")`);
+await page.waitForSelector('h1:has-text("Escríbele")');
 // sin desbordamiento horizontal
 const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
 assert.equal(overflow, false, 'hay scroll horizontal');

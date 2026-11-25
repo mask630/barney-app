@@ -5,7 +5,9 @@ import { localISO, daysBetween, parseISO } from './core/dates.js';
 import { STAGES, STAGE_GROUP, STAGES_WITH_MILESTONES, AGE_BANDS, profileBand } from './core/stages.js';
 import * as Store from './core/store.js';
 import { generateHooks } from './engine/hooks.js';
-import { genericMessages, dailyGestures, cycleInfo, cycleLength, CYCLE_MIN, CYCLE_MAX, SOS } from './engine/content.js';
+import { genericMessages, dailyGestures, cycleInfo, cycleLength, CYCLE_MIN, CYCLE_MAX, CYCLE_MODES, SOS } from './engine/content.js';
+import { QUIZ, pendingQuiz, answerQuiz } from './engine/quiz.js';
+import { logAction, weekStats, weekLine } from './engine/week.js';
 import { agenda, reminders, markDone, when } from './engine/agenda.js';
 import { classify, applyToProfile, splitNotes, DESTINATIONS } from './engine/capture.js';
 import { CITIES, countryFromTimezone, detectTimezone, nearestCity } from './core/geo.js';
@@ -51,7 +53,7 @@ const ui = {
   form: { name: '', birth: '', band: '', stage: 'pareja', since: '', error: '' },
   add: { text: '', field: '', date: '' }, social: { photos: [], result: null, pick: {} },
   edit: {}, draft: '', pending: null, batch: null, imp: { text: '', msg: '' }, exp: { text: '' }, pin: { value: '', error: '' }, fb: { text: '' },
-  open: null, fold: {}, breath: { on: false, phase: 'in' },
+  open: null, fold: {}, skipMsg: [], q: '', quizA: '', listening: false, breath: { on: false, phase: 'in' },
   alt: {}, busy: null, chat: [], chatDraft: '', plansMsg: '', pass: { value: '' }, styleDraft: '',
   join: { alias: '', email: '', terms: false, metrics: false, error: '' },
   login: { step: 'email', email: '', code: '', terms: false, metrics: false, error: '' }, authInfo: S.settings.authInfo || null
@@ -402,16 +404,22 @@ function viewHoy(p) {
            <button class="btn block" data-act="goWrite">${T.tabs.escribele}</button>`}
     </section>
 
-    ${cyc ? `<button class="card" style="text-align:left" data-act="tab" data-v="ella"><span class="label" style="padding:0">${esc(cyc.name)} · ${T.cycle.dayOf(cyc.day, cyc.len)}</span><p class="small">${esc(cyc.mood)}${lead && lead.id.startsWith('cg-') && !hero ? '' : ` ${esc(cyc.tip)}`}</p></button>` : ''}
+    ${p.cycle?.enabled ? `<div class="card">
+      ${cyc ? `<span class="label" style="padding:0">${esc(cyc.name)} · ${T.cycle.dayOf(cyc.day, cyc.len)}</span><p class="small">${esc(cyc.mood)}${lead && lead.id.startsWith('cg-') && !hero ? '' : ` ${esc(cyc.tip)}`}</p>` : `<p class="small muted">${T.cycle.noDate}</p>`}
+      <div class="row wrap">${p.cycle.lastStart === today() ? `<span class="small ok grow">${T.cycle.markedToday}</span>` : `<button class="btn small grow" data-act="cycleStart">${ui.ask === 'cycle' ? T.cycle.sure : T.cycle.startedToday}</button>`}
+        <button class="btn small ghost" data-act="tab" data-v="ella">${T.cycle.see} ›</button></div></div>` : ''}
 
     <div class="stack"><span class="label">${T.today.gestures}</span>
-      <div class="card flat list">${gest.map((g) => `<button class="gesture" aria-pressed="${done.includes(g.id)}" data-act="toggleGesture" data-v="${g.id}"><span class="tick">${done.includes(g.id) ? '✓' : ''}</span><span>${esc(g.t)}</span></button>`).join('')}</div></div>
+      <div class="card flat list">${gest.map((g) => `<button class="gesture" aria-pressed="${done.includes(g.id)}" data-act="toggleGesture" data-v="${g.id}"><span class="tick">${done.includes(g.id) ? '✓' : ''}</span><span>${esc(g.t)}</span></button>`).join('')}</div>
+      <span class="small muted" style="padding:0 4px">${weekLine(weekStats(p, today())) || T.today.weekHint}</span></div>
 
     <div class="stack"><span class="label">${T.today.dates}</span>
       <div class="card flat list">${dates.length
         ? dates.map((d) => `<div class="item"><span class="grow">${esc(d.label)}</span><span class="badge">${when(d.daysAhead)}</span></div>`).join('')
         : `<div class="item"><span class="grow muted">${T.today.noDates}</span></div>`}
         <button class="item" data-act="goAgenda"><span class="grow"><b>${T.today.calendar}</b></span><span aria-hidden="true">›</span></button></div></div>
+
+    ${Store.completeness(p) < 50 && pendingQuiz(p).length ? quizRow(p) : ''}
 
     ${plansCard(p)}
 
@@ -442,10 +450,10 @@ function viewAgenda(p) {
 function viewWrite(p) {
   const r = hookData(p);
   const hooks = r.hooks.filter((h) => h.message);
-  const basics = genericMessages(p, r.band, r.group, today(), 3, { hour: new Date().getHours() });
+  const basics = genericMessages(p, r.band, r.group, today(), 3, { hour: new Date().getHours(), exclude: ui.skipMsg });
   const traits = S.settings.style?.traits;
   // mid: id del banco (solo mensajes sencillos) para que descansen tras usarlos.
-  const card = (msg, src, mid = '') => {
+  const card = (msg, src, mid = '', other = false) => {
     const shown = ui.alt[msg] || msg;
     return `<div class="card">
       <div class="msg">${esc(shown)}</div>
@@ -454,6 +462,7 @@ function viewWrite(p) {
       <div class="row wrap">
         <button class="btn primary small" data-act="copy" data-text="${esc(shown)}" data-mid="${mid}">${T.write.copy}</button>
         <a class="btn small" data-track="whatsapp" data-mid="${mid}" href="https://wa.me/?text=${encodeURIComponent(shown)}" target="_blank" rel="noopener">${T.write.whatsapp}</a>
+        ${other ? `<button class="btn small" data-act="otherMsg" data-v="${esc(mid)}" aria-label="Cambiar por otro mensaje">${T.write.other}</button>` : ''}
         ${has('my_style') && traits ? `<button class="btn small" data-act="styleMsg" data-text="${esc(msg)}">Con mi estilo</button>` : ''}
         ${has('ai_rewrite') && aiConfigured(S.settings) ? `<button class="btn small" data-act="aiMsg" data-text="${esc(msg)}" ${ui.busy === 'ai:' + msg ? 'disabled' : ''}>${ui.busy === 'ai:' + msg ? 'Escribiendo…' : 'Reescribir con IA'}</button>` : ''}
       </div></div>`;
@@ -462,7 +471,7 @@ function viewWrite(p) {
     <div class="row"><button class="btn small ghost" data-act="back" aria-label="Volver">‹</button><h1>${T.write.title}</h1></div>
     ${hooks.length ? hooks.map((h) => card(h.message, h.source, h.mid)).join('') : ''}
     <span class="label">${T.write.basics}</span>
-    ${basics.map((m) => card(m.text, null, m.id)).join('')}
+    ${basics.map((m) => card(m.text, null, m.id, true)).join('')}
     ${!has('my_style') && !has('ai_rewrite') ? `<div class="card row"><span class="grow">${T.write.proRewrite}</span><span class="badge pro">${T.write.pro}</span></div>`
       : `<div class="card"><b>${T.write.proRewrite}</b><p class="small muted">${!has('my_style') ? '' : traits ? 'Usa «Con mi estilo» en cualquier mensaje.' : 'Añade unos mensajes tuyos en Yo > Tu estilo y los adapto a cómo escribes.'}${has('ai_rewrite') ? ' Toca «Reescribir con IA» para otra versión.' : ''}</p></div>`}
   </main>`;
@@ -497,11 +506,53 @@ function viewElla(p) {
     <div class="card"><div class="row"><h3 class="grow">Ficha</h3><b>${pct}%</b></div>
       <div class="bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div></div>
 
+    ${pendingQuiz(p).length ? quizRow(p) : ''}
+
+    ${tiles.some(([, n]) => n) ? `<input id="ella-q" class="input" type="search" data-bind="q" data-live="1" value="${esc(ui.q)}" placeholder="${T.ella.search}" aria-label="${T.ella.search}" autocomplete="off">` : ''}
+    ${ui.q.trim() ? searchResults(p) : ''}
+
     <div class="card flat list">${tiles.map(([k, n]) => `<button class="item" data-act="openSection" data-v="${k}"><span class="grow"><b>${T.dest[k]}</b>${n ? `<br><span class="small muted">${esc(preview(p, k))}</span>` : ''}</span><span class="badge">${n || '+'}</span></button>`).join('')}</div>
 
     ${cycleCard(p)}
 
     <button class="card row" style="text-align:left" data-act="goSocial"><span class="grow"><b>${T.social.title}</b><br><span class="small muted">${T.social.row}</span></span>${has('profile_ai') ? '<span aria-hidden="true">›</span>' : SOON}</button>
+  </main>`;
+}
+
+// Búsqueda en todo lo apuntado de ella («talla», «pie», «sushi»…).
+const foldTxt = (s) => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+function searchResults(p) {
+  const q = foldTxt(ui.q.trim());
+  const rows = [
+    ...p.tastes.map((t) => ['gustos', t]), ...p.avoid.map((t) => ['evitar', t]),
+    ...Object.entries(p.sizes).map(([k, v]) => ['tallas', `${k}: ${v}`]), ...p.gifts.map((g) => ['regalos', g.text]),
+    ...p.events.map((e) => ['eventos', `${e.text} · ${String(e.day).padStart(2, '0')}/${String(e.month).padStart(2, '0')}`]), ...p.remember.map((r) => ['recordar', r.text])
+  ].filter(([k, t]) => foldTxt(t).includes(q) || foldTxt(T.dest[k]).includes(q));
+  return `<div class="card flat list">${rows.length ? rows.slice(0, 20).map(([k, t]) => `<button class="item" data-act="openSection" data-v="${k}"><span class="grow">${esc(t)}</span><span class="badge">${T.dest[k]}</span></button>`).join('')
+    : `<div class="item"><span class="grow muted">${T.ella.noResults}</span></div>`}</div>`;
+}
+
+function quizRow(p) {
+  const n = pendingQuiz(p).length;
+  return `<button class="card row" style="text-align:left" data-act="goQuiz"><span class="grow"><b>${T.quiz.title}</b><br><span class="small muted">${T.quiz.row(n)}</span></span><span aria-hidden="true">›</span></button>`;
+}
+
+function viewQuiz(p) {
+  const list = pendingQuiz(p);
+  const back = `<div class="row"><button class="btn small ghost" data-act="back" aria-label="Volver">‹</button><h1>${T.quiz.title}</h1></div>`;
+  if (!list.length) return `<main class="screen">${back}<div class="card"><p><b>${T.quiz.done}</b></p><p class="small muted">${T.quiz.doneHint}</p><button class="btn primary block" data-act="tab" data-v="ella">${T.quiz.seeFicha}</button></div></main>`;
+  const q = list[0];
+  const n = QUIZ.length - list.length;
+  const pct = Math.round((n / QUIZ.length) * 100);
+  return `<main class="screen">${back}
+    <div class="bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div>
+    <span class="small muted">${n + 1} de ${QUIZ.length}</span>
+    <div class="card">
+      <label for="quiz-a"><h2>${esc(q.q)}</h2></label>
+      <input id="quiz-a" class="input" data-bind="quizA" value="${esc(ui.quizA)}" placeholder="${esc(q.ph)}" autocomplete="off" enterkeyhint="next" maxlength="80">
+      <div class="row"><button class="btn primary grow" data-act="quizNext">${T.quiz.next}</button><button class="btn ghost" data-act="quizNext" data-v="skip">${T.quiz.skip}</button></div>
+    </div>
+    <p class="small muted">${T.quiz.hint}</p>
   </main>`;
 }
 
@@ -516,6 +567,7 @@ function cycleCard(p) {
       <button class="btn small" data-act="cycleStart">${T.cycle.startedToday}</button>
       <div class="row"><div class="field grow"><label for="c-last">${T.cycle.last}</label><input id="c-last" class="input" type="date" data-change="cycleLast" value="${esc(c.lastStart || '')}" max="${today()}"></div>
         <div class="field"><label for="c-len">${T.cycle.length}</label><select id="c-len" class="select" data-change="cycleLen">${lens.map((n) => `<option ${cycleLength(c) === n ? 'selected' : ''}>${n}</option>`).join('')}</select></div></div>
+      <div class="field"><label for="c-mode">${T.cycle.mode}</label><select id="c-mode" class="select" data-change="cycleMode">${CYCLE_MODES.map((m) => `<option value="${m}" ${(c.mode || 'natural') === m ? 'selected' : ''}>${T.cycle.modes[m]}</option>`).join('')}</select></div>
       <p class="small muted">${T.cycle.adapts} ${T.cycle.note}</p>`}
   </div>`;
 }
@@ -582,7 +634,8 @@ function viewCapture(p) {
       </div>`
     : `<div class="card">
         <textarea id="cap-text" class="textarea" data-bind="draft" placeholder="${esc(T.capture.placeholder)}">${esc(ui.draft)}</textarea>
-        <button class="btn primary block" data-act="classify">${T.capture.classify}</button>
+        <div class="row"><button class="btn primary grow" data-act="classify">${T.capture.classify}</button>
+          ${SpeechRec ? `<button class="btn" data-act="dictate" aria-pressed="${ui.listening}">${ui.listening ? T.capture.listening : T.capture.dictate}</button>` : ''}</div>
         <div class="row">
           <label class="btn grow" style="cursor:pointer">${T.capture.camera}<input type="file" accept="image/*" capture="environment" hidden data-change="photo"></label>
           <label class="btn grow" style="cursor:pointer">${T.capture.gallery}<input type="file" accept="image/*" hidden data-change="photo"></label>
@@ -828,6 +881,7 @@ function render() {
     else if (ui.screen === 'sos') main = viewSos(p);
     else if (ui.screen === 'agenda') main = viewAgenda(p);
     else if (ui.screen === 'social') main = viewSocial(p);
+    else if (ui.screen === 'quiz') main = viewQuiz(p);
     else if (ui.tab === 'ella') main = viewElla(p);
     else if (ui.tab === 'apuntar') main = viewCapture(p);
     else if (ui.tab === 'yo') main = viewMe();
@@ -853,7 +907,7 @@ function render() {
 function recordUse(mid) {
   if (!mid || prof()?.used?.[mid] === today()) return;
   const family = mid.includes(':') ? mid.split(':')[0] : null;
-  updateProfile((p) => { const n = markUsed(p, mid, today()); return family ? markUsed(n, family, today()) : n; });
+  updateProfile((p) => { const n = logAction(markUsed(p, mid, today()), 'm', today()); return family ? markUsed(n, family, today()) : n; });
 }
 
 // Sin «Varias personas», un solo perfil. Las fichas que ya existan (importadas o de antes) nunca se borran.
@@ -928,12 +982,43 @@ function savePending() {
 }
 
 const ACTS = {
-  tab(el) { ui.tab = el.dataset.v; ui.screen = null; ui.sheet = null; render(); },
+  tab(el) { ui.tab = el.dataset.v; ui.screen = null; ui.sheet = null; ui.ask = null; render(); },
   back() { ui.screen = null; stopBreath(); render(); },
   goWrite() { ui.screen = 'write'; render(); },
   goSos() { ui.screen = 'sos'; render(); },
   goAgenda() { ui.screen = 'agenda'; render(); },
   goSocial() { ui.screen = 'social'; render(); },
+  goQuiz() { ui.screen = 'quiz'; ui.quizA = ''; render(); focusLater('quiz-a'); },
+  quizNext(el) {
+    const q = pendingQuiz(prof())[0];
+    if (!q) return;
+    const ans = el.dataset.v === 'skip' ? '' : ui.quizA;
+    updateProfile((p) => answerQuiz(p, q.id, ans, Store.newId('x'), today()));
+    if (ans.trim()) showToast(`Guardado en ${T.dest[q.dest]}`);
+    ui.quizA = '';
+    render();
+    focusLater('quiz-a');
+  },
+  otherMsg(el) {
+    if (el.dataset.v && !ui.skipMsg.includes(el.dataset.v)) ui.skipMsg.push(el.dataset.v);
+    render();
+  },
+  dictate() {
+    if (!SpeechRec) return;
+    if (ui.listening) { recog?.stop(); return; }
+    recog = new SpeechRec();
+    recog.lang = 'es-ES';
+    recog.interimResults = false;
+    recog.onresult = (e) => {
+      const said = Array.from(e.results).map((r) => r[0].transcript).join(' ').trim();
+      if (said) ui.draft = ui.draft.trim() ? `${ui.draft.trim()}\n${said}` : said;
+    };
+    recog.onerror = (e) => { if (e.error === 'not-allowed') showToast(T.capture.micDenied); };
+    recog.onend = () => { ui.listening = false; render(); };
+    ui.listening = true;
+    render();
+    try { recog.start(); } catch { ui.listening = false; render(); }
+  },
   formNoBirth() { ui.form.noBirth = true; ui.form.birth = ''; render(); },
   doneReminder(el) { updateProfile((p) => markDone(p, el.dataset.v, today())); showToast('Hecho'); render(); },
   addItem(el) {
@@ -952,6 +1037,9 @@ const ACTS = {
     setTimeout(() => document.getElementById('add-text')?.focus(), 0);
   },
   cycleStart() {
+    // Desde Hoy hay que confirmarlo (un toque sin querer descuadraría el ciclo); desde Ella va directo.
+    if (ui.tab === 'hoy' && !ui.screen && ui.ask !== 'cycle') { ui.ask = 'cycle'; render(); return; }
+    ui.ask = null;
     updateProfile((p) => ({ ...p, cycle: { ...p.cycle, lastStart: today(), starts: [...new Set([...(p.cycle.starts || []), today()])].slice(-12) } }));
     showToast('Apuntado: hoy le ha venido');
     render();
@@ -1037,7 +1125,7 @@ const ACTS = {
       const cur = new Set((p.done && p.done[today()]) || []);
       const on = !cur.has(id);
       on ? cur.add(id) : cur.delete(id);
-      const next = { ...p, done: { [today()]: [...cur] } };
+      const next = logAction({ ...p, done: { [today()]: [...cur] } }, 'g', today(), on ? 1 : -1);
       return on ? markUsed(next, id, today()) : unmarkUsedToday(next, id, today());
     });
     render();
@@ -1394,6 +1482,7 @@ const CHANGES = {
   },
   aiCode(el) { S.settings.testerCode = el.value.trim(); persist(); refreshAccess(true); },
   cycleLast(el) { updateProfile((p) => ({ ...p, cycle: { ...p.cycle, lastStart: el.value || null, starts: el.value ? [...new Set([...(p.cycle.starts || []), el.value])].slice(-12) : p.cycle.starts } })); render(); },
+  cycleMode(el) { updateProfile((p) => ({ ...p, cycle: { ...p.cycle, mode: el.value } })); render(); },
   cycleLen(el) { updateProfile((p) => ({ ...p, cycle: { ...p.cycle, length: +el.value, starts: [] } })); render(); },
   async socialPhotos(el) {
     const files = [...(el.files || [])].slice(0, SOCIAL_MAX - ui.social.photos.length);
@@ -1418,6 +1507,11 @@ function startBreath() {
     b.textContent = { in: T.sos.inhale, hold: T.sos.hold, out: T.sos.exhale }[order[i]];
   }, 4000);
 }
+// Dictado por voz (si el navegador lo permite; en iPhone y Android con Chrome, sí).
+const SpeechRec = globalThis.SpeechRecognition || globalThis.webkitSpeechRecognition || null;
+let recog = null;
+const focusLater = (id) => setTimeout(() => document.getElementById(id)?.focus(), 0);
+
 function stopBreath() {
   clearInterval(breathTimer);
   ui.breath = { on: false, phase: 'in' };
@@ -1444,6 +1538,10 @@ document.addEventListener('toggle', (ev) => {
 document.addEventListener('input', (ev) => {
   const el = ev.target;
   if (el.dataset && el.dataset.bind) setPath(ui, el.dataset.bind, el.value);
+  if (el.dataset && el.dataset.live) render();
+});
+document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Enter' && ev.target.id === 'quiz-a') { ev.preventDefault(); ACTS.quizNext(ev.target); }
 });
 document.addEventListener('change', (ev) => {
   const el = ev.target;
@@ -1468,6 +1566,16 @@ if (!S.settings.country) {
     const c = CITIES.find((x) => x.tz === tz);
     if (c && S.settings.country) { /* solo país: la ciudad la elige la persona */ }
   }
+}
+// Compartir desde otra app (Android) llega como ?text=…&title=…&url=… y los atajos del icono como ?go=…
+{
+  const qs = new URLSearchParams(window.location.search);
+  const shared = [qs.get('title'), qs.get('text'), qs.get('url')].map((x) => (x || '').trim()).filter(Boolean);
+  const unique = shared.filter((x, i) => !shared.slice(0, i).some((y) => y.includes(x)));
+  if (unique.length) { ui.tab = 'apuntar'; ui.draft = unique.join('\n').slice(0, 1000); }
+  else if (qs.get('go') === 'apuntar') ui.tab = 'apuntar';
+  else if (qs.get('go') === 'escribele') ui.screen = 'write';
+  if (qs.toString()) history.replaceState(null, '', window.location.pathname);
 }
 if (globalThis.CLUTCH_SW && 'serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
 render();

@@ -134,6 +134,12 @@ Plan original:
 ## Beta 0.7 (24-nov) ✅
 - Yo más corta: cuenta, discreción y aspecto a la vista; ciudad, acompañante, tu estilo, tus datos, beta y opinión en apartados plegables con un resumen de su estado. Lo abierto se queda abierto al volver.
 
+## Beta 0.8 (25-nov) ✅
+- Ciclo: «Le ha venido hoy» en Hoy (con confirmación), cómo lo lleva (natural, anticonceptivos, irregular) para no dar consejos de fase que no aplican, y el aviso y el consejo usan su dulce favorito.
+- Apuntar por voz y compartiendo desde otras apps (Android); atajos en el icono (Apuntar, Escribir).
+- «Su ficha en 2 minutos»: 10 preguntas que rellenan gustos, tallas, regalos, evitar y recordar.
+- Resumen de la semana (detalles y mensajes), botón «Otro» en los mensajes y buscador en Ella.
+
 ## Fase 6 · Después de la beta (ya en HANDOFF.md)
 - Cuentas, copia en la nube cifrada y avisos push reales.
 - Más días mundiales y santos por país (solo con fuente verificada).

@@ -28,7 +28,7 @@ export function sweetTaste(profile) {
 }
 
 function foodTastes(profile) {
-  return (profile.tastes || []).filter((x) => FOODS.test(fold(x))).map(bare).filter((x) => x && x.length <= 30);
+  return (profile.tastes || []).filter((x) => FOODS.test(fold(x)) || /^(comida|plato) favorit[oa]:/.test(fold(x))).map(bare).filter((x) => x && x.length <= 30);
 }
 function planTastes(profile) {
   const out = [];

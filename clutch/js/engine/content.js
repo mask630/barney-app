@@ -6,7 +6,7 @@ import { compose } from './voice.js';
 import { mothersDay } from '../data/worldDays.js';
 import { MESSAGES, GESTURES } from '../data/bank.js';
 import { pickRotating } from './rotation.js';
-import { cycleGestures, cycleMessages, tasteMessages, fitsHour } from './moments.js';
+import { cycleGestures, cycleMessages, tasteMessages, fitsHour, sweetTaste } from './moments.js';
 
 // Gestos y mensajes sencillos salen del banco y rotan con descanso según su esfuerzo (engine/rotation.js).
 
@@ -16,7 +16,7 @@ const forStage = (pool, stage) => pool.filter((it) => !it.st || it.st.includes(s
 // Gestos para hoy, estables durante el día. Devuelve elementos del banco: { id, e, t }.
 // Si se lleva su ciclo, el primero es de su fase (y en Hoy pasa a ser la jugada del día).
 export function dailyGestures(profile, todayISO, count = 3) {
-  const phase = cycleInfo(profile, todayISO)?.phase;
+  const phase = activePhase(profile, todayISO);
   const first = phase ? pickRotating(cycleGestures(profile, phase, STAGE_GROUP[profile.stage]), profile, todayISO, 1, 'gc', 0) : [];
   const rest = pickRotating(forStage(GESTURES[STAGE_GROUP[profile.stage]], profile.stage), profile, todayISO, count - first.length, 'g');
   return [...first, ...rest];
@@ -25,13 +25,15 @@ export function dailyGestures(profile, todayISO, count = 3) {
 // Mensajes sencillos para hoy, ya con saludo y despedida. Devuelve { id, text }.
 // Primero uno de su fase del ciclo (si se lleva) y uno con algo que le gusta (si hay); el resto, del banco.
 // hour: hora del móvil, para no proponer «buenos días» por la noche.
-export function genericMessages(profile, band, group, todayISO, count = 3, { hour = null } = {}) {
-  const phase = cycleInfo(profile, todayISO)?.phase;
+// exclude: ids que él ha pedido cambiar con «Otro» (salen otros en su lugar).
+export function genericMessages(profile, band, group, todayISO, count = 3, { hour = null, exclude = [] } = {}) {
+  const phase = activePhase(profile, todayISO);
+  const keep = (list) => list.filter((it) => !exclude.includes(it.id));
   const extra = [
-    ...(phase ? pickRotating(cycleMessages(profile, phase, group), profile, todayISO, 1, 'mc', 0) : []),
-    ...pickRotating(tasteMessages(profile, group), profile, todayISO, 1, 'mt', 0)
+    ...(phase ? pickRotating(keep(cycleMessages(profile, phase, group)), profile, todayISO, 1, 'mc', 0) : []),
+    ...pickRotating(keep(tasteMessages(profile, group)), profile, todayISO, 1, 'mt', 0)
   ].slice(0, Math.max(0, count - 1));
-  const pool = forStage(MESSAGES[group], profile.stage).filter((it) => fitsHour(it, hour));
+  const pool = keep(forStage(MESSAGES[group], profile.stage).filter((it) => fitsHour(it, hour)));
   return [...extra, ...pickRotating(pool, profile, todayISO, count - extra.length, 'm')]
     .map((it) => ({ id: it.id, text: compose({ text: it.t, name: profile.name, band, group }) }))
     .filter((m) => m.text);
@@ -132,7 +134,26 @@ export function cycleInfo(profile, todayISO) {
   const phase = day <= 5 ? 'regla' : day < ovu - 2 ? 'folicular' : day <= ovu + 1 ? 'ovulacion' : toNext <= 5 ? 'premenstrual' : 'lutea';
   const when = toNext === 1 ? 'un día' : `unos ${toNext} días`;
   const ph = PHASES[phase];
-  return { phase, day, len, nextStart, toNext, name: ph.name, mood: ph.mood, desire: ph.desire, tip: ph.tip.replace('{d}', when) };
+  const mode = CYCLE_MODES.includes(c.mode) ? c.mode : 'natural';
+  return { phase, day, len, nextStart, toNext, elapsed, mode, name: ph.name, mood: ph.mood + (MODE_NOTE[mode] ? ' ' + MODE_NOTE[mode] : ''), desire: ph.desire, tip: ph.tip.replace('{d}', when).replace(/^Chocolate|chocolate/, (w) => { const s = sweetTaste(profile); return s ? (w[0] === 'C' ? s.charAt(0).toUpperCase() + s.slice(1) : s) : w; }) };
+}
+
+// Cómo lleva el ciclo. Con anticonceptivos hormonales los cambios de humor y energía se notan mucho menos;
+// con un ciclo irregular las fechas calculadas no son fiables.
+export const CYCLE_MODES = ['natural', 'hormonal', 'irregular'];
+const MODE_NOTE = {
+  hormonal: 'Con anticonceptivos estos cambios suelen notarse menos.',
+  irregular: 'Su ciclo es irregular: las fechas son muy aproximadas.'
+};
+
+// La fase que cambia gestos y mensajes. Natural: todas. Con anticonceptivos: solo los días de regla (los demás
+// cambios apenas se notan). Irregular: solo los primeros días después de que él marque que le ha venido.
+export function activePhase(profile, todayISO) {
+  const info = cycleInfo(profile, todayISO);
+  if (!info) return null;
+  if (info.mode === 'hormonal') return info.phase === 'regla' ? 'regla' : null;
+  if (info.mode === 'irregular') return info.elapsed <= 4 ? 'regla' : null;
+  return info.phase;
 }
 
 // Próximos inicios estimados (para el calendario de la app).

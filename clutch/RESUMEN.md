@@ -16,11 +16,11 @@
 ## Qué es Clutch
 App para el móvil que ayuda a un hombre a cuidar su relación (Rollo, Pareja o Matrimonio): recordar lo que importa de ella y saber qué hacer o decir. En la pantalla de inicio del móvil se llama «Agenda» (discreción).
 
-## Qué hace hoy (beta 0.7)
-- **Hoy**: qué te toca (pensar el regalo, comprarlo, preparar el plan), la jugada del día con mensaje listo, gestos, próximas fechas y calendario de todo el año.
-- **Ella**: su ficha (gustos, tallas, evitar, regalos, eventos, recordar; se añade tocando cada apartado), su ciclo con tendencias y su etapa.
-- **Apuntar**: escribes (varias cosas a la vez, una por línea) o haces una foto y cada cosa va sola a su lista.
-- **Escríbele**: mensajes que no se repiten, suenan a WhatsApp de verdad y tiran de lo que sabes de ella (sus eventos, sus gustos, su ciclo, la hora).
+## Qué hace hoy (beta 0.8)
+- **Hoy**: qué te toca (pensar el regalo, comprarlo, preparar el plan), la jugada del día con mensaje listo, gestos (con tu resumen de la semana), «Le ha venido hoy» de un toque, próximas fechas y calendario de todo el año.
+- **Ella**: su ficha (gustos, tallas, evitar, regalos, eventos, recordar; se añade tocando cada apartado), buscador, «Su ficha en 2 minutos» (10 preguntas rápidas), su ciclo con tendencias (natural, con anticonceptivos o irregular) y su etapa.
+- **Apuntar**: escribes (varias cosas a la vez, una por línea) o haces una foto y cada cosa va sola a su lista. También por voz (🎤 Dictar) o compartiendo desde WhatsApp/Instagram con «Compartir > Agenda» (Android).
+- **Escríbele**: mensajes que no se repiten, suenan a WhatsApp de verdad y tiran de lo que sabes de ella (sus eventos, sus gustos, su ciclo, la hora). Botón «Otro» para cambiar uno que no te guste.
 - **SOS**: qué ha pasado → consejo de una línea + mensaje listo.
 - **Cuentas**: entrar con email + código (o con Google); cada usuario tiene sus datos, cifrados en el servidor, en cualquier móvil. *Se activan al ejecutar `configurar-cuentas.ps1`.*
 - **Avisos en el móvil**: cada mañana con algo pendiente, «Agenda: tienes algo pendiente hoy», sin nombres. *Se activan con el mismo script.*
@@ -40,7 +40,7 @@ App para el móvil que ayuda a un hombre a cuidar su relación (Rollo, Pareja o 
 ## Qué falta para terminarla
 | Paso | Quién | Estado |
 |---|---|---|
-| App, servidor, IA, panel, cuentas, avisos | Claude | ✅ hecho y probado (113 pruebas + 3 recorridos en móvil simulado) |
+| App, servidor, IA, panel, cuentas, avisos | Claude | ✅ hecho y probado (130 pruebas + 3 recorridos en móvil simulado) |
 | Renovar clave de IA | 👤 tú | ✅ hecho (16-nov) |
 | Activar cuentas y avisos | 👤 tú | ✅ hecho (24-nov) |
 | Prueba en móviles reales | 👤 tú + Claude arregla lo que salga | pendiente |
