@@ -29,9 +29,9 @@ export function agenda(profile, todayISO, { country = null, horizon = 366 } = {}
   return out.sort((a, b) => a.daysAhead - b.daysAhead);
 }
 
-// Ideas de regalo con lo que ya sabes de ella; nada inventado.
+// Ideas de regalo con lo que ya sabes de ella; excluye los ya entregados y nada inventado.
 export function giftIdeas(profile) {
-  const gifts = (profile.gifts || []).slice(-3).reverse().map((g) => g.text);
+  const gifts = (profile.gifts || []).filter((g) => g.status !== 'given').slice(-3).reverse().map((g) => g.text);
   if (gifts.length) return gifts;
   return (profile.tastes || []).slice(0, 3).map((t) => `algo de ${t}`);
 }
@@ -58,7 +58,15 @@ export function reminders(profile, todayISO, opts = {}) {
     if (done[id]) continue;
     out.push({ id, title: step.title, label: d.label, daysAhead: n, kind: d.kind, ideas: step.ideas || null });
   }
-  return out;
+  const tomorrow = addDays(todayISO, 1);
+  for (const r of profile.remember || []) {
+    if (!r.followUp || !parseISO(r.followUp) || r.followUp > tomorrow) continue;
+    const id = `followup-${r.id}`;
+    if (done[id]) continue;
+    const ahead = Math.max(0, daysBetween(todayISO, r.followUp));
+    out.push({ id, title: 'Pregúntale cómo le fue', label: r.text, daysAhead: ahead, kind: 'followup', overdue: r.followUp < todayISO, ideas: null });
+  }
+  return out.sort((a, b) => a.daysAhead - b.daysAhead);
 }
 
 export function markDone(profile, id, todayISO) {

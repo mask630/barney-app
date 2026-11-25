@@ -5,8 +5,8 @@
 // Siempre con Authorization: Bearer <sesión>.
 
 import { cors, readBody } from './_lib/access.js';
-import { getJson, setJson, del, removeFromSet } from './_lib/db.js';
-import { sessionFrom, hasDataKey, encrypt, decrypt, endSession } from './_lib/account.js';
+import { getJson, setJson } from './_lib/db.js';
+import { sessionFrom, hasDataKey, encrypt, decrypt, endSession, purgeAccount } from './_lib/account.js';
 
 export const MAX_STATE = 900_000; // caracteres del JSON (las fotos no se suben)
 
@@ -39,8 +39,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ rev: rev + 1 });
     }
     if (req.method === 'DELETE') {
-      await del(key, `tester:${s.code}`, `email:${s.tester.email}`);
-      await removeFromSet('testers', s.code);
+      await purgeAccount(s.code, s.tester.email);
       await endSession(s.token);
       return res.status(200).json({ ok: true });
     }

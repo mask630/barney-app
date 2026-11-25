@@ -2,7 +2,7 @@
 // Devuelve el código personal; la app lo guarda sola.
 
 import { randomBytes } from 'node:crypto';
-import { cors, betaSettings, readBody } from './_lib/access.js';
+import { cors, betaSettings, readBody, clientIp } from './_lib/access.js';
 import { hasDb, getJson, setJson, incr, addToSet, setMembers } from './_lib/db.js';
 
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[a-z]{2,24}$/i;
@@ -28,8 +28,7 @@ export default async function handler(req, res) {
 
   try {
     // Freno a abusos: 5 altas por hora desde la misma IP.
-    const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'local';
-    if ((await incr(`reg-ip:${ip}`, 3600)) > 5) return res.status(429).json({ error: 'limite' });
+    if ((await incr(`reg-ip:${clientIp(req)}`, 3600)) > 5) return res.status(429).json({ error: 'limite' });
 
     const settings = await betaSettings();
     if (!settings.open) return res.status(403).json({ error: 'cerrado' });

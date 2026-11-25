@@ -3,7 +3,8 @@
 // CLUTCH_DATA_KEY (32 bytes en base64) cifra los datos de todos: NUNCA se cambia, o los datos guardados no se podrán leer.
 
 import { randomBytes, createCipheriv, createDecipheriv, createHash } from 'node:crypto';
-import { getJson, setJson, setJsonEx, addToSet, del } from './db.js';
+import { getJson, setJson, setJsonEx, addToSet, del, removeFromSet, setMembers, listAll, setList } from './db.js';
+import { betaSettings } from './access.js';
 import { newCode } from '../register.js';
 
 export const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[a-z]{2,24}$/i;
@@ -11,6 +12,14 @@ export const SESSION_DAYS = 180;
 
 export const normEmail = (e) => String(e || '').trim().toLowerCase();
 export const sha = (s) => createHash('sha256').update(s).digest('hex');
+
+export async function canRegisterEmail(email) {
+  if (await getJson(`email:${email}`)) return { ok: true, existing: true };
+  const settings = await betaSettings();
+  if (!settings.open) return { ok: false, reason: 'cerrado' };
+  if ((await setMembers('testers')).length >= settings.maxTesters) return { ok: false, reason: 'completo' };
+  return { ok: true, existing: false };
+}
 
 // Busca la cuenta del email o la crea (tester pendiente de aprobación, grupo base). Las cuentas nuevas aceptan las condiciones.
 export async function accountFor(email, { terms = false, metrics = false } = {}, todayISO = new Date().toISOString().slice(0, 10)) {
@@ -20,6 +29,8 @@ export async function accountFor(email, { terms = false, metrics = false } = {},
     if (tester) return { ok: true, tester, created: false };
   }
   if (terms !== true) return { ok: false, reason: 'condiciones' };
+  const gate = await canRegisterEmail(email);
+  if (!gate.ok) return { ok: false, reason: gate.reason };
   const code = newCode();
   const alias = email.split('@')[0].slice(0, 24);
   const tester = { code, alias, email, group: 'base', status: 'pending', metrics: metrics === true, account: true, createdAt: todayISO, lastSeen: todayISO };
@@ -27,6 +38,20 @@ export async function accountFor(email, { terms = false, metrics = false } = {},
   await setJson(`email:${email}`, code);
   await addToSet('testers', code);
   return { ok: true, tester, created: true };
+}
+
+export async function purgeAccount(code, email) {
+  const keys = [`tester:${code}`, `data:${code}`, `push:${code}`, `pushed:${code}`];
+  if (email) keys.push(`email:${email}`);
+  await del(...keys);
+  await removeFromSet('testers', code);
+  await removeFromSet('push-users', code);
+  for (const listKey of ['feedback', 'errors']) {
+    const items = await listAll(listKey);
+    if (items.some((x) => x.code === code)) {
+      await setList(listKey, items.map((x) => (x.code === code ? { ...x, alias: null, code: null } : x)));
+    }
+  }
 }
 
 export async function newSession(tester) {
@@ -57,7 +82,7 @@ export function encrypt(obj) {
   const iv = randomBytes(12);
   const c = createCipheriv('aes-256-gcm', dataKey(), iv);
   const ct = Buffer.concat([c.update(JSON.stringify(obj), 'utf8'), c.final()]);
-  return { iv: iv.toString('base64'), tag: c.getAuthTag().toString('base64'), ct: ct.toString('base64') };
+  return { kv: 1, iv: iv.toString('base64'), tag: c.getAuthTag().toString('base64'), ct: ct.toString('base64') };
 }
 
 export function decrypt(box) {

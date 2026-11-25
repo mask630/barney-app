@@ -54,7 +54,7 @@ export function buildRequest(body, model = 'claude-haiku-5-5') {
     return {
       msg,
       payload: {
-        model, max_tokens: 1024, ...FAST, system: BASE_RULES,
+        model, max_tokens: 240, ...FAST, system: BASE_RULES,
         messages: [{ role: 'user', content: `${ctx}\n${traits}\nDatos reales permitidos:\n${facts.map((f) => '- ' + f).join('\n') || '- (ninguno)'}\n\nReescribe este mensaje con otras palabras, mismo contenido y mismos datos, como lo escribiría él por WhatsApp. Una versión, máximo 2 frases cortas:\n${msg}` }]
       }
     };
@@ -64,7 +64,7 @@ export function buildRequest(body, model = 'claude-haiku-5-5') {
     if (!hist.length || hist[0].role !== 'user') return { error: 'vacio' };
     return {
       payload: {
-        model, max_tokens: 1024, ...FAST,
+        model, max_tokens: 360, ...FAST,
         system: `${BASE_RULES}\nAhora eres un apoyo SOS: el usuario ha tenido un problema con ella. Ayuda con calma: 1) qué hacer ahora, 2) un mensaje breve que pueda enviar. Máximo 120 palabras. Si el usuario describe violencia o acoso, di con claridad que pare y pida ayuda profesional. ${ctx}`,
         messages: hist
       }
@@ -75,7 +75,7 @@ export function buildRequest(body, model = 'claude-haiku-5-5') {
     if (!m || m[1].length > MAX_PHOTO_CHARS) return { error: 'foto' };
     return {
       payload: {
-        model, max_tokens: 1024, ...FAST,
+        model, max_tokens: 240, ...FAST,
         system: 'Clasificas una foto que un usuario hizo para recordar algo de su pareja. Responde SOLO con JSON: {"dest":"gustos|tallas|regalos|eventos|recordar","field":"opcional (p. ej. anillo, calzado)","value":"texto corto en español","confidence":"alta|media|baja"}. Si no estás seguro, dest "recordar" y confidence "baja". No describas personas ni intentes identificarlas.',
         messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: m[1] } }, { type: 'text', text: '¿A dónde va esta foto?' }] }]
       }
@@ -92,7 +92,7 @@ export function buildRequest(body, model = 'claude-haiku-5-5') {
     if (!imgs.length) return { error: 'foto' };
     return {
       payload: {
-        model, max_tokens: 1500, ...FAST,
+        model, max_tokens: 900, ...FAST,
         system: `Analizas capturas del perfil PÚBLICO en redes sociales (Instagram, TikTok…) de una mujer adulta. Quien te las pasa tiene una relación afectiva con ella y quiere acertar con regalos, planes y detalles.
 Deduce gustos probables a partir de lo que se ve y se lee: aficiones, comida, viajes, música, series, estética y colores, marcas, mascotas, deporte, sitios que frecuenta.
 Reglas:
@@ -150,13 +150,13 @@ export default async function handler(req, res) {
 
   const body = readBody(req);
   if (TASK_FEATURE[body.task] && !(await featuresFor(tester)).includes(TASK_FEATURE[body.task])) return res.status(403).json({ error: 'funcion' });
+  const built = buildRequest(body, process.env.CLUTCH_MODEL || 'claude-haiku-5-5');
+  if (built.error) return res.status(400).json({ error: built.error });
   try {
     if (!(await aiQuotaOk(tester))) return res.status(429).json({ error: 'limite' });
   } catch {
     return res.status(503).json({ error: 'db' });
   }
-  const built = buildRequest(body, process.env.CLUTCH_MODEL || 'claude-haiku-5-5');
-  if (built.error) return res.status(400).json({ error: built.error });
 
   let r;
   try {

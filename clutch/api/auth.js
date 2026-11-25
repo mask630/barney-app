@@ -7,11 +7,11 @@
 // Variables: GMAIL_APP_PASSWORD (correo), GOOGLE_CLIENT_ID (botón de Google).
 
 import { randomInt, timingSafeEqual } from 'node:crypto';
-import { cors, readBody } from './_lib/access.js';
+import { cors, readBody, clientIp } from './_lib/access.js';
 import { hasDb, getJson, setJsonEx, incr, del } from './_lib/db.js';
 import { mailConfigured, sendMail } from './_lib/mail.js';
 import { vapidPublic } from './_lib/push.js';
-import { EMAIL, normEmail, sha, accountFor, newSession, sessionFrom, endSession } from './_lib/account.js';
+import { EMAIL, normEmail, sha, canRegisterEmail, accountFor, newSession, sessionFrom, endSession } from './_lib/account.js';
 
 const CODE_MIN = 10;
 // Envío del correo: se puede cambiar en las pruebas.
@@ -19,7 +19,6 @@ let mailer = sendMail;
 export const _setMailer = (fn) => { mailer = fn || sendMail; };
 const MAX_TRIES = 5;
 const googleId = () => (process.env.GOOGLE_CLIENT_ID || '').trim();
-const ipOf = (req) => String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'local';
 
 export const mailText = (code) => `Tu código para entrar en Clutch es: ${code}\n\nCaduca en ${CODE_MIN} minutos. Si no lo has pedido tú, ignora este correo.\n\nClutch`;
 
@@ -56,15 +55,17 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
     // Freno a abusos: 20 intentos por hora desde la misma IP.
-    if ((await incr(`auth-ip:${ipOf(req)}`, 3600)) > 20) return res.status(429).json({ error: 'limite' });
+    if ((await incr(`auth-ip:${clientIp(req)}`, 3600)) > 20) return res.status(429).json({ error: 'limite' });
 
     if (body.action === 'start') {
       const email = normEmail(body.email);
       if (!EMAIL.test(email)) return res.status(400).json({ error: 'email' });
       if (!mailConfigured()) return res.status(503).json({ error: 'sin-correo' });
+      const gate = await canRegisterEmail(email);
+      if (!gate.ok) return res.status(403).json({ error: gate.reason });
       if ((await incr(`auth-mail:${sha(email)}`, 3600)) > 5) return res.status(429).json({ error: 'limite' });
       const code = String(randomInt(0, 1e6)).padStart(6, '0');
-      await setJsonEx(`otp:${sha(email)}`, { h: sha(`${email}:${code}`), tries: 0 }, CODE_MIN * 60);
+      await setJsonEx(`otp:${sha(email)}`, { h: sha(`${email}:${code}`), tries: 0, exp: Date.now() + CODE_MIN * 60_000 }, CODE_MIN * 60);
       try {
         await mailer({ to: email, subject: `Tu código de Clutch: ${code}`, text: mailText(code) });
       } catch (e) {
@@ -83,7 +84,11 @@ export default async function handler(req, res) {
       const good = code.length === 6 && timingSafeEqual(Buffer.from(otp.h), Buffer.from(sha(`${email}:${code}`)));
       if (!good) {
         if (otp.tries + 1 >= MAX_TRIES) await del(key);
-        else await setJsonEx(key, { ...otp, tries: otp.tries + 1 }, CODE_MIN * 60);
+        else {
+          const exp = otp.exp || Date.now() + CODE_MIN * 60_000;
+          const remSec = Math.max(60, Math.ceil((exp - Date.now()) / 1000));
+          await setJsonEx(key, { ...otp, exp, tries: otp.tries + 1 }, remSec);
+        }
         return res.status(400).json({ error: otp.tries + 1 >= MAX_TRIES ? 'caducado' : 'codigo' });
       }
       await del(key);

@@ -21,7 +21,15 @@ export function vapidAuth(endpoint, now = Math.floor(Date.now() / 1000)) {
   return `vapid t=${head}.${body}.${b64url(sig)}, k=${pub()}`;
 }
 
-export const validSubscription = (s) => !!s && typeof s.endpoint === 'string' && /^https:\/\/[^\s]+$/.test(s.endpoint) && s.endpoint.length < 1000;
+const PUSH_HOST = /(^|\.)(fcm\.googleapis\.com|android\.googleapis\.com|push\.services\.mozilla\.com|push\.apple\.com|notify\.windows\.com)$/i;
+
+export const validSubscription = (s) => {
+  if (!s || typeof s.endpoint !== 'string' || s.endpoint.length >= 1000) return false;
+  try {
+    const u = new URL(s.endpoint);
+    return u.protocol === 'https:' && !u.username && !u.password && PUSH_HOST.test(u.hostname);
+  } catch { return false; }
+};
 
 // Devuelve 'ok', 'gone' (la suscripción ya no existe: hay que borrarla) o 'error'.
 export async function sendPush(sub, fetchFn = globalThis.fetch) {

@@ -1,7 +1,7 @@
 // Opiniones y avisos de error que llegan al panel.
 // POST { kind: 'opinion' | 'error', text, screen, version }. Con código de tester activo va con su alias; sin código, anónimo.
 
-import { cors, findTester, isActive, readBody } from './_lib/access.js';
+import { cors, findTester, isActive, readBody, clientIp } from './_lib/access.js';
 import { pushCapped, incr } from './_lib/db.js';
 
 const KINDS = ['opinion', 'error'];
@@ -20,8 +20,7 @@ export default async function handler(req, res) {
     if (tester?.status === 'blocked') return res.status(401).json({ error: 'codigo' });
     const who = isActive(tester) || tester?.status === 'pending' ? tester : null;
     // Freno: 20 por hora por tester (o por IP si no hay código).
-    const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'local';
-    if ((await incr(`fb-rate:${who?.code || ip}`, 3600)) > 20) return res.status(429).json({ error: 'limite' });
+    if ((await incr(`fb-rate:${who?.code || clientIp(req)}`, 3600)) > 20) return res.status(429).json({ error: 'limite' });
     const item = {
       id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
       at: new Date().toISOString(),

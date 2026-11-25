@@ -1,10 +1,13 @@
 // Panel del dueño (la página /admin llama aquí). Clave en la cabecera X-Admin-Key.
 // GET: testers, grupos y ajustes. POST { action: 'tester' | 'groups' | 'settings', ... }: cambios.
 
-import { isAdmin, groups, betaSettings, FEATURES, DEFAULT_SETTINGS, readBody } from './_lib/access.js';
-import { getJson, setJson, setMembers, getMany, del, removeFromSet, hgetall, listAll, setList } from './_lib/db.js';
+import { isAdmin, cors, clientIp, groups, betaSettings, FEATURES, DEFAULT_SETTINGS, readBody } from './_lib/access.js';
+import { getJson, setJson, setMembers, getMany, del, incr, hgetall, listAll, setList } from './_lib/db.js';
+import { purgeAccount } from './_lib/account.js';
+import { mailConfigured, sendMail } from './_lib/mail.js';
 
 const STATUSES = ['pending', 'active', 'blocked'];
+let _aiCache = null; // { cacheKey, at, res }
 
 export async function listTesters() {
   const codes = await setMembers('testers');
@@ -12,17 +15,22 @@ export async function listTesters() {
   return all.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 }
 
-// Estado de la clave de IA: consulta la lista de modelos (no gasta saldo). Caducidad: CLUTCH_KEY_EXPIRES (AAAA-MM-DD), opcional.
+// Estado de la clave de IA: consulta la lista de modelos (no gasta saldo, cacheado 10 min). Caducidad: CLUTCH_KEY_EXPIRES (AAAA-MM-DD), opcional.
 export async function aiKeyStatus(fetchFn = globalThis.fetch) {
   const key = (process.env.ANTHROPIC_API_KEY || '').trim();
   const expires = /^\d{4}-\d{2}-\d{2}$/.test(process.env.CLUTCH_KEY_EXPIRES || '') ? process.env.CLUTCH_KEY_EXPIRES : null;
   if (!key) return { ok: false, reason: 'sin-clave', expires };
+  const cacheKey = `${key}|${expires || ''}`;
+  if (fetchFn === globalThis.fetch && _aiCache && _aiCache.cacheKey === cacheKey && Date.now() - _aiCache.at < 600_000) return _aiCache.res;
+  let out;
   try {
     const r = await fetchFn('https://api.anthropic.com/v1/models?limit=1', { headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01' }, signal: AbortSignal.timeout(5000) });
-    return { ok: r.ok, reason: r.ok ? null : r.status === 401 || r.status === 403 ? 'clave' : 'servicio', expires };
+    out = { ok: r.ok, reason: r.ok ? null : r.status === 401 || r.status === 403 ? 'clave' : 'servicio', expires };
   } catch {
-    return { ok: false, reason: 'red', expires };
+    out = { ok: false, reason: 'red', expires };
   }
+  if (fetchFn === globalThis.fetch) _aiCache = { cacheKey, at: Date.now(), res: out };
+  return out;
 }
 
 const dayISO = (d) => d.toISOString().slice(0, 10);
@@ -45,8 +53,13 @@ export async function stats(testers, today = dayISO(new Date()), days = 14) {
 }
 
 export default async function handler(req, res) {
+  cors(req, res, 'GET, POST, OPTIONS');
   res.setHeader('Cache-Control', 'no-store');
-  if (!isAdmin(req)) return res.status(401).json({ error: 'clave' });
+  if (req.method === 'OPTIONS') return res.status(204).end();
+  if (!isAdmin(req)) {
+    const n = await incr(`admin-fail:${clientIp(req)}`, 3600).catch(() => 1);
+    return res.status(n > 10 ? 429 : 401).json({ error: n > 10 ? 'limite' : 'clave' });
+  }
   try {
     if (req.method === 'GET') {
       const testers = await listTesters();
@@ -67,15 +80,17 @@ export default async function handler(req, res) {
       const next = { ...t, ...(body.status !== undefined && { status: body.status }), ...(body.group !== undefined && { group: body.group }) };
       if (next.status === 'active' && t.status !== 'active' && !t.approvedAt) next.approvedAt = new Date().toISOString().slice(0, 10);
       await setJson(`tester:${t.code}`, next);
+      if (t.status === 'pending' && next.status === 'active' && t.email && mailConfigured()) {
+        sendMail({ to: t.email, subject: 'Ya tienes acceso a Clutch', text: `Hola,\n\nTu acceso a Clutch ya está activo (${next.group}). Abre la app y entra con tu correo.\n\nClutch` }).catch(() => {});
+      }
       return res.status(200).json({ tester: next });
     }
 
-    // Borrado completo (derecho de supresión): datos, email y plaza.
+    // Borrado completo (derecho de supresión): datos, email, avisos y plaza.
     if (body.action === 'delete') {
       const t = await getJson(`tester:${body.code}`);
       if (!t) return res.status(404).json({ error: 'no-existe' });
-      await del(`tester:${t.code}`, `email:${t.email}`, `data:${t.code}`);
-      await removeFromSet('testers', t.code);
+      await purgeAccount(t.code, t.email);
       return res.status(200).json({ deleted: t.code });
     }
 

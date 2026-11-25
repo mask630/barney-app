@@ -1,9 +1,10 @@
 // Clutch · interfaz. JavaScript sin framework: un estado, una función render y eventos delegados.
 
 import es from './i18n/es.js';
-import { localISO, daysBetween, parseISO } from './core/dates.js';
+import { localISO, daysBetween, parseISO, addDays } from './core/dates.js';
 import { STAGES, STAGE_GROUP, STAGES_WITH_MILESTONES, AGE_BANDS, profileBand } from './core/stages.js';
 import * as Store from './core/store.js';
+import * as Photos from './core/photos.js';
 import { generateHooks } from './engine/hooks.js';
 import { genericMessages, dailyGestures, cycleInfo, cycleLength, CYCLE_MIN, CYCLE_MAX, CYCLE_MODES, SOS } from './engine/content.js';
 import { QUIZ, pendingQuiz, answerQuiz } from './engine/quiz.js';
@@ -14,7 +15,8 @@ import { CITIES, countryFromTimezone, detectTimezone, nearestCity } from './core
 import { COMPANIONS, COMPANION_IDS, isAvailable, companionLine } from './engine/companions.js';
 import { analyzeStyle, applyStyle, describeStyle } from './engine/style.js';
 import { fetchPlans, plansForToday, planMessage } from './engine/plans.js';
-import { aiConfigured, aiRewrite, aiSos, aiPhoto, aiProfile, fillName, SOCIAL_MAX } from './engine/ai.js';
+import { decidePlans } from './engine/decider.js';
+import { aiConfigured, aiRewrite, aiSos, aiPhoto, aiProfile, fillName, maskName, SOCIAL_MAX } from './engine/ai.js';
 import { FEATURES, has as hasFeature, fetchConfig, registerBeta } from './engine/features.js';
 import { LEGAL, UPDATED } from './i18n/legal.js';
 import { createMetrics, sendFeedback } from './engine/metrics.js';
@@ -48,13 +50,14 @@ const ACT_EVENT = {
 };
 
 const ui = {
-  tab: 'hoy', screen: null, sheet: null, ask: null, toast: null,
-  locked: false, pinEntry: '', pinError: false,
+  tab: 'hoy', screen: null, sheet: null, ask: null, toast: null, undo: null,
+  locked: false, pinEntry: '', pinError: false, pinFails: 0, pinLockUntil: 0,
   form: { name: '', birth: '', band: '', stage: 'pareja', since: '', error: '' },
-  add: { text: '', field: '', date: '' }, social: { photos: [], result: null, pick: {} },
-  edit: {}, draft: '', pending: null, batch: null, imp: { text: '', msg: '' }, exp: { text: '' }, pin: { value: '', error: '' }, fb: { text: '' },
+  add: { text: '', field: '', date: '', followUp: false }, social: { photos: [], result: null, pick: {} },
+  edit: {}, editItem: null, draft: '', pending: null, batch: null, imp: { text: '', msg: '' }, exp: { text: '' }, pin: { value: '', error: '' }, pinOff: { value: '', error: '' }, fb: { text: '' },
   open: null, fold: {}, skipMsg: [], q: '', quizA: '', listening: false, breath: { on: false, phase: 'in' },
   alt: {}, busy: null, chat: [], chatDraft: '', plansMsg: '', pass: { value: '' }, styleDraft: '',
+  decide: { weather: 'cualquier', budget: 'medio', time: 90, seed: 0 },
   join: { alias: '', email: '', terms: false, metrics: false, error: '' },
   login: { step: 'email', email: '', code: '', terms: false, metrics: false, error: '' }, authInfo: S.settings.authInfo || null
 };
@@ -89,11 +92,26 @@ function updateProfile(fn) {
   persist();
 }
 let toastTimer = null;
-function showToast(msg) {
+const vib = (ms = 12) => { try { navigator.vibrate?.(ms); } catch {} };
+function renderToast() {
+  let el = document.getElementById('toast');
+  if (!ui.toast) { if (el) el.remove(); return; }
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'toast';
+    el.className = 'toast';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    document.body.appendChild(el);
+  }
+  el.innerHTML = `<span>${esc(ui.toast)}</span>${ui.undo ? '<button class="undo" data-act="undo">Deshacer</button>' : ''}`;
+}
+function showToast(msg, undo = null) {
   ui.toast = msg;
+  ui.undo = undo;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { ui.toast = null; render(); }, 2600);
-  render();
+  toastTimer = setTimeout(() => { ui.toast = null; ui.undo = null; renderToast(); }, undo ? 5000 : 2600);
+  renderToast();
 }
 async function copyText(text) {
   try {
@@ -139,9 +157,19 @@ const LOGO = '<svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" he
 // ---------- iconos ----------
 const ICON = {
   hoy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  write: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
   ella: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>',
   plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
-  yo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>'
+  yo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>',
+  shop: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>'
+};
+const CAT_ICO = {
+  gustos: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>',
+  evitar: '<svg class="ico danger" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>',
+  tallas: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h18v8H3zM7 8v4M11 8v3M15 8v4M19 8v3"/></svg>',
+  regalos: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12v9H4v-9M2 7h20v5H2zM12 21V7M12 7c-1.5-3-5-3-5-1s3.5 1 5 1M12 7c1.5-3 5-3 5-1s-3.5 1-5 1"/></svg>',
+  eventos: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>',
+  recordar: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0-3.5 10.9c.7.5 1.1 1.2 1.2 2h4.6c.1-.8.5-1.5 1.2-2A6 6 0 0 0 12 3z"/><path d="M9.5 19h5"/></svg>'
 };
 
 // ---------- vistas ----------
@@ -325,12 +353,14 @@ function viewOnboarding() {
 }
 
 function viewLock() {
+  const lockedSec = ui.pinLockUntil > Date.now() ? Math.ceil((ui.pinLockUntil - Date.now()) / 1000) : 0;
   const dots = [0, 1, 2, 3].map((i) => `<i class="${ui.pinEntry.length > i ? 'f' : ''}"></i>`).join('');
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫']
-    .map((k) => (k === '' ? '<span></span>' : `<button data-act="pinKey" data-v="${k}" aria-label="${k === '⌫' ? 'Borrar' : k}">${k}</button>`)).join('');
+    .map((k) => (k === '' ? '<span></span>' : `<button data-act="pinKey" data-v="${k}" aria-label="${k === '⌫' ? 'Borrar' : k}" ${lockedSec ? 'disabled' : ''}>${k}</button>`)).join('');
+  const errMsg = lockedSec ? `Demasiados fallos. Espera ${lockedSec} s.` : ui.pinError ? T.lock.wrong : '';
   return `<main class="lock"><h1 style="text-align:center">${T.lock.title}</h1>
     <div class="dots" aria-live="polite">${dots}</div>
-    <p class="error" style="text-align:center;min-height:20px">${ui.pinError ? T.lock.wrong : ''}</p>
+    <p class="error" style="text-align:center;min-height:20px">${errMsg}</p>
     <div class="keypad">${keys}</div></main>`;
 }
 
@@ -371,6 +401,8 @@ function remindersCard(p) {
       <button class="btn small" data-act="doneReminder" data-v="${esc(r.id)}">Hecho</button></div>`).join('')}</div></div>`;
 }
 
+const profileChips = (p) => S.profiles.length > 1 ? `<div class="chips">${S.profiles.map((x) => `<button class="chip" aria-pressed="${x.id === p.id}" data-act="pickProfile" data-v="${x.id}">${esc(x.name)}</button>`).join('')}</div>` : '';
+
 function viewHoy(p) {
   const r = hookData(p);
   // Personalidad elegida (PRO) o la voz cordial por defecto, que no lleva nombre.
@@ -387,6 +419,7 @@ function viewHoy(p) {
   const dates = agenda(p, today(), agendaOpts()).filter((d) => d.kind !== 'period').slice(0, 3);
 
   return `<main class="screen">
+    ${profileChips(p)}
     <div><span class="small muted">${esc(cap(longDate(today())))}</span>
     <h1>${esc(p.name)}</h1></div>
 
@@ -422,6 +455,8 @@ function viewHoy(p) {
     ${Store.completeness(p) < 50 && pendingQuiz(p).length ? quizRow(p) : ''}
 
     ${plansCard(p)}
+
+    <button class="card row" style="text-align:left" data-act="openDecide"><span class="grow"><b>¿Qué hacemos hoy?</b><br><span class="small muted">3 planes en 10 segundos según clima, tiempo y presupuesto</span></span><span aria-hidden="true">›</span></button>
 
     <button class="card row" style="text-align:left" data-act="goSos"><span class="grow"><b>${T.today.sosRow}</b></span><span aria-hidden="true">›</span></button>
     ${!session() && accountsOn() !== false ? `<button class="card row" style="text-align:left" data-act="goLogin"><span class="grow"><b>${T.account.cta}</b><br><span class="small muted">${T.account.ctaHint}</span></span><span aria-hidden="true">›</span></button>` : ''}
@@ -468,7 +503,7 @@ function viewWrite(p) {
       </div></div>`;
   };
   return `<main class="screen">
-    <div class="row"><button class="btn small ghost" data-act="back" aria-label="Volver">‹</button><h1>${T.write.title}</h1></div>
+    ${ui.screen === 'write' ? `<div class="row"><button class="btn small ghost" data-act="back" aria-label="Volver">‹</button><h1>${T.write.title}</h1></div>` : `<h1>${T.write.title}</h1>`}
     ${hooks.length ? hooks.map((h) => card(h.message, h.source, h.mid)).join('') : ''}
     <span class="label">${T.write.basics}</span>
     ${basics.map((m) => card(m.text, null, m.id, true)).join('')}
@@ -485,7 +520,11 @@ function sizeLine(p) {
 // Lo primero de cada apartado, para verlo sin abrirlo.
 function preview(p, k) {
   if (k === 'tallas') return sizeLine(p);
-  const list = { gustos: p.tastes, evitar: p.avoid, regalos: p.gifts.map((g) => g.text), eventos: p.events.map((e) => e.text), recordar: p.remember.map((r) => r.text) }[k] || [];
+  const giftTexts = () => {
+    const pend = p.gifts.filter((g) => g.status !== 'given');
+    return (pend.length ? pend : p.gifts).map((g) => g.text);
+  };
+  const list = { gustos: p.tastes, evitar: p.avoid, regalos: giftTexts(), eventos: p.events.map((e) => e.text), recordar: p.remember.map((r) => r.text) }[k] || [];
   const s = list.slice(-3).reverse().join(' · ');
   return s.length > 60 ? s.slice(0, 58) + '…' : s;
 }
@@ -499,7 +538,7 @@ function viewElla(p) {
   return `<main class="screen">
     <div class="chips">${S.profiles.map((x) => `<button class="chip" aria-pressed="${x.id === p.id}" data-act="pickProfile" data-v="${x.id}">${esc(x.name)}</button>`).join('')}
       <button class="chip" data-act="newProfileSheet" ${canAddProfile() ? '' : 'style="opacity:.7"'}>+ Añadir${canAddProfile() ? '' : ' <span class="badge pro" style="padding:1px 5px">Pronto</span>'}</button></div>
-    <div class="row"><h1 class="grow">${esc(p.name)}</h1><button class="btn small" data-act="editSheet">Editar</button></div>
+    <div class="row"><h1 class="grow">${esc(p.name)}</h1><button class="btn small" data-act="openShop">${ICON.shop} Tienda</button><button class="btn small" data-act="editSheet">Editar</button></div>
 
     <div class="chips">${STAGES.map((s) => `<button class="chip" aria-pressed="${p.stage === s}" data-act="stageSheet" data-v="${s}">${T.stages[s]}</button>`).join('')}</div>
 
@@ -511,7 +550,7 @@ function viewElla(p) {
     ${tiles.some(([, n]) => n) ? `<input id="ella-q" class="input" type="search" data-bind="q" data-live="1" value="${esc(ui.q)}" placeholder="${T.ella.search}" aria-label="${T.ella.search}" autocomplete="off">` : ''}
     ${ui.q.trim() ? searchResults(p) : ''}
 
-    <div class="card flat list">${tiles.map(([k, n]) => `<button class="item" data-act="openSection" data-v="${k}"><span class="grow"><b>${T.dest[k]}</b>${n ? `<br><span class="small muted">${esc(preview(p, k))}</span>` : ''}</span><span class="badge">${n || '+'}</span></button>`).join('')}</div>
+    <div class="card flat list">${tiles.map(([k, n]) => `<button class="item ${k === 'evitar' ? 'evitar' : ''}" data-act="openSection" data-v="${k}">${CAT_ICO[k] || ''}<span class="grow"><b>${T.dest[k]}</b>${n ? `<br><span class="small muted">${esc(preview(p, k))}</span>` : ''}</span><span class="badge">${n || '+'}</span></button>`).join('')}</div>
 
     ${cycleCard(p)}
 
@@ -617,17 +656,20 @@ function viewCapture(p) {
   const pend = ui.pending;
   const inbox = S.inbox;
   const photo = pend?.photo;
+  const photoUrl = photo ? Photos.photoSrc(photo) : '';
   const allowed = photo ? ['regalos', 'recordar', 'bandeja'] : DESTINATIONS;
   return `<main class="screen">
+    ${profileChips(p)}
     <h1>${T.capture.title}</h1>
     ${ui.batch ? batchCard() : pend ? `<div class="card">
-        ${photo ? `<img class="thumb" src="${photo}" alt="Foto a clasificar"><p class="small muted">${T.capture.photoNote}</p>
+        ${photoUrl ? `<img class="thumb" src="${photoUrl}" alt="Foto a clasificar"><p class="small muted">${T.capture.photoNote}</p>
           ${has('photo_ai') ? `<button class="btn small" data-act="aiPhoto" ${ui.busy === 'photo' ? 'disabled' : ''}>${ui.busy === 'photo' ? 'Mirando…' : 'Reconocer con IA'}</button>` : `<p class="small muted">Reconocer fotos con IA ${SOON}</p>`}` : ''}
         <span class="label" style="padding:0">${T.capture.sendTo}</span>
         <div class="chips">${allowed.map((d) => `<button class="chip" aria-pressed="${pend.c.dest === d}" data-act="pickDest" data-v="${d}">${T.dest[d]}</button>`).join('')}</div>
         ${pend.c.dest === 'tallas' ? `<div class="field"><label for="p-field">¿De qué prenda?</label><input id="p-field" class="input" data-bind="pending.c.field" value="${esc(pend.c.field || '')}" placeholder="anillo, calzado, camiseta…"></div>` : ''}
         ${pend.c.dest !== 'bandeja' ? `<div class="field"><label for="p-val">${pend.c.dest === 'tallas' ? 'Talla' : 'Texto'}</label><input id="p-val" class="input" data-bind="pending.c.value" value="${esc(pend.c.value)}"></div>` : ''}
         ${pend.c.dest === 'eventos' ? `<div class="field"><label for="p-date">Fecha</label><input id="p-date" class="input" type="date" data-bind="pending.dateISO" value="${esc(pend.dateISO || '')}"></div>` : ''}
+        ${pend.c.dest === 'recordar' ? `<label class="row small" style="gap:10px"><input type="checkbox" data-act="pendingFollowUp" ${pend.followUp ? 'checked' : ''}><span>Preguntarle en 3 días (aviso en Hoy)</span></label>` : ''}
         ${pend.c.confidence === 'baja' && pend.c.dest === 'bandeja' ? `<p class="small muted">No tengo claro dónde va. Elige un destino o déjalo en la Bandeja.</p>` : ''}
         <div class="row wrap"><button class="btn primary" data-act="savePending">${pend.c.dest === 'bandeja' ? T.capture.toInbox : T.capture.confirm}</button>
           <button class="btn ghost" data-act="cancelPending">Cancelar</button></div>
@@ -642,9 +684,9 @@ function viewCapture(p) {
         </div></div>`}
 
     <div class="stack"><span class="label">${T.capture.inbox} · ${inbox.length}</span>
-      ${inbox.length ? `<div class="card flat list">${inbox.map((it) => `<div class="item"><div class="grow">${it.photo ? `<img class="thumb" style="max-height:90px;width:auto" src="${it.photo}" alt="">` : ''}${it.text ? esc(it.text) : '<span class="muted">Foto</span>'}</div>
+      ${inbox.length ? `<div class="card flat list">${inbox.map((it) => { const src = it.photo ? Photos.photoSrc(it.photo) : ''; return `<div class="item"><div class="grow">${src ? `<img class="thumb" style="max-height:90px;width:auto" src="${src}" alt="">` : ''}${it.text ? esc(it.text) : '<span class="muted">Foto</span>'}</div>
         <button class="btn small" data-act="inboxClassify" data-v="${it.id}">${T.capture.classifyLater}</button>
-        <button class="btn small ghost" data-act="inboxDiscard" data-v="${it.id}" aria-label="${T.capture.discard}">✕</button></div>`).join('')}</div>`
+        <button class="btn small ghost" data-act="inboxDiscard" data-v="${it.id}" aria-label="${T.capture.discard}">✕</button></div>`; }).join('')}</div>`
         : `<div class="card"><p class="muted">${T.capture.inboxEmpty}</p></div>`}</div>
   </main>`;
 }
@@ -737,6 +779,10 @@ function viewMe() {
 // Copia de seguridad (función PRO): exportar, cifrar y restaurar.
 function backupTools() {
   return `
+      <div class="row wrap">
+        <button class="btn small grow" data-act="downloadBackup">Descargar archivo</button>
+        <label class="btn small grow" style="cursor:pointer">Subir archivo<input type="file" accept=".json,.txt,application/json" hidden data-change="uploadBackup"></label>
+      </div>
       <button class="btn block" data-act="exportData">${T.me.export}</button>
       <div class="field"><label for="pass-in">Contraseña para copia cifrada (mínimo 6 caracteres)</label><input id="pass-in" class="input" type="password" autocomplete="off" data-bind="pass.value" value="${esc(ui.pass.value)}"></div>
       <button class="btn block" data-act="exportEnc">Copia cifrada</button>
@@ -796,6 +842,7 @@ function addForm(k) {
       <div class="field" style="width:96px"><label for="add-text">Talla</label><input id="add-text" class="input" data-bind="add.text" value="${esc(a.text)}"></div></div>`
       : `<div class="field"><label for="add-text">${k === 'eventos' ? 'Qué es' : 'Añadir'}</label><input id="add-text" class="input" data-bind="add.text" value="${esc(a.text)}" placeholder="${esc(ADD_HINT[k] || '')}" maxlength="120"></div>`}
     ${k === 'eventos' ? `<div class="field"><label for="add-date">Fecha</label><input id="add-date" class="input" type="date" data-bind="add.date" value="${esc(a.date)}"></div>` : ''}
+    ${k === 'recordar' ? `<label class="row small" style="gap:10px"><input type="checkbox" data-act="addFollowUp" ${a.followUp ? 'checked' : ''}><span>Preguntarle en 3 días (aviso en Hoy)</span></label>` : ''}
     <button class="btn primary small" data-act="addItem" data-kind="${k}">Añadir</button></div>`;
 }
 
@@ -833,12 +880,52 @@ function sheetHtml() {
     let rows = [];
     if (k === 'gustos') rows = p.tastes.map((t, i) => ({ id: String(i), text: t }));
     if (k === 'evitar') rows = p.avoid.map((t, i) => ({ id: String(i), text: t }));
-    if (k === 'tallas') rows = Object.entries(p.sizes).map(([a, b]) => ({ id: a, text: `${a}: ${b}` }));
-    if (k === 'regalos') rows = p.gifts.map((g) => ({ id: g.id, text: g.text, photo: g.photo }));
-    if (k === 'eventos') rows = p.events.map((e) => ({ id: e.id, text: `${e.text} · ${String(e.day).padStart(2, '0')}/${String(e.month).padStart(2, '0')}${e.year ? '/' + e.year : ''}` }));
-    if (k === 'recordar') rows = p.remember.map((r) => ({ id: r.id, text: r.text, photo: r.photo }));
-    body = `<h2>${T.dest[k]}</h2>${addForm(k)}${rows.length ? `<div class="card flat list">${rows.map((r) => `<div class="item"><div class="grow">${r.photo ? `<img class="thumb" style="max-height:120px;width:auto" src="${r.photo}" alt="">` : ''}${esc(r.text)}</div><button class="btn small ghost" data-act="delItem" data-kind="${k}" data-v="${esc(r.id)}" aria-label="Quitar">✕</button></div>`).join('')}</div>` : ''}
+    if (k === 'tallas') rows = Object.entries(p.sizes).map(([a, b]) => ({ id: a, text: `${a}: ${b}`, field: a, val: b }));
+    if (k === 'regalos') rows = p.gifts.map((g) => ({ id: g.id, text: g.text, photo: g.photo, status: g.status || 'idea' }));
+    if (k === 'eventos') rows = p.events.map((e) => ({ id: e.id, raw: e.text, dateISO: `${e.year || today().slice(0, 4)}-${String(e.month).padStart(2, '0')}-${String(e.day).padStart(2, '0')}`, text: `${e.text} · ${String(e.day).padStart(2, '0')}/${String(e.month).padStart(2, '0')}${e.year ? '/' + e.year : ''}` }));
+    if (k === 'recordar') rows = p.remember.map((r) => ({ id: r.id, text: r.text, photo: r.photo, followUp: r.followUp }));
+    const GIFT_TXT = { idea: 'Idea', bought: 'Comprado', given: 'Regalado ✓' };
+    body = `<h2>${T.dest[k]}</h2>${addForm(k)}${rows.length ? `<div class="card flat list">${rows.map((r) => {
+      if (ui.editItem && ui.editItem.kind === k && ui.editItem.id === r.id) {
+        return `<div class="item" style="flex-direction:column;align-items:stretch;gap:8px">
+          ${k === 'tallas' ? `<div class="row"><input id="ei-field" class="input grow" data-bind="editItem.field" value="${esc(ui.editItem.field)}" placeholder="Prenda"><input id="ei-val" class="input" style="width:96px" data-bind="editItem.text" value="${esc(ui.editItem.text)}"></div>`
+            : `<input id="ei-val" class="input" data-bind="editItem.text" value="${esc(ui.editItem.text)}" maxlength="120">`}
+          ${k === 'eventos' ? `<input class="input" type="date" data-bind="editItem.date" value="${esc(ui.editItem.date || '')}">` : ''}
+          <div class="row"><button class="btn primary small" data-act="saveEditItem">Guardar</button><button class="btn ghost small" data-act="cancelEditItem">Cancelar</button></div></div>`;
+      }
+      const src = r.photo ? Photos.photoSrc(r.photo) : '';
+      return `<div class="item"><div class="grow">${src ? `<img class="thumb" style="max-height:120px;width:auto" src="${src}" alt="">` : ''}${esc(r.text)}${r.followUp ? `<br><span class="small muted">Preguntar: ${esc(r.followUp)}</span>` : ''}</div>
+        ${k === 'regalos' ? `<button class="gift-st ${r.status}" data-act="cycleGift" data-v="${esc(r.id)}">${GIFT_TXT[r.status] || 'Idea'}</button>` : ''}
+        <button class="btn small ghost" data-act="startEditItem" data-kind="${k}" data-v="${esc(r.id)}" aria-label="Editar">✎</button>
+        <button class="btn small ghost" data-act="delItem" data-kind="${k}" data-v="${esc(r.id)}" aria-label="Quitar">✕</button></div>`;
+    }).join('')}</div>` : ''}
       <button class="btn ghost block" data-act="closeSheet">Cerrar</button>`;
+  } else if (sh.type === 'shop') {
+    const sizes = Object.entries(p.sizes);
+    const pendingGifts = p.gifts.filter((g) => g.status !== 'given');
+    body = `<h2>Modo tienda · ${esc(p.name)}</h2>
+      <div class="card"><span class="label" style="padding:0">Tallas</span>
+        ${sizes.length ? `<div class="chips">${sizes.map(([k, v]) => `<span class="chip"><b>${esc(k)}</b>: ${esc(v)}</span>`).join('')}</div>` : '<p class="small muted">Sin tallas aún.</p>'}</div>
+      <div class="card"><span class="label" style="padding:0">Regalos pendientes</span>
+        ${pendingGifts.length ? pendingGifts.map((g) => `<div class="row"><span class="grow">${esc(g.text)}</span><span class="badge ${g.status === 'bought' ? 'pro' : ''}">${g.status === 'bought' ? 'Comprado' : 'Idea'}</span></div>`).join('') : '<p class="small muted">Ningún regalo pendiente.</p>'}</div>
+      ${p.tastes.length ? `<div class="card"><span class="label" style="padding:0">Le gusta</span><p>${esc(p.tastes.slice(0, 8).join(' · '))}</p></div>` : ''}
+      ${p.avoid.length ? `<div class="card" style="border-color:var(--danger)"><span class="label" style="padding:0;color:var(--danger)">Evitar</span><p>${esc(p.avoid.join(' · '))}</p></div>` : ''}
+      <button class="btn ghost block" data-act="closeSheet">Cerrar</button>`;
+  } else if (sh.type === 'decide') {
+    const d = ui.decide;
+    const picks = decidePlans(p, d, d.seed);
+    const chip = (k, v, l) => `<button class="chip" aria-pressed="${d[k] === v}" data-act="decideOpt" data-k="${k}" data-v="${v}">${l}</button>`;
+    body = `<h2>¿Qué hacemos hoy?</h2>
+      <div class="field"><label>Clima</label><div class="chips">${chip('weather', 'cualquier', 'Da igual')}${chip('weather', 'soleado', 'Soleado')}${chip('weather', 'lluvia', 'Lluvia / casa')}</div></div>
+      <div class="field"><label>Presupuesto</label><div class="chips">${chip('budget', 'bajo', 'Poco')}${chip('budget', 'medio', 'Normal')}${chip('budget', 'alto', 'Capricho')}</div></div>
+      <div class="field"><label>Tiempo</label><div class="chips">${chip('time', 60, '1 h')}${chip('time', 90, '1-2 h')}${chip('time', 180, 'Más')}</div></div>
+      <div class="card flat list">${picks.map((x) => {
+        const msg = `¿Qué te parece si hoy hacemos esto: ${x.title.toLowerCase()}?`;
+        return `<div class="item" style="flex-wrap:wrap"><div class="grow"><b>${esc(x.title)}</b><br><span class="small muted">${esc(x.tag)} · ~${x.mins} min</span></div>
+          <button class="btn small" data-act="copy" data-text="${esc(msg)}">Proponer</button>
+          <a class="btn small" data-track="whatsapp" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">${T.write.whatsapp}</a></div>`;
+      }).join('')}</div>
+      <div class="row wrap"><button class="btn small" data-act="decideShuffle">Otras ideas</button><span class="grow"></span><button class="btn ghost" data-act="closeSheet">Cerrar</button></div>`;
   } else if (sh.type === 'restore') {
     body = has('encrypted_backup')
       ? `<h2>Restaurar mi copia</h2>${backupTools()}<button class="btn ghost block" data-act="closeSheet">Cerrar</button>`
@@ -854,12 +941,15 @@ function sheetHtml() {
   } else if (sh.type === 'pin') {
     body = `<h2>${T.me.pin}</h2><div class="field"><label for="pin-new">Elige 4 números</label><input id="pin-new" class="input" type="password" inputmode="numeric" maxlength="4" autocomplete="off" data-bind="pin.value" value="${esc(ui.pin.value)}"></div>
       ${ui.pin.error ? `<p class="error">${esc(ui.pin.error)}</p>` : ''}<button class="btn primary block" data-act="savePin">${T.profile.save}</button><button class="btn ghost block" data-act="closeSheet">Cancelar</button>`;
+  } else if (sh.type === 'pinOff') {
+    body = `<h2>Quitar el PIN</h2><p class="small muted">Introduce tu PIN actual para desactivarlo.</p><div class="field"><label for="pin-off">PIN actual</label><input id="pin-off" class="input" type="password" inputmode="numeric" maxlength="4" autocomplete="off" data-bind="pinOff.value" value="${esc(ui.pinOff.value)}"></div>
+      ${ui.pinOff.error ? `<p class="error">${esc(ui.pinOff.error)}</p>` : ''}<button class="btn danger block" data-act="disablePin">Desactivar PIN</button><button class="btn ghost block" data-act="closeSheet">Cancelar</button>`;
   }
   return `<div class="sheet-back" data-act="closeSheetBack"><div class="sheet" role="dialog" aria-modal="true">${body}</div></div>`;
 }
 
 function navHtml() {
-  const tabs = [['hoy', T.tabs.hoy, ICON.hoy], ['ella', T.tabs.ella, ICON.ella], ['apuntar', T.tabs.apuntar, `<span class="plus">${ICON.plus}</span>`], ['yo', T.tabs.yo, ICON.yo]];
+  const tabs = [['hoy', T.tabs.hoy, ICON.hoy], ['escribele', T.tabs.escribele, ICON.write], ['apuntar', T.tabs.apuntar, `<span class="plus">${ICON.plus}</span>`], ['ella', T.tabs.ella, ICON.ella], ['yo', T.tabs.yo, ICON.yo]];
   return `<nav class="nav" aria-label="Principal"><div class="nav-in">${tabs.map(([k, l, ic]) => `<button data-act="tab" data-v="${k}" ${ui.tab === k && !ui.screen ? 'aria-current="page"' : ''}>${ic}${l}</button>`).join('')}</div></nav>`;
 }
 
@@ -882,13 +972,15 @@ function render() {
     else if (ui.screen === 'agenda') main = viewAgenda(p);
     else if (ui.screen === 'social') main = viewSocial(p);
     else if (ui.screen === 'quiz') main = viewQuiz(p);
+    else if (ui.tab === 'escribele') main = viewWrite(p);
     else if (ui.tab === 'ella') main = viewElla(p);
     else if (ui.tab === 'apuntar') main = viewCapture(p);
     else if (ui.tab === 'yo') main = viewMe();
     else main = viewHoy(p);
     html = main + navHtml();
   }
-  app.innerHTML = html + sheetHtml() + (ui.toast ? `<div class="toast" role="status">${esc(ui.toast)}</div>` : '');
+  app.innerHTML = html + sheetHtml();
+  renderToast();
   updateBadge();
   mountGoogle();
   loadAuthInfo();
@@ -931,7 +1023,7 @@ function tryCreateProfile() {
   render();
 }
 
-function readPhoto(file, max = 720, quality = 0.65) {
+function readPhoto(file, max = 640, quality = 0.6) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
@@ -970,11 +1062,15 @@ function savePending() {
         const list = c.dest === 'regalos' ? next.gifts : next.remember;
         if (list.length) list[list.length - 1].photo = pend.photo;
       }
+      if (c.dest === 'recordar' && pend.followUp && next.remember.length) {
+        next.remember[next.remember.length - 1].followUp = addDays(today(), 3);
+      }
       return next;
     });
     showToast(`${T.capture.saved} ${T.dest[c.dest]}`);
   }
   if (pend.fromInbox) { S.inbox = S.inbox.filter((i) => i.id !== pend.fromInbox); S.deleted = [...(S.deleted || []), pend.fromInbox]; }
+  vib();
   persist();
   ui.pending = null;
   ui.draft = '';
@@ -1020,7 +1116,7 @@ const ACTS = {
     try { recog.start(); } catch { ui.listening = false; render(); }
   },
   formNoBirth() { ui.form.noBirth = true; ui.form.birth = ''; render(); },
-  doneReminder(el) { updateProfile((p) => markDone(p, el.dataset.v, today())); showToast('Hecho'); render(); },
+  doneReminder(el) { vib(); updateProfile((p) => markDone(p, el.dataset.v, today())); showToast('Hecho'); render(); },
   addItem(el) {
     const k = el.dataset.kind, a = ui.add;
     const value = String(a.text || '').trim();
@@ -1031,10 +1127,34 @@ const ACTS = {
       if (!m) { showToast('Elige la fecha'); return; }
       c.date = { year: +m[1], month: +m[2], day: +m[3] };
     }
-    updateProfile((p) => applyToProfile(p, c, Store.newId('x'), today()));
-    ui.add = { text: '', field: '', date: '' };
+    updateProfile((p) => {
+      const next = applyToProfile(p, c, Store.newId('x'), today());
+      if (k === 'recordar' && a.followUp && next.remember.length) next.remember[next.remember.length - 1].followUp = addDays(today(), 3);
+      return next;
+    });
+    vib();
+    ui.add = { text: '', field: '', date: '', followUp: false };
     render();
     setTimeout(() => document.getElementById('add-text')?.focus(), 0);
+  },
+  pendingFollowUp(el) { if (ui.pending) ui.pending.followUp = el.checked; },
+  addFollowUp(el) { ui.add.followUp = el.checked; },
+  openShop() { ui.sheet = { type: 'shop' }; render(); },
+  openDecide() { ui.sheet = { type: 'decide' }; render(); },
+  decideOpt(el) {
+    const k = el.dataset.k;
+    ui.decide[k] = k === 'time' ? Number(el.dataset.v) : el.dataset.v;
+    render();
+  },
+  decideShuffle() { ui.decide.seed = (ui.decide.seed || 0) + 3; render(); },
+  undo() {
+    if (!ui.undo) return;
+    ui.undo.restore();
+    ui.undo = null;
+    ui.toast = null;
+    clearTimeout(toastTimer);
+    renderToast();
+    render();
   },
   cycleStart() {
     // Desde Hoy hay que confirmarlo (un toque sin querer descuadraría el ciclo); desde Ella va directo.
@@ -1101,11 +1221,64 @@ const ACTS = {
     S.activeId = S.profiles[0]?.id || null;
     persist(); ui.sheet = null; ui.ask = null; render();
   },
-  closeSheet() { ui.sheet = null; ui.ask = null; ui.edit = {}; render(); },
+  closeSheet() { ui.sheet = null; ui.ask = null; ui.edit = {}; ui.editItem = null; render(); },
   closeSheetBack(el, ev) { if (ev.target === el) ACTS.closeSheet(); },
-  openSection(el) { ui.add = { text: '', field: '', date: '' }; ui.sheet = { type: 'section', kind: el.dataset.v }; render(); },
+  openSection(el) { ui.add = { text: '', field: '', date: '', followUp: false }; ui.editItem = null; ui.sheet = { type: 'section', kind: el.dataset.v }; render(); },
+  cycleGift(el) {
+    const ORDER = { idea: 'bought', bought: 'given', given: 'idea' };
+    updateProfile((p) => ({
+      ...p,
+      gifts: p.gifts.map((g) => (g.id === el.dataset.v ? { ...g, status: ORDER[g.status || 'idea'] || 'bought' } : g))
+    }));
+    vib();
+    render();
+  },
+  startEditItem(el) {
+    const k = el.dataset.kind, id = el.dataset.v, p = prof();
+    let item = { kind: k, id, text: '', field: '', date: '' };
+    if (k === 'gustos') item.text = p.tastes[+id] || '';
+    else if (k === 'evitar') item.text = p.avoid[+id] || '';
+    else if (k === 'tallas') { item.field = id; item.text = p.sizes[id] || ''; }
+    else if (k === 'regalos') item.text = p.gifts.find((x) => x.id === id)?.text || '';
+    else if (k === 'recordar') item.text = p.remember.find((x) => x.id === id)?.text || '';
+    else if (k === 'eventos') {
+      const e = p.events.find((x) => x.id === id);
+      if (e) { item.text = e.text; item.date = `${e.year || today().slice(0, 4)}-${String(e.month).padStart(2, '0')}-${String(e.day).padStart(2, '0')}`; }
+    }
+    ui.editItem = item;
+    render();
+    focusLater('ei-val');
+  },
+  cancelEditItem() { ui.editItem = null; render(); },
+  saveEditItem() {
+    const ed = ui.editItem;
+    if (!ed) return;
+    const text = String(ed.text || '').trim();
+    if (!text) { showToast('No puede quedar vacío'); return; }
+    updateProfile((p) => {
+      const n = structuredClone(p);
+      if (ed.kind === 'gustos') n.tastes[+ed.id] = text;
+      else if (ed.kind === 'evitar') n.avoid[+ed.id] = text;
+      else if (ed.kind === 'tallas') {
+        const nf = String(ed.field || '').trim() || ed.id;
+        if (nf !== ed.id) delete n.sizes[ed.id];
+        n.sizes[nf] = text;
+      } else if (ed.kind === 'regalos') n.gifts = n.gifts.map((x) => (x.id === ed.id ? { ...x, text } : x));
+      else if (ed.kind === 'recordar') n.remember = n.remember.map((x) => (x.id === ed.id ? { ...x, text } : x));
+      else if (ed.kind === 'eventos') {
+        const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ed.date || '');
+        n.events = n.events.map((x) => (x.id === ed.id ? { ...x, text, ...(m ? { year: +m[1], month: +m[2], day: +m[3] } : {}) } : x));
+      }
+      return n;
+    });
+    ui.editItem = null;
+    showToast('Actualizado');
+    render();
+  },
   delItem(el) {
     const { kind, v } = el.dataset;
+    const before = structuredClone(prof());
+    const pid = before.id;
     updateProfile((p) => {
       const n = structuredClone(p);
       if (kind === 'gustos') n.tastes.splice(+v, 1);
@@ -1116,16 +1289,25 @@ const ACTS = {
       else if (kind === 'recordar') n.remember = n.remember.filter((x) => x.id !== v);
       return n;
     });
+    showToast('Eliminado', {
+      restore() {
+        S.profiles = S.profiles.map((x) => (x.id === pid ? { ...before, updatedAt: Date.now() } : x));
+        persist();
+      }
+    });
     render();
   },
   toggleCycle() { updateProfile((p) => ({ ...p, cycle: { ...p.cycle, enabled: !p.cycle.enabled } })); render(); },
   toggleGesture(el) {
     const id = el.dataset.v;
+    vib();
     updateProfile((p) => {
       const cur = new Set((p.done && p.done[today()]) || []);
       const on = !cur.has(id);
       on ? cur.add(id) : cur.delete(id);
-      const next = logAction({ ...p, done: { [today()]: [...cur] } }, 'g', today(), on ? 1 : -1);
+      const nextDone = { ...(p.done || {}), [today()]: [...cur] };
+      for (const k of Object.keys(nextDone)) if (daysBetween(k, today()) > 14) delete nextDone[k];
+      const next = logAction({ ...p, done: nextDone }, 'g', today(), on ? 1 : -1);
       return on ? markUsed(next, id, today()) : unmarkUsedToday(next, id, today());
     });
     render();
@@ -1180,7 +1362,24 @@ const ACTS = {
     ui.pending = { c, raw: it.text, photo: it.photo, fromInbox: it.id, dateISO, dateAuto: dateISO };
     render();
   },
-  inboxDiscard(el) { S.inbox = S.inbox.filter((i) => i.id !== el.dataset.v); S.deleted = [...(S.deleted || []), el.dataset.v]; persist(); render(); },
+  inboxDiscard(el) {
+    const id = el.dataset.v;
+    const snap = S.inbox.find((i) => i.id === id);
+    const snapIdx = S.inbox.findIndex((i) => i.id === id);
+    S.inbox = S.inbox.filter((i) => i.id !== id);
+    S.deleted = [...(S.deleted || []), id];
+    persist();
+    if (snap) {
+      showToast('Descartado', {
+        restore() {
+          S.inbox.splice(Math.max(0, snapIdx), 0, snap);
+          S.deleted = (S.deleted || []).filter((x) => x !== id);
+          persist();
+        }
+      });
+    }
+    render();
+  },
   toggleBreath() { ui.breath.on ? stopBreath() : startBreath(); render(); },
   openSos(el) { ui.open = ui.open === el.dataset.v ? null : el.dataset.v; render(); },
   toggleSetting(el) {
@@ -1191,8 +1390,16 @@ const ACTS = {
     persist(); render();
   },
   togglePin() {
-    if (S.settings.pinHash) { S.settings.pinHash = null; S.settings.pinSalt = null; S.settings.lockOnLeave = false; persist(); render(); }
-    else { ui.pin = { value: '', error: '' }; ui.sheet = { type: 'pin' }; render(); }
+    if (S.settings.pinHash) { ui.pinOff = { value: '', error: '' }; ui.sheet = { type: 'pinOff' }; render(); focusLater('pin-off'); }
+    else { ui.pin = { value: '', error: '' }; ui.sheet = { type: 'pin' }; render(); focusLater('pin-new'); }
+  },
+  async disablePin() {
+    if (!/^\d{4}$/.test(ui.pinOff.value)) { ui.pinOff.error = 'Escribe tu PIN de 4 números.'; render(); return; }
+    const h = await Store.hashPin(ui.pinOff.value, S.settings.pinSalt);
+    if (h !== S.settings.pinHash) { ui.pinOff.error = 'PIN incorrecto.'; render(); return; }
+    S.settings.pinHash = null; S.settings.pinSalt = null; S.settings.lockOnLeave = false;
+    ui.sheet = null; ui.pinOff = { value: '', error: '' };
+    persist(); showToast('PIN desactivado'); render();
   },
   async savePin() {
     if (!/^\d{4}$/.test(ui.pin.value)) { ui.pin.error = 'Usa exactamente 4 números.'; render(); return; }
@@ -1200,17 +1407,27 @@ const ACTS = {
     const hash = await Store.hashPin(ui.pin.value, salt);
     if (!hash) { ui.pin.error = 'Este navegador no permite crear un PIN seguro.'; render(); return; }
     S.settings.pinSalt = salt; S.settings.pinHash = hash;
-    persist(); ui.sheet = null; ui.pin = { value: '', error: '' }; showToast('PIN activado');
+    persist(); ui.sheet = null; ui.pin = { value: '', error: '' }; showToast('PIN activado'); render();
   },
   async pinKey(el) {
+    if (ui.pinLockUntil > Date.now()) { render(); return; }
     const k = el.dataset.v;
+    vib(8);
     ui.pinError = false;
     if (k === '⌫') ui.pinEntry = ui.pinEntry.slice(0, -1);
     else if (ui.pinEntry.length < 4) ui.pinEntry += k;
     if (ui.pinEntry.length === 4) {
       const h = await Store.hashPin(ui.pinEntry, S.settings.pinSalt);
-      if (h === S.settings.pinHash) ui.locked = false;
-      else ui.pinError = true;
+      if (h === S.settings.pinHash) { ui.locked = false; ui.pinFails = 0; ui.pinLockUntil = 0; }
+      else {
+        ui.pinError = true;
+        ui.pinFails = (ui.pinFails || 0) + 1;
+        if (ui.pinFails >= 5) {
+          ui.pinFails = 0;
+          ui.pinLockUntil = Date.now() + 30_000;
+          setTimeout(() => render(), 30_200);
+        }
+      }
       ui.pinEntry = '';
     }
     render();
@@ -1223,11 +1440,22 @@ const ACTS = {
         const near = nearestCity(pos.coords.latitude, pos.coords.longitude);
         S.settings.city = { name: near.name, lat: pos.coords.latitude, lon: pos.coords.longitude, tz: detectTimezone() || near.tz };
         S.settings.country = countryFromTimezone(S.settings.city.tz) || near.country;
-        persist(); showToast(`Ubicación: ${near.name}`);
+        S.settings.settingsUpdatedAt = Date.now();
+        persist(); showToast(`Ubicación: ${near.name}`); render();
       },
       () => showToast('No se pudo obtener la ubicación. Elige tu ciudad en la lista.'),
       { timeout: 8000, maximumAge: 600000 }
     );
+  },
+  downloadBackup() {
+    const txt = Store.exportBackup(S);
+    const blob = new Blob([txt], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `clutch-copia-${today()}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    showToast('Copia descargada');
   },
   exportData() { ui.exp.text = Store.exportBackup(S); render(); },
   async doImport() {
@@ -1248,6 +1476,7 @@ const ACTS = {
   },
   wipe() {
     if (ui.ask !== 'wipe') { ui.ask = 'wipe'; render(); return; }
+    Photos.clearAllPhotos();
     if (session()) {
       S.deleted = [...(S.deleted || []), ...S.profiles.map((p) => p.id), ...S.inbox.map((i) => i.id)];
       Object.assign(S, { profiles: [], inbox: [], activeId: null });
@@ -1259,13 +1488,13 @@ const ACTS = {
   companionStyle(el) {
     const id = el.dataset.v;
     if (!isAvailable(id, has('companions_pro'))) { showToast('Ese acompañante llegará pronto'); return; }
-    S.settings.companionStyle = id; persist(); render();
+    S.settings.companionStyle = id; S.settings.settingsUpdatedAt = Date.now(); persist(); render();
   },
   saveStyle() {
     const samples = ui.styleDraft.split('\n').map((x) => x.trim()).filter(Boolean).slice(0, 12);
     const traits = analyzeStyle(samples);
     if (!traits) { showToast('Pega al menos 2 mensajes tuyos'); return; }
-    S.settings.style = { samples, traits };
+    S.settings.style = { samples, traits }; S.settings.settingsUpdatedAt = Date.now();
     persist(); showToast('Estilo aprendido'); render();
   },
   styleMsg(el) { ui.alt[el.dataset.text] = applyStyle(el.dataset.text, S.settings.style?.traits); render(); },
@@ -1273,8 +1502,8 @@ const ACTS = {
   async aiMsg(el) {
     const p = prof(), msg = el.dataset.text;
     ui.busy = 'ai:' + msg; render();
-    const facts = hookData(p).hooks.filter((h) => h.message).map((h) => h.message.replaceAll(p.name, '{n}'));
-    const r = await aiRewrite(S.settings, { message: msg.replaceAll(p.name, '{n}'), band: bandOf(p), group: STAGE_GROUP[p.stage], stage: p.stage, facts, traits: S.settings.style?.traits });
+    const facts = hookData(p).hooks.filter((h) => h.message).map((h) => maskName(h.message, p.name));
+    const r = await aiRewrite(S.settings, { message: maskName(msg, p.name), band: bandOf(p), group: STAGE_GROUP[p.stage], stage: p.stage, facts, traits: S.settings.style?.traits });
     ui.busy = null;
     if (r.ok && r.text) ui.alt[msg] = fillName(r.text, p.name);
     else showToast(AI_ERR[r.ok ? r.reason : r.reason] || 'No se pudo reescribir');
@@ -1284,7 +1513,7 @@ const ACTS = {
     const text = ui.chatDraft.trim();
     if (!text) return;
     const p = prof();
-    ui.chat.push({ role: 'user', text: text.replaceAll(p.name, '{n}') });
+    ui.chat.push({ role: 'user', text: maskName(text, p.name) });
     ui.chatDraft = ''; ui.busy = 'chat'; render();
     const r = await aiSos(S.settings, { history: ui.chat, band: bandOf(p), group: STAGE_GROUP[p.stage], stage: p.stage });
     ui.busy = null;
@@ -1295,7 +1524,7 @@ const ACTS = {
   async aiPhoto() {
     const p = prof();
     ui.busy = 'photo'; render();
-    const r = await aiPhoto(S.settings, { photo: ui.pending.photo, band: bandOf(p) });
+    const r = await aiPhoto(S.settings, { photo: Photos.photoSrc(ui.pending.photo), band: bandOf(p) });
     ui.busy = null;
     if (r.ok && r.dest) {
       // Con foto solo se guarda en Regalos o Recordar; si la IA sugiere otro sitio, el campo va dentro del texto («anillo: talla 14»).
@@ -1411,6 +1640,7 @@ const ACTS = {
     ui.busy = null;
     if (!r.ok && r.status !== 401) { ui.ask = null; showToast(T.account.errors.servidor); render(); return; }
     clearTimeout(pushTimer);
+    Photos.clearAllPhotos();
     S = Store.emptyState();
     saveLocal();
     Object.assign(ui, { ask: null, tab: 'hoy', screen: null, locked: false });
@@ -1466,17 +1696,27 @@ const CHANGES = {
     const f = el.files && el.files[0];
     if (!f) return;
     try {
-      const photo = await readPhoto(f);
+      const dataUrl = await readPhoto(f);
+      const photo = await Photos.putPhoto(Store.newId('ph'), dataUrl);
       track('photo_add');
       ui.pending = { c: { dest: 'bandeja', value: '', confidence: 'baja' }, raw: ui.draft.trim(), photo, dateISO: '' };
       render();
     } catch { showToast('No se pudo leer la foto'); }
+  },
+  async uploadBackup(el) {
+    const f = el.files && el.files[0];
+    if (!f) return;
+    try {
+      ui.imp.text = await f.text();
+      await ACTS.doImport();
+    } catch { showToast('No se pudo leer el archivo'); }
   },
   city(el) {
     const c = CITIES.find((x) => x.name === el.value);
     if (c) {
       S.settings.city = { name: c.name, lat: c.lat, lon: c.lon, tz: c.tz };
       S.settings.country = c.country;
+      S.settings.settingsUpdatedAt = Date.now();
       persist(); render();
     }
   },
@@ -1486,7 +1726,7 @@ const CHANGES = {
   cycleLen(el) { updateProfile((p) => ({ ...p, cycle: { ...p.cycle, length: +el.value, starts: [] } })); render(); },
   async socialPhotos(el) {
     const files = [...(el.files || [])].slice(0, SOCIAL_MAX - ui.social.photos.length);
-    try { for (const f of files) ui.social.photos.push(await readPhoto(f, 1024, 0.72)); } catch { showToast('No se pudo leer alguna captura'); }
+    try { for (const f of files) ui.social.photos.push(await readPhoto(f, 900, 0.65)); } catch { showToast('No se pudo leer alguna captura'); }
     ui.social.result = null; render();
   }
 };
@@ -1579,6 +1819,7 @@ if (!S.settings.country) {
 }
 if (globalThis.CLUTCH_SW && 'serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
 render();
+Photos.hydratePhotos().then((n) => Photos.migrateInlinePhotos(S).then((chg) => { if (chg) saveLocal(); if (n || chg) render(); }));
 refreshAccess().then(() => { track('open'); metrics.flush(S.settings); });
 pullNow(true);
 setInterval(() => metrics.flush(S.settings), 60000);

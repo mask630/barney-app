@@ -59,3 +59,37 @@ export async function aiProfile(settings, { photos, band, group }, fetchFn) {
 export function fillName(text, name) {
   return String(text || '').replaceAll('{n}', name || '').replace(/\s{2,}/g, ' ').trim();
 }
+
+const fold = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+// Oculta su nombre en el texto antes de enviarlo a la IA, sin depender de mayúsculas o tildes.
+export function maskName(text, name) {
+  const s = String(text || '');
+  const clean = String(name || '').trim();
+  if (!s || !clean) return s;
+  const target = fold(clean);
+  if (!target) return s;
+  let norm = '';
+  const map = [];
+  for (let i = 0; i < s.length; i++) {
+    const f = fold(s[i]);
+    for (let j = 0; j < f.length; j++) { norm += f[j]; map.push(i); }
+  }
+  let out = '', pos = 0, idx = 0;
+  while ((idx = norm.indexOf(target, pos)) !== -1) {
+    const start = map[idx];
+    const endIdx = idx + target.length - 1;
+    let end = map[endIdx] + 1;
+    while (end < s.length && /[\u0300-\u036f]/.test(s[end].normalize('NFD').slice(-1))) end++;
+    const before = start > 0 ? norm[idx - 1] : ' ';
+    const after = endIdx + 1 < norm.length ? norm[endIdx + 1] : ' ';
+    if (!/[\p{L}\p{N}]/u.test(before) && !/[\p{L}\p{N}]/u.test(after)) {
+      out += s.slice(map[pos] ?? 0, start) + '{n}';
+      pos = idx + target.length;
+    } else {
+      out += s.slice(map[pos] ?? 0, map[idx] + 1);
+      pos = idx + 1;
+    }
+  }
+  return out + (pos < norm.length ? s.slice(map[pos]) : '');
+}

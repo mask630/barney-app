@@ -64,13 +64,13 @@
 <script>
 const FEATURE_LABEL = { multi_profile: 'Varias personas', ai_rewrite: 'Reescribir IA', my_style: 'Tu estilo', companions_pro: 'Acompañantes', sos_chat: 'SOS IA', photo_ai: 'Foto IA', profile_ai: 'Perfil IA', plans: 'Planes', encrypted_backup: 'Copia de seguridad' };
 const STATUS_LABEL = { pending: 'Pendiente', active: 'Activo', blocked: 'Bloqueado' };
-const ERRORS = { clave: 'Clave incorrecta.', db: 'La base de datos no responde (¿está conectada Upstash?).', grupo: 'Ese grupo no existe.', grupos: 'Nombre de grupo no válido (minúsculas, números y guiones).' };
+const ERRORS = { clave: 'Clave incorrecta.', limite: 'Demasiados intentos seguidos. Espera un rato.', db: 'La base de datos no responde (¿está conectada Upstash?).', grupo: 'Ese grupo no existe.', grupos: 'Nombre de grupo no válido (minúsculas, números y guiones).' };
 const app = document.getElementById('app');
 const LOGO = '<svg viewBox="0 0 512 512" aria-hidden="true" style="width:32px;height:32px;vertical-align:-6px;margin-right:8px"><rect width="512" height="512" rx="112" fill="#0e1014"/><path d="M356 160c-26-30-62-46-104-46-78 0-140 62-140 140s62 140 140 140c36 0 66-10 90-30 34-28 74-24 84 6 10 30-26 52-50 34-22-16-10-50 22-58" fill="none" stroke="#c8f23d" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/><circle cx="356" cy="160" r="23" fill="#f3f5f8"/></svg>';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let key = '';
 try { key = sessionStorage.getItem('clutch-admin') || ''; } catch {}
-let data = null, tab = 'pending', msg = { text: '', kind: '' }, busy = false, askDelete = null, fbTab = 'feedback';
+let data = null, tab = 'pending', msg = { text: '', kind: '' }, busy = false, askDelete = null, fbTab = 'feedback', tQuery = '';
 const EVENT_LABEL = { open: 'Abrir la app', tab_hoy: 'Pestaña Hoy', tab_ella: 'Pestaña Ella', tab_apuntar: 'Pestaña Apuntar', tab_yo: 'Pestaña Yo', write_open: 'Abrir Escríbele', copy: 'Copiar mensaje', whatsapp: 'Enviar por WhatsApp', style_apply: 'Con mi estilo', ai_rewrite: 'Reescribir con IA', sos_open: 'Abrir SOS', sos_script: 'Ver guion SOS', sos_chat: 'Chat SOS IA', breath: 'Respiración', capture_save: 'Guardar en Apuntar', photo_add: 'Añadir foto', photo_ai: 'Foto con IA', profile_ai: 'Analizar perfil', reminder_done: 'Aviso hecho', agenda_open: 'Ver calendario', section_add: 'Añadir en la ficha', plans_search: 'Buscar planes', profile_create: 'Crear ficha', stage_change: 'Cambiar etapa', gesture_done: 'Gesto hecho', backup_export: 'Copia de seguridad', feedback_send: 'Enviar opinión' };
 const pct = (k, e) => (e ? Math.round((k / e) * 100) + ' %' : '—');
 const shortDay = (iso) => String(+iso.slice(8, 10));
@@ -152,8 +152,10 @@ function viewPanel() {
   const t = data.testers, s = data.settings, groups = Object.keys(data.groups);
   const count = (st) => t.filter((x) => x.status === st).length;
   const week = t.filter((x) => x.status === 'active' && daysAgo(x.lastSeen) <= 7).length;
-  const shown = tab === 'all' ? t : t.filter((x) => x.status === tab);
-  return `<div class="row"><h1 class="grow">${LOGO}Clutch · Panel beta</h1><button id="reload">Actualizar</button><button id="logout">Salir</button></div>
+  const q = tQuery.trim().toLowerCase();
+  const baseShown = tab === 'all' ? t : t.filter((x) => x.status === tab);
+  const shown = q ? baseShown.filter((x) => `${x.alias || ''} ${x.email || ''} ${x.code || ''}`.toLowerCase().includes(q)) : baseShown;
+  return `<div class="row"><h1 class="grow">${LOGO}Clutch · Panel beta</h1><button id="exportjson">Exportar JSON</button><button id="reload">Actualizar</button><button id="logout">Salir</button></div>
   <p class="msg ${msg.kind}" role="status">${esc(msg.text)}</p>
   ${keyBanner()}
   <div class="stats">
@@ -166,7 +168,7 @@ function viewPanel() {
   ${viewStats()}
   ${viewFeedback()}
 
-  <div class="card"><h2>Testers</h2>
+  <div class="card"><div class="row" style="margin-bottom:8px"><h2 class="grow" style="margin:0">Testers</h2><input type="text" id="tsearch" placeholder="Buscar alias o email…" value="${esc(tQuery)}"></div>
     <div class="tabs" role="group" aria-label="Filtrar">${[['pending', 'Pendientes'], ['active', 'Activos'], ['blocked', 'Bloqueados'], ['all', 'Todos']].map(([k, l]) => `<button data-tab="${k}" aria-pressed="${tab === k}">${l}</button>`).join('')}</div>
     <div>${shown.length ? shown.map((x) => `<div class="tester">
       <div class="row"><b class="grow">${esc(x.alias)}</b><span class="badge ${x.status}">${STATUS_LABEL[x.status] || esc(x.status)}</span></div>
@@ -213,7 +215,10 @@ app.addEventListener('click', (e) => {
   else if (b.dataset.fbread) act({ action: fbTab, op: 'read', id: b.dataset.fbread }, 'Marcado como leído.');
   else if (b.dataset.fbdel) act({ action: fbTab, op: 'delete', id: b.dataset.fbdel }, 'Borrado.');
   else if (b.dataset.fbclear) act({ action: 'errors', op: 'clear' }, 'Errores vaciados.');
-  else if (b.dataset.status) act({ action: 'tester', code: b.dataset.code, status: b.dataset.status }, b.dataset.status === 'active' ? 'Tester activado.' : 'Tester bloqueado.');
+  else if (b.dataset.status) {
+    const grp = app.querySelector(`select[data-group="${b.dataset.code}"]`)?.value;
+    act({ action: 'tester', code: b.dataset.code, status: b.dataset.status, ...(grp ? { group: grp } : {}) }, b.dataset.status === 'active' ? 'Tester activado.' : 'Tester bloqueado.');
+  }
   else if (b.dataset.delete) {
     if (askDelete !== b.dataset.delete) { askDelete = b.dataset.delete; render(); return; }
     askDelete = null;
@@ -224,6 +229,14 @@ app.addEventListener('click', (e) => {
     if (askDelete !== 'stats') { askDelete = 'stats'; render(); return; }
     askDelete = null;
     act({ action: 'reset-stats' }, 'Estadísticas reiniciadas.');
+  }
+  else if (b.id === 'exportjson') {
+    const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), ...data }, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `clutch-admin-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
   else if (b.id === 'reload') load();
   else if (b.id === 'logout') { key = ''; data = null; try { sessionStorage.removeItem('clutch-admin'); } catch {} render(); }
@@ -243,6 +256,14 @@ app.addEventListener('click', (e) => {
 app.addEventListener('change', (e) => {
   const sel = e.target.closest('select[data-group]');
   if (sel) act({ action: 'tester', code: sel.dataset.group, group: sel.value }, `Grupo cambiado a ${sel.value}.`);
+});
+app.addEventListener('input', (e) => {
+  if (e.target.id !== 'tsearch') return;
+  const pos = e.target.selectionStart || 0;
+  tQuery = e.target.value;
+  render();
+  const el = document.getElementById('tsearch');
+  if (el) { el.focus(); el.setSelectionRange(pos, pos); }
 });
 
 if (key) load(); else render();

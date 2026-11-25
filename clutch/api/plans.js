@@ -31,14 +31,16 @@ export async function fromPhoton(lat, lon, fetchFn = globalThis.fetch) {
   return lists.flat().filter(near(lat, lon));
 }
 
+const NOM_KINDS = ['viewpoint', 'park', 'ice_cream'];
+
 export async function fromNominatim(lat, lon, fetchFn = globalThis.fetch) {
   const d = 0.04, out = [];
-  for (const kind of Object.keys(PLAN_KINDS)) {
+  for (const kind of NOM_KINDS) {
     const [k, v] = tagOf(kind);
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(`[${v}]`)}&format=jsonv2&limit=15&bounded=1&viewbox=${lon - d},${lat + d},${lon + d},${lat - d}`;
-    const j = await getJsonUrl(url, fetchFn, 8000);
+    const j = await getJsonUrl(url, fetchFn, 4500);
     out.push(...j.filter((x) => x.name).map((x) => el(x.name, x.lat, x.lon, k, v)));
-    await new Promise((s) => setTimeout(s, 1000)); // norma de uso de Nominatim: 1 petición por segundo
+    await new Promise((s) => setTimeout(s, 600));
   }
   return out.filter(near(lat, lon));
 }

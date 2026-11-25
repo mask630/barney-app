@@ -2,6 +2,7 @@
 // Tester en la base de datos: tester:<código> = { code, alias, email, group, status, metrics, createdAt, lastSeen }
 // status: pending (espera tu aprobación) · active · blocked
 
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { getJson, setJson, incr, addToSet, expire } from './db.js';
 
 // multi_profile: más de una persona. Sin ella, un solo perfil.
@@ -69,12 +70,20 @@ export async function aiQuotaOk(tester, todayISO = new Date().toISOString().slic
   return (await incr(`ai:${tester.code}:${todayISO}`, 2 * 86400)) <= aiPerDay;
 }
 
+export const clientIp = (req) => String(req.headers['x-real-ip'] || '').trim() || String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'local';
+
+const safeEq = (a, b) => {
+  const ha = createHash('sha256').update(String(a)).digest();
+  const hb = createHash('sha256').update(String(b)).digest();
+  return timingSafeEqual(ha, hb);
+};
+
 // Panel: CLUTCH_ADMIN si existe; si no, cualquier código del dueño.
 export function isAdmin(req) {
   const key = String(req.headers['x-admin-key'] || '').trim();
   if (!key) return false;
   const admin = (process.env.CLUTCH_ADMIN || '').trim();
-  return admin ? key === admin : ownerCodes().includes(key);
+  return admin ? safeEq(key, admin) : ownerCodes().some((c) => safeEq(key, c));
 }
 
 export function cors(req, res, methods = 'POST, OPTIONS') {

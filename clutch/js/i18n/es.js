@@ -73,7 +73,7 @@ export default {
     classifyLater: 'Clasificar',
     discard: 'Descartar',
     saved: 'Guardado en',
-    dictate: '🎤 Dictar',
+    dictate: 'Dictar',
     listening: '● Escuchando…',
     micDenied: 'Permite el micrófono para dictar.',
     photoNote: 'La foto se guarda en este móvil. Elige dónde va.',
@@ -124,7 +124,7 @@ export default {
     opinions: 'Tu opinión',
     more: 'Más ajustes',
     feedback: 'Enviar comentario',
-    version: 'Clutch beta 0.8'
+    version: 'Clutch beta 0.9'
   },
   join: {
     title: 'Únete a la beta',

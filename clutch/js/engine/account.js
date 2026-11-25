@@ -37,12 +37,15 @@ export const pushOff = (token, endpoint, f) => req('/api/push', { method: 'DELET
 // ---------- qué se sube y cómo se mezclan dos copias ----------
 // Se suben las fichas y la bandeja (sin fotos: se quedan en el móvil) y unos pocos ajustes de la persona.
 // El PIN, el tema, el código de tester, la sesión y las estadísticas son de cada móvil.
-const SYNCED_SETTINGS = ['country', 'city', 'companionStyle', 'style'];
+const SYNCED_SETTINGS = ['country', 'city', 'companionStyle', 'style', 'settingsUpdatedAt'];
 const noPhoto = (it) => { const { photo, ...rest } = it; return rest; };
 
 export function syncable(state) {
   return {
-    profiles: state.profiles.map((p) => ({ ...p, gifts: (p.gifts || []).map(noPhoto), remember: (p.remember || []).map(noPhoto) })),
+    profiles: state.profiles.map((p) => {
+      const { photos, ...rest } = p;
+      return { ...rest, gifts: (p.gifts || []).map(noPhoto), remember: (p.remember || []).map(noPhoto) };
+    }),
     inbox: (state.inbox || []).filter((i) => i.text).map(noPhoto),
     deleted: state.deleted || [],
     activeId: state.activeId,
@@ -78,7 +81,10 @@ export function mergeStates(local, remote) {
   const inboxById = new Map([...(remote.inbox || []), ...(local.inbox || [])].map((i) => [i.id, i]));
   const inbox = [...inboxById.values()].filter((i) => !gone.has(i.id));
   const settings = { ...local.settings };
-  for (const k of SYNCED_SETTINGS) if (settings[k] == null && remote.settings?.[k] != null) settings[k] = remote.settings[k];
+  const remoteNewer = (remote.settings?.settingsUpdatedAt || 0) > (local.settings?.settingsUpdatedAt || 0);
+  for (const k of SYNCED_SETTINGS) {
+    if (remote.settings?.[k] != null && (settings[k] == null || remoteNewer)) settings[k] = remote.settings[k];
+  }
   const activeId = profiles.some((p) => p.id === local.activeId) ? local.activeId : profiles.some((p) => p.id === remote.activeId) ? remote.activeId : profiles[0]?.id || null;
   return { ...local, profiles, inbox, deleted, settings, activeId };
 }
